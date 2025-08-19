@@ -6,8 +6,8 @@ amplitude changes in the eye aspect ratio to velocity extremes.
 
 Example
 -------
->>> from pyblinker.features.waveform_features.features.amp_vel_ratio_features import neg_amp_vel_ratio_zero
->>> ratio = neg_amp_vel_ratio_zero(blink, sfreq=100.0)
+# >>> from pyblinker.features.waveform_features.features.amp_vel_ratio_features import neg_amp_vel_ratio_zero
+# >>> ratio = neg_amp_vel_ratio_zero(blink, sfreq=100.0)
 
 .. _BLINKER: https://github.com/VisLab/EEG-Blinks
 """

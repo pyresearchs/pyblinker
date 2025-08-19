@@ -1,4 +1,5 @@
 """Utility functions replicating select MATLAB helpers in Python."""
+from __future__ import annotations
 
 import numpy as np
 from scipy.linalg import qr, solve_triangular
