@@ -1,0 +1,22 @@
+# Core scientific computing
+numpy
+scipy
+scikit-learn
+
+# Visualization
+matplotlib
+seaborn
+tqdm
+
+# Neuroimaging / signal analysis
+mne
+pooch
+
+# Development & tooling
+pre-commit
+pyside6
+
+# Testing
+pytest
+pytest-cov
+pytest-xdist
