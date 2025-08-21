@@ -10,7 +10,10 @@ import unittest
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT.parent))
 
-from unit_test import download_migration_files, download_test_files
+from unit_test import (  # noqa: E402
+    download_migration_files,
+    download_test_files,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -25,19 +28,29 @@ def main() -> None:
 
     test_names = [
         (
-            "unit_test.features.segment_raw_feature_pipeline.test_segment_raw_feature_pipeline.TestSegmentRawFeaturePipeline.test_pipeline_run_fit_false"
+            "unit_test.features.segment_raw_feature_pipeline."
+            "test_segment_raw_feature_pipeline."
+            "TestSegmentRawFeaturePipeline.test_pipeline_run_fit_false"
         ),
         (
-            "unit_test.features.segment_raw_feature_pipeline.test_segment_raw_feature_pipeline.TestSegmentRawFeaturePipeline.test_pipeline_run_fit_true"
+            "unit_test.features.segment_raw_feature_pipeline."
+            "test_segment_raw_feature_pipeline."
+            "TestSegmentRawFeaturePipeline.test_pipeline_run_fit_true"
         ),
         (
-            "unit_test.features.segmented_continous_annotated_raw.test_segment_blink_counts.TestSegmentBlinkCounts.test_blink_counts"
+            "unit_test.features.segmented_continous_annotated_raw."
+            "test_segment_blink_counts."
+            "TestSegmentBlinkCounts.test_blink_counts"
         ),
         (
-            "unit_test.features.segmented_continous_annotated_raw.test_segment_blink_properties.TestSegmentBlinkProperties.test_properties_dataframe"
+            "unit_test.features.segmented_continous_annotated_raw."
+            "test_segment_blink_properties."
+            "TestSegmentBlinkProperties.test_properties_dataframe"
         ),
         (
-            "unit_test.features.segmented_continous_annotated_raw.test_segment_blink_properties.TestSegmentBlinkProperties.test_properties_dataframe_with_fit"
+            "unit_test.features.segmented_continous_annotated_raw."
+            "test_segment_blink_properties."
+            "TestSegmentBlinkProperties.test_properties_dataframe_with_fit"
         ),
     ]
     suite.addTests(loader.loadTestsFromNames(test_names))

@@ -11,7 +11,10 @@ ROOT = Path(__file__).resolve().parent
 FEATURE_DIR = ROOT / "features"
 sys.path.insert(0, str(ROOT.parent))
 
-from unit_test import download_migration_files, download_test_files
+from unit_test import (  # noqa: E402
+    download_migration_files,
+    download_test_files,
+)
 
 logger = logging.getLogger(__name__)
 
