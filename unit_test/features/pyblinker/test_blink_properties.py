@@ -70,7 +70,7 @@ Dependencies:
   - pyblinker.extract_blink_properties.BlinkProperties
 """
 
-from pathlib import Path
+import os
 import numpy as np
 import pandas as pd
 import pytest
@@ -86,8 +86,7 @@ def candidate_signal() -> np.ndarray:
     Returns:
         np.ndarray: 1D EEG signal array.
     """
-    base_path = Path(__file__).resolve().parents[2] / "test_files"
-    file_path = base_path / "S1_candidate_signal.npy"
+    file_path = os.path.join(os.path.dirname(__file__), "S1_candidate_signal.npy")
     return np.load(file_path)
 
 
@@ -99,8 +98,7 @@ def blink_df() -> pd.DataFrame:
     Returns:
         pd.DataFrame: Metadata for blink candidates, incl. fitted features.
     """
-    base_path = Path(__file__).resolve().parents[2] / "test_files"
-    file_path = base_path / "blink_properties_fits.pkl"
+    file_path = os.path.join(os.path.dirname(__file__), "blink_properties_fits.pkl")
     df = pd.read_pickle(file_path)
     assert not df.empty and isinstance(df, pd.DataFrame)
 

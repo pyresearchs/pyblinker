@@ -71,7 +71,7 @@ Each function under test is implemented with the following logic:
 import numpy as np
 import pandas as pd
 import pytest
-from pathlib import Path
+import os
 from pyblinker.blinker.zero_crossing import (
     left_right_zero_crossing,
     get_half_height,
@@ -89,8 +89,7 @@ def candidate_signal() -> np.ndarray:
     Expected:
         numpy.ndarray of shape (T,), where T is the number of time samples.
     """
-    base_path = Path(__file__).resolve().parents[2] / "test_files"
-    file_path = base_path / "S1_candidate_signal.npy"
+    file_path = os.path.join(os.path.dirname(__file__), "S1_candidate_signal.npy")
     return np.load(file_path)
 
 

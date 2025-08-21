@@ -55,7 +55,7 @@ The tests cover the following blink-related metrics:
 
 ## 📁 Test Inputs
 
-The tests rely on fixtures located in `unit_test/test_files`:
+The tests rely on:
 
 - `S1_candidate_signal.npy` — 1D EEG signal for blink detection
 - `blink_properties_fits.pkl` — Precomputed blink metadata, including landmarks and linear fits
