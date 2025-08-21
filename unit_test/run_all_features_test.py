@@ -4,18 +4,22 @@ from __future__ import annotations
 import logging
 import multiprocessing
 from pathlib import Path
+import sys
 import unittest
-
-from . import download_migration_files, download_test_files
 
 logger = logging.getLogger(__name__)
 
 ROOT = Path(__file__).resolve().parent
+if __package__ in (None, ""):
+    sys.path.insert(0, str(ROOT.parent))
+
 FEATURE_DIR = ROOT / "features"
 
 
 def main() -> None:
     """Download datasets and run tests in :mod:`unit_test.features`."""
+    from unit_test import download_migration_files, download_test_files
+
     download_migration_files()
     download_test_files()
     multiprocessing.set_start_method("spawn", force=True)
