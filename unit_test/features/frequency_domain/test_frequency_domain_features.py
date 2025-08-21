@@ -50,7 +50,7 @@ class TestSegmentationHelper(unittest.TestCase):
 
     def test_segment_count(self) -> None:
         """Ensure the helper slices a raw file into multiple segments."""
-        raw_path = PROJECT_ROOT / "unit_test" / "features" / "ear_eog_raw.fif"
+        raw_path = PROJECT_ROOT / "unit_test" / "test_files" / "ear_eog_raw.fif"
         raw = mne.io.read_raw_fif(raw_path, preload=False, verbose=False)
         segments = slice_raw_to_segments(raw, epoch_len=30.0)
         logger.debug("Created %d segments", len(segments))

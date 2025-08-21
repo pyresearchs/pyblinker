@@ -12,6 +12,9 @@ tqdm
 mne
 pooch
 
+# Utilities
+gdown
+
 # Development & tooling
 pre-commit
 pyside6

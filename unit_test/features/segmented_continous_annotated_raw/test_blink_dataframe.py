@@ -46,13 +46,13 @@ class TestBlinkDataFrame(unittest.TestCase):
         counts for each epoch are loaded from the accompanying CSV file for
         comparison in :meth:`test_row_counts`.
         """
-        raw_path = PROJECT_ROOT / "unit_test" / "features" / "ear_eog_raw.fif"
+        raw_path = PROJECT_ROOT / "unit_test" / "test_files" / "ear_eog_raw.fif"
         raw = mne.io.read_raw_fif(raw_path, preload=False, verbose=False)
         self.segments, _, _, _ = slice_raw_into_epochs(
             raw, epoch_len=30.0, blink_label=None, progress_bar=False
         )
         self.expected_counts = pd.read_csv(
-            PROJECT_ROOT / "unit_test" / "features" / "ear_eog_blink_count_epoch.csv"
+            PROJECT_ROOT / "unit_test" / "test_files" / "ear_eog_blink_count_epoch.csv"
         )
 
     def test_row_counts(self) -> None:

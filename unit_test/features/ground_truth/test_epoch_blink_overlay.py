@@ -16,10 +16,10 @@ class TestEpochBlinkOverlay(unittest.TestCase):
 
     def test_blink_count_summary(self) -> None:
         """Blink counts for first epochs match reference CSV."""
-        raw_path = PROJECT_ROOT / "unit_test" / "features" / "ear_eog_raw.fif"
+        raw_path = PROJECT_ROOT / "unit_test" / "test_files" / "ear_eog_raw.fif"
         raw = mne.io.read_raw_fif(raw_path, preload=False, verbose=False)
         df, _ = summarize_blink_counts(raw, epoch_len=30.0, blink_label=None)
-        expected = pd.read_csv(PROJECT_ROOT / "unit_test" / "features" / "ear_eog_blink_count_epoch.csv")
+        expected = pd.read_csv(PROJECT_ROOT / "unit_test" / "test_files" / "ear_eog_blink_count_epoch.csv")
         pd.testing.assert_frame_equal(df.iloc[: len(expected)], expected)
 
 

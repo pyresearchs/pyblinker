@@ -25,7 +25,7 @@ class TestEEGEOGRefinement(unittest.TestCase):
     """Ensure refinement works on both EEG and EOG modalities."""
 
     def setUp(self) -> None:
-        raw_path = PROJECT_ROOT / "unit_test" / "features" / "ear_eog_raw.fif"
+        raw_path = PROJECT_ROOT / "unit_test" / "test_files" / "ear_eog_raw.fif"
         self.segments, _ = prepare_refined_segments(
             raw_path,
             "EOG-EEG-eog_vert_left",

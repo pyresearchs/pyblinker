@@ -23,7 +23,7 @@ class TestBlinkCountEpochs(unittest.TestCase):
     """Verify epoch blink counts match the reference implementation."""
 
     def setUp(self) -> None:
-        raw_path = PROJECT_ROOT / "unit_test" / "features" / "ear_eog_raw.fif"
+        raw_path = PROJECT_ROOT / "unit_test" / "test_files" / "ear_eog_raw.fif"
         raw = mne.io.read_raw_fif(raw_path, preload=False, verbose=False)
         events = mne.make_fixed_length_events(raw, id=1, duration=30.0)
         self.epochs = mne.Epochs(

@@ -25,7 +25,7 @@ class TestBlinkIntervalDistribution(unittest.TestCase):
 
     def setUp(self) -> None:
         """Load the sample raw file and create two 30s segments."""
-        raw_path = PROJECT_ROOT / "unit_test" / "features" / "ear_eog_raw.fif"
+        raw_path = PROJECT_ROOT / "unit_test" / "test_files" / "ear_eog_raw.fif"
         raw = mne.io.read_raw_fif(raw_path, preload=False, verbose=False)
         self.segments = []
         for i in range(2):
