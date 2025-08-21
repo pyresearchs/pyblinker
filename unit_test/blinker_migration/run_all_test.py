@@ -1,28 +1,31 @@
-"""Convenience script to run all unit tests.
+"""Execute all migration tests in this directory.
 
-This file discovers and executes every module in ``unit_test`` matching the
-``test_*.py`` pattern. It is mainly intended for manual debugging during
-development.
+This convenience script discovers and runs every module in
+``unit_test/blinker_migration`` matching the ``test_*.py`` pattern.
+It is primarily intended for manual debugging during development.
 """
 
-from pathlib import Path
-import unittest
+from __future__ import annotations
+
 import multiprocessing
 import sys
+from pathlib import Path
 
-# Ensure the repository root is on the Python path so that imports
-# like ``pyblinker`` succeed when running this script directly.
-ROOT = Path(__file__).resolve().parents[1]
+import pytest
+
+# Ensure the repository root is on the Python path so imports like ``pyblinker``
+# succeed when running this script directly.
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
-# Discover and load all tests in the 'tests' directory
-test_loader = unittest.TestLoader()
-test_suite = test_loader.discover('unit_test', pattern='test_*.py')
+# Directory containing the migration tests.
+TEST_DIR = Path(__file__).resolve().parent
+
+
 def main() -> None:
-    """Execute the discovered test suite."""
+    """Discover and execute tests in :mod:`unit_test.blinker_migration`."""
     multiprocessing.set_start_method("spawn", force=True)
-    test_runner = unittest.TextTestRunner(verbosity=2)
-    test_runner.run(test_suite)
+    pytest.main([str(TEST_DIR)])
 
 
 if __name__ == "__main__":
