@@ -17,8 +17,8 @@ class TestBlinkFinder(unittest.TestCase):
     """Validate blink detection and mapping on Epochs."""
 
     def setUp(self) -> None:
-        raw_path = PROJECT_ROOT / "unit_test" / "features" / "ear_eog_without_annotation_raw.fif"
-        csv_path = PROJECT_ROOT / "unit_test" / "features" / "ear_eog_blink_count_epoch.csv"
+        raw_path = PROJECT_ROOT / "unit_test" / "test_files" / "ear_eog_without_annotation_raw.fif"
+        csv_path = PROJECT_ROOT / "unit_test" / "test_files" / "ear_eog_blink_count_epoch.csv"
         self.raw = mne.io.read_raw_fif(raw_path, preload=True, verbose=False)
         events = mne.make_fixed_length_events(self.raw, id=1, duration=30.0)
         self.epochs = mne.Epochs(

@@ -44,7 +44,7 @@ class TestSegmentBlinkCounts(unittest.TestCase):
         ``self.expected_counts`` contains the blink counts per segment from the
         accompanying CSV file.  These fixtures are reused in the actual test.
         """
-        raw_path = PROJECT_ROOT / "unit_test" / "features" / "ear_eog_raw.fif"
+        raw_path = PROJECT_ROOT / "unit_test" / "test_files" / "ear_eog_raw.fif"
         raw = mne.io.read_raw_fif(raw_path, preload=False, verbose=False)
         self.segments, _, _, _ = slice_raw_into_epochs(
             raw,
@@ -52,7 +52,7 @@ class TestSegmentBlinkCounts(unittest.TestCase):
             blink_label=None,
             progress_bar=False,
         )
-        self.expected_counts = pd.read_csv(PROJECT_ROOT / "unit_test" / "features" / "ear_eog_blink_count_epoch.csv")
+        self.expected_counts = pd.read_csv(PROJECT_ROOT / "unit_test" / "test_files" / "ear_eog_blink_count_epoch.csv")
         self.params = {
             "base_fraction": 0.5,
             "shut_amp_fraction": 0.9,

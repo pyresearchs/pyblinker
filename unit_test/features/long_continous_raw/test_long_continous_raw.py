@@ -37,7 +37,7 @@ class TestLongContinuousRaw(unittest.TestCase):
     def setUp(self) -> None:
         """Prepare a single-segment raw object and blink metadata.
 
-        The method reads ``ear_eog_raw.fif`` from the ``unit_test.features`` directory and
+        The method reads ``ear_eog_raw.fif`` from the ``unit_test.test_files`` directory and
         stores it as a one-element list in ``self.segments``.  Blink events are
         extracted by :func:`pyblinker.features.blink_events.generate_blink_dataframe` and the
         expected total blink count is loaded from
@@ -46,13 +46,13 @@ class TestLongContinuousRaw(unittest.TestCase):
         :func:`pyblinker.segment_blink_properties.compute_segment_blink_properties`
         is also constructed here.
         """
-        raw_path = PROJECT_ROOT / "unit_test" / "features" / "ear_eog_raw.fif"
+        raw_path = PROJECT_ROOT / "unit_test" / "test_files" / "ear_eog_raw.fif"
         self.raw = mne.io.read_raw_fif(raw_path, preload=False, verbose=False)
         self.segments = [self.raw]
         self.blink_df = generate_blink_dataframe(
             self.segments, channel="EEG-E8", blink_label=None, progress_bar=False
         )
-        csv_path = PROJECT_ROOT / "unit_test" / "features" / "ear_eog_blink_count_epoch.csv"
+        csv_path = PROJECT_ROOT / "unit_test" / "test_files" / "ear_eog_blink_count_epoch.csv"
         counts = pd.read_csv(csv_path)
         self.total_expected = int(counts["blink_count"].sum())
         self.params = {

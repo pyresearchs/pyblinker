@@ -31,18 +31,6 @@ TEST_REQUIRED_FILES = [
     TEST_FILES_DIR / "S1_candidate_signal.npy",
 ]
 
-# These files are expected within the ``unit_test/features`` directory for many
-# legacy tests.  When the archive is extracted to ``test_files`` we also copy
-# these specific assets into the features directory so existing paths continue
-# to work.
-FEATURES_DIR = Path(__file__).resolve().parent / "features"
-FEATURES_FILE_NAMES = [
-    "ear_eog_raw.fif",
-    "ear_eog_without_annotation_raw.fif",
-    "ear_eog_blink_count_epoch.csv",
-]
-FEATURES_REQUIRED_FILES = [FEATURES_DIR / name for name in FEATURES_FILE_NAMES]
-
 
 def _download_and_extract(url: str, target_dir: Path, tmp_name: str) -> None:
     """Download a zip from Google Drive and extract into ``target_dir``.
@@ -85,23 +73,9 @@ def download_migration_files() -> None:
 
 
 def download_test_files() -> None:
-    """Download additional test files if any are missing.
+    """Download additional test files if any are missing."""
 
-    In addition to storing files under ``test_files`` this function ensures that
-    a handful of widely referenced resources are also available directly under
-    ``unit_test/features`` for backwards compatibility with existing tests.
-    """
-
-    if all(path.exists() for path in TEST_REQUIRED_FILES) and all(
-        path.exists() for path in FEATURES_REQUIRED_FILES
-    ):
+    if all(path.exists() for path in TEST_REQUIRED_FILES):
         return
 
     _download_and_extract(TEST_FILE_URL, TEST_FILES_DIR, "test_files.zip")
-
-    FEATURES_DIR.mkdir(parents=True, exist_ok=True)
-    for name in FEATURES_FILE_NAMES:
-        src = TEST_FILES_DIR / name
-        dst = FEATURES_DIR / name
-        if src.exists():
-            shutil.copy2(src, dst)

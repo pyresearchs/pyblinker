@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 # Constants
 CHANNEL = "EOG-EEG-eog_vert_left"
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-RAW_PATH = PROJECT_ROOT / "unit_test" / "features" / "ear_eog_raw.fif"
+RAW_PATH = PROJECT_ROOT / "unit_test" / "test_files" / "ear_eog_raw.fif"
 
 def main() -> None:
     logger.info("Preparing segments from: %s", RAW_PATH)

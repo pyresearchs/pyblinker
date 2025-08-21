@@ -15,38 +15,19 @@ class TestAdditionalTestFileDownload(TestCase):
     def setUp(self) -> None:
         self.temp_parent = Path(tempfile.mkdtemp())
         self.test_dir = self.temp_parent / "test_files"
-        self.features_dir = self.temp_parent / "features"
-        # Only keep a single file to minimise fixture complexity while still
-        # exercising the copy into the features directory.
         self.required_files = [self.test_dir / "ear_eog_raw.fif"]
-        self.feature_files = [self.features_dir / "ear_eog_raw.fif"]
         self.dir_patch = mock.patch.object(data_setup, "TEST_FILES_DIR", self.test_dir)
         self.files_patch = mock.patch.object(
             data_setup, "TEST_REQUIRED_FILES", self.required_files
         )
-        self.features_dir_patch = mock.patch.object(
-            data_setup, "FEATURES_DIR", self.features_dir
-        )
-        self.features_files_patch = mock.patch.object(
-            data_setup, "FEATURES_REQUIRED_FILES", self.feature_files
-        )
-        self.feature_names_patch = mock.patch.object(
-            data_setup, "FEATURES_FILE_NAMES", ["ear_eog_raw.fif"]
-        )
         self.dir_patch.start()
         self.files_patch.start()
-        self.features_dir_patch.start()
-        self.features_files_patch.start()
-        self.feature_names_patch.start()
         self.original_gdown = sys.modules.get("gdown")
         sys.modules["gdown"] = types.SimpleNamespace(download=self._fake_download)
 
     def tearDown(self) -> None:
         self.dir_patch.stop()
         self.files_patch.stop()
-        self.features_dir_patch.stop()
-        self.features_files_patch.stop()
-        self.feature_names_patch.stop()
         if self.original_gdown is not None:
             sys.modules["gdown"] = self.original_gdown
         else:
@@ -63,5 +44,5 @@ class TestAdditionalTestFileDownload(TestCase):
     def test_download_and_extract(self) -> None:
         """Ensure test files are downloaded to the expected directory."""
         data_setup.download_test_files()
-        for path in self.required_files + self.feature_files:
+        for path in self.required_files:
             self.assertTrue(path.exists(), f"File {path.name} was not downloaded")

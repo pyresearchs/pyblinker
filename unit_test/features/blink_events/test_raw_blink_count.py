@@ -46,8 +46,8 @@ class TestRawBlinkCount(unittest.TestCase):
         """
         logger.info("Entering TestRawBlinkCount.setUp")
 
-        self.raw_path = PROJECT_ROOT / "unit_test" / "features" / "ear_eog_raw.fif"
-        self.expected_csv = PROJECT_ROOT / "unit_test" / "features" / "ear_eog_blink_count_epoch.csv"
+        self.raw_path = PROJECT_ROOT / "unit_test" / "test_files" / "ear_eog_raw.fif"
+        self.expected_csv = PROJECT_ROOT / "unit_test" / "test_files" / "ear_eog_blink_count_epoch.csv"
 
         # prepare segments using the helper that performs slicing and refinement
         self.segments, self.refined = prepare_refined_segments(

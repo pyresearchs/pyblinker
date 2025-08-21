@@ -34,7 +34,7 @@ class TestSegmentRawFeaturePipeline(unittest.TestCase):
         ----------
         None
         """
-        raw_path = PROJECT_ROOT / "unit_test" / "features" / "ear_eog_raw.fif"
+        raw_path = PROJECT_ROOT / "unit_test" / "test_files" / "ear_eog_raw.fif"
         raw = mne.io.read_raw_fif(raw_path, preload=False, verbose=False)
         self.segments, _, _, _ = slice_raw_into_epochs(
             raw, epoch_len=30.0, blink_label=None
@@ -49,7 +49,7 @@ class TestSegmentRawFeaturePipeline(unittest.TestCase):
             "p_avr_threshold": 3,
             "z_thresholds": np.array([[0.9, 0.98], [2.0, 5.0]]),
         }
-        csv_path = PROJECT_ROOT / "unit_test" / "features" / "ear_eog_blink_count_epoch.csv"
+        csv_path = PROJECT_ROOT / "unit_test" / "test_files" / "ear_eog_blink_count_epoch.csv"
         self.expected_counts = pd.read_csv(csv_path)["blink_count"].tolist()
 
     def _build_dataframe(self, *, run_fit: bool) -> pd.DataFrame:
