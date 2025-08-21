@@ -1,4 +1,7 @@
 """Run only migration-related unit tests."""
+from __future__ import annotations
+
+import logging
 import multiprocessing
 import sys
 from pathlib import Path
@@ -8,8 +11,15 @@ ROOT = Path(__file__).resolve().parent
 MIGRATION_DIR = ROOT / "blinker_migration"
 sys.path.insert(0, str(ROOT.parent))
 
+from unit_test import download_migration_files, download_test_files
+
+logger = logging.getLogger(__name__)
+
+
 def main() -> None:
-    """Discover and run tests in :mod:`unit_test.blinker_migration`."""
+    """Download datasets and run tests in :mod:`unit_test.blinker_migration`."""
+    download_migration_files()
+    download_test_files()
     multiprocessing.set_start_method("spawn", force=True)
     loader = unittest.TestLoader()
     suite = loader.discover(str(MIGRATION_DIR), pattern="test_*.py")

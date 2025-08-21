@@ -1,4 +1,7 @@
 """Run a subset of unit tests focused on the right-base pipeline."""
+from __future__ import annotations
+
+import logging
 import multiprocessing
 import sys
 from pathlib import Path
@@ -7,9 +10,15 @@ import unittest
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT.parent))
 
+from unit_test import download_migration_files, download_test_files
+
+logger = logging.getLogger(__name__)
+
 
 def main() -> None:
-    """Load and execute the selected test cases."""
+    """Download datasets, load, and execute the selected test cases."""
+    download_migration_files()
+    download_test_files()
     multiprocessing.set_start_method("spawn", force=True)
     loader = unittest.TestLoader()
     suite = unittest.TestSuite()
