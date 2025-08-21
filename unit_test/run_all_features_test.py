@@ -22,7 +22,11 @@ def main() -> None:
     download_test_files()
     multiprocessing.set_start_method("spawn", force=True)
     loader = unittest.TestLoader()
-    suite = loader.discover(str(FEATURE_DIR), pattern="test_*.py")
+    suite = loader.discover(
+        start_dir=str(FEATURE_DIR),
+        pattern="test_*.py",
+        top_level_dir=str(ROOT.parent),
+    )
     runner = unittest.TextTestRunner(verbosity=2)
     runner.run(suite)
 
