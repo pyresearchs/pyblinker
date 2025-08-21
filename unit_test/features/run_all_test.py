@@ -1,14 +1,8 @@
-"""Run all unit tests under :mod:`unit_test.features`.
-
-This script ensures that the repository root is prioritised on ``sys.path`` so
-that tests import the local :mod:`pyblinker` package rather than similarly
-named modules inside the test tree.
-"""
+"""Run all unit tests under :mod:`unit_test.features`."""
 
 from __future__ import annotations
 
 import logging
-import sys
 import unittest
 from pathlib import Path
 
@@ -16,7 +10,6 @@ logger = logging.getLogger(__name__)
 
 ROOT = Path(__file__).resolve().parent
 REPO_ROOT = ROOT.parent.parent
-sys.path.insert(0, str(REPO_ROOT))
 
 
 def main() -> None:

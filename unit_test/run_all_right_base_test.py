@@ -3,19 +3,14 @@ from __future__ import annotations
 
 import logging
 import multiprocessing
-import sys
 from pathlib import Path
 import unittest
 
-ROOT = Path(__file__).resolve().parent
-sys.path.insert(0, str(ROOT.parent))
-
-from unit_test import (  # noqa: E402
-    download_migration_files,
-    download_test_files,
-)
+from . import download_migration_files, download_test_files
 
 logger = logging.getLogger(__name__)
+
+ROOT = Path(__file__).resolve().parent
 
 
 def main() -> None:

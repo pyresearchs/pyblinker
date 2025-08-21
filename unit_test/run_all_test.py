@@ -9,22 +9,17 @@ from __future__ import annotations
 
 import logging
 import multiprocessing
-import sys
 from pathlib import Path
 import unittest
 
 import pytest
 
-ROOT = Path(__file__).resolve().parent
-REPO_ROOT = ROOT.parent
-sys.path.insert(0, str(REPO_ROOT))
-
-from unit_test import (  # noqa: E402
-    download_migration_files,
-    download_test_files,
-)
+from . import download_migration_files, download_test_files
 
 logger = logging.getLogger(__name__)
+
+ROOT = Path(__file__).resolve().parent
+REPO_ROOT = ROOT.parent
 
 # Pytest-based migration tests that are not discoverable by ``unittest``.
 PYTEST_FILES = [
