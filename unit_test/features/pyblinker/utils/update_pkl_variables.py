@@ -83,5 +83,6 @@ def update_pkl_file(path: str) -> None:
 
 
 if __name__ == "__main__":
-    update_pkl_file("../blink_properties_fits.pkl")
-    update_pkl_file("../file_test_blink_position.pkl")
+    base_path = Path(__file__).resolve().parents[3] / "test_files"
+    update_pkl_file(str(base_path / "blink_properties_fits.pkl"))
+    update_pkl_file(str(base_path / "file_test_blink_position.pkl"))
