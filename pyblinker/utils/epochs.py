@@ -10,12 +10,6 @@ import pandas as pd
 from tqdm import tqdm
 
 # -----------------------------------------------------------------------------
-# Configuration
-# -----------------------------------------------------------------------------
-BLINK_LABEL = "blink"        # Annotation label for blink events
-EPOCH_LEN = 30.0              # Epoch duration in seconds
-
-# -----------------------------------------------------------------------------
 # Logger
 # -----------------------------------------------------------------------------
 logger = logging.getLogger(__name__)
@@ -27,8 +21,8 @@ logger = logging.getLogger(__name__)
 def slice_raw_into_mne_epochs(
     raw: mne.io.BaseRaw,
     *,
-    epoch_len: float = EPOCH_LEN,
-    blink_label: Optional[str] = BLINK_LABEL,
+    epoch_len: float = 30.0,
+    blink_label: Optional[str] = "blink",
     progress_bar: bool = True,
 ) -> mne.Epochs:
     """Convert a continuous recording into equally spaced MNE epochs.
@@ -38,7 +32,7 @@ def slice_raw_into_mne_epochs(
     raw : mne.io.BaseRaw
         Continuous raw recording which may contain annotations.
     epoch_len : float, optional
-        Length of each epoch in seconds. Defaults to :data:`EPOCH_LEN`.
+        Length of each epoch in seconds. Defaults to ``30.0``.
     blink_label : str | None, optional
         Annotation label used to populate epoch metadata. ``None`` includes
         all annotations.
@@ -48,8 +42,9 @@ def slice_raw_into_mne_epochs(
     Returns
     -------
     mne.Epochs
-        Epoch object with an ``annotation`` column in the metadata describing
-        annotations falling within each epoch.
+        Epoch object whose metadata includes ``blink_onset`` and
+        ``blink_duration`` columns describing blinks relative to each epoch
+        start.
     """
     logger.info("Entering slice_raw_into_mne_epochs")
     events = mne.make_fixed_length_events(raw, duration=epoch_len)
@@ -63,14 +58,16 @@ def slice_raw_into_mne_epochs(
         preload=True,
         verbose=False,
     )
-    metadata = pd.DataFrame({"annotation": [""] * len(epochs)})
+    metadata = pd.DataFrame(
+        {"blink_onset": [None] * len(epochs), "blink_duration": [None] * len(epochs)}
+    )
     ann = raw.annotations
     if len(ann):
         mask = np.ones(len(ann), dtype=bool)
         if blink_label is not None:
             mask &= ann.description == blink_label
         onsets = ann.onset[mask]
-        descriptions = ann.description[mask]
+        durations = ann.duration[mask]
         event_times = events[:, 0] / sfreq
         iterator = range(len(event_times))
         if progress_bar:
@@ -80,7 +77,14 @@ def slice_raw_into_mne_epochs(
             stop = start + epoch_len
             in_epoch = (onsets >= start) & (onsets < stop)
             if np.any(in_epoch):
-                metadata.loc[idx, "annotation"] = ",".join(descriptions[in_epoch])
+                rel_onsets = onsets[in_epoch] - start
+                rel_durations = durations[in_epoch]
+                if len(rel_onsets) == 1:
+                    metadata.at[idx, "blink_onset"] = float(rel_onsets[0])
+                    metadata.at[idx, "blink_duration"] = float(rel_durations[0])
+                else:
+                    metadata.at[idx, "blink_onset"] = rel_onsets.tolist()
+                    metadata.at[idx, "blink_duration"] = rel_durations.tolist()
     epochs.metadata = metadata
     logger.debug("Epoch metadata head: %s", metadata.head())
     logger.info("Exiting slice_raw_into_mne_epochs")
@@ -89,8 +93,8 @@ def slice_raw_into_mne_epochs(
 def slice_raw_into_epochs(
     raw: mne.io.BaseRaw,
     *,
-    epoch_len: float = EPOCH_LEN,
-    blink_label: Optional[str] = BLINK_LABEL,
+    epoch_len: float = 30.0,
+    blink_label: Optional[str] = "blink",
     progress_bar: bool = True,
 ) -> Tuple[List[mne.io.BaseRaw], pd.DataFrame, List[Tuple[int, int]], List[Tuple[float, float]]]:
     """Slice a raw recording into epochs and count blink annotations.
@@ -100,7 +104,7 @@ def slice_raw_into_epochs(
     raw : mne.io.BaseRaw
         Continuous recording with blink annotations.
     epoch_len : float, optional
-        Length of each epoch in seconds. Defaults to :data:`EPOCH_LEN`.
+        Length of each epoch in seconds. Defaults to ``30.0``.
     blink_label : str | None, optional
         Annotation label to filter blinks. ``None`` counts all annotations.
 
@@ -231,8 +235,8 @@ def slice_into_mini_raws(
     raw: mne.io.BaseRaw,
     out_dir: Path,
     *,
-    epoch_len: float = EPOCH_LEN,
-    blink_label: Optional[str] = BLINK_LABEL,
+    epoch_len: float = 30.0,
+    blink_label: Optional[str] = "blink",
     save: bool = True,
     overwrite: bool = False,
     report: bool = False,
@@ -247,7 +251,7 @@ def slice_into_mini_raws(
     out_dir : Path
         Directory to save epoch files and/or report.
     epoch_len : float, optional
-        Length of each epoch in seconds. Defaults to :data:`EPOCH_LEN`.
+        Length of each epoch in seconds. Defaults to ``30.0``.
     blink_label : str | None, optional
         Annotation label used to filter blinks. ``None`` counts all
         annotations.

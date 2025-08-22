@@ -4,6 +4,7 @@ import logging
 from pathlib import Path
 
 import mne
+import pandas as pd
 
 from pyblinker.utils import slice_raw_into_mne_epochs
 
@@ -16,7 +17,7 @@ class TestSliceRawIntoMneEpochs(unittest.TestCase):
     """Validate epoch segmentation and annotation integration."""
 
     def test_annotation_mapping(self) -> None:
-        """Annotations should be assigned to their respective epochs."""
+        """Annotations should populate onset and duration metadata."""
         raw_path = PROJECT_ROOT / "unit_test" / "test_files" / "ear_eog_raw.fif"
         raw = mne.io.read_raw_fif(raw_path, preload=True, verbose=False)
         epoch_len = 30.0
@@ -28,10 +29,19 @@ class TestSliceRawIntoMneEpochs(unittest.TestCase):
         self.assertEqual(len(epochs), expected_n_epochs)
         metadata = epochs.metadata
         self.assertIsNotNone(metadata)
-        first_ann = raw.annotations[0]
-        idx = int(first_ann["onset"] // epoch_len)
-        logger.debug("First annotation %s belongs to epoch %d", first_ann, idx)
-        self.assertIn(first_ann["description"], metadata.loc[idx, "annotation"])
+
+        # Choose an annotation that occurs in an epoch with a single event
+        ann = raw.annotations[2]
+        idx = int(ann["onset"] // epoch_len)
+        logger.debug("Annotation %s belongs to epoch %d", ann, idx)
+        self.assertAlmostEqual(
+            metadata.loc[idx, "blink_onset"], ann["onset"] - idx * epoch_len
+        )
+        self.assertAlmostEqual(metadata.loc[idx, "blink_duration"], ann["duration"])
+
+        # Ensure at least one epoch contains no annotations
+        empty_idx = metadata["blink_onset"].isna().to_numpy().nonzero()[0][0]
+        self.assertTrue(pd.isna(metadata.loc[empty_idx, "blink_duration"]))
 
 
 if __name__ == "__main__":
