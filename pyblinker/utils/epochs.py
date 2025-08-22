@@ -24,6 +24,68 @@ logger = logging.getLogger(__name__)
 # Core utility functions
 # -----------------------------------------------------------------------------
 
+def slice_raw_into_mne_epochs(
+    raw: mne.io.BaseRaw,
+    *,
+    epoch_len: float = EPOCH_LEN,
+    blink_label: Optional[str] = BLINK_LABEL,
+    progress_bar: bool = True,
+) -> mne.Epochs:
+    """Convert a continuous recording into equally spaced MNE epochs.
+
+    Parameters
+    ----------
+    raw : mne.io.BaseRaw
+        Continuous raw recording which may contain annotations.
+    epoch_len : float, optional
+        Length of each epoch in seconds. Defaults to :data:`EPOCH_LEN`.
+    blink_label : str | None, optional
+        Annotation label used to populate epoch metadata. ``None`` includes
+        all annotations.
+    progress_bar : bool, optional
+        Display a progress bar while assigning annotations to epochs.
+
+    Returns
+    -------
+    mne.Epochs
+        Epoch object with an ``annotation`` column in the metadata describing
+        annotations falling within each epoch.
+    """
+    logger.info("Entering slice_raw_into_mne_epochs")
+    events = mne.make_fixed_length_events(raw, duration=epoch_len)
+    sfreq = raw.info["sfreq"]
+    epochs = mne.Epochs(
+        raw,
+        events,
+        tmin=0.0,
+        tmax=epoch_len - 1 / sfreq,
+        baseline=None,
+        preload=True,
+        verbose=False,
+    )
+    metadata = pd.DataFrame({"annotation": [""] * len(epochs)})
+    ann = raw.annotations
+    if len(ann):
+        mask = np.ones(len(ann), dtype=bool)
+        if blink_label is not None:
+            mask &= ann.description == blink_label
+        onsets = ann.onset[mask]
+        descriptions = ann.description[mask]
+        event_times = events[:, 0] / sfreq
+        iterator = range(len(event_times))
+        if progress_bar:
+            iterator = tqdm(iterator, desc="Assigning annotations", unit="epoch")
+        for idx in iterator:
+            start = event_times[idx]
+            stop = start + epoch_len
+            in_epoch = (onsets >= start) & (onsets < stop)
+            if np.any(in_epoch):
+                metadata.loc[idx, "annotation"] = ",".join(descriptions[in_epoch])
+    epochs.metadata = metadata
+    logger.debug("Epoch metadata head: %s", metadata.head())
+    logger.info("Exiting slice_raw_into_mne_epochs")
+    return epochs
+
 def slice_raw_into_epochs(
     raw: mne.io.BaseRaw,
     *,

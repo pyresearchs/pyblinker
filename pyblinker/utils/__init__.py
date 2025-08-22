@@ -1,6 +1,7 @@
 """Utility functions for pyblinker."""
 from .segments import slice_raw_to_segments
 from .epochs import (
+    slice_raw_into_mne_epochs,
     slice_raw_into_epochs,
     save_epoch_raws,
     generate_epoch_report,
@@ -17,6 +18,7 @@ from .misc import create_annotation
 
 __all__ = [
     "slice_raw_to_segments",
+    "slice_raw_into_mne_epochs",
     "slice_raw_into_epochs",
     "save_epoch_raws",
     "generate_epoch_report",
