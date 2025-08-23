@@ -1,5 +1,10 @@
 """Tutorial: Segmenting Raw Ear/EOG Data and Verifying Blink Counts.
 
+This tutorial assume we already find the blinks location either via BLINKER (via eeg) approach,
+manually (via mne annotations), or other algorithms.
+In this example, we are using the ear_eog_raw.fif, which being manually annotated.
+
+
 This tutorial mirrors the logic in
 ``unit_test/utils/test_slice_raw_into_mne_epochs.py``. It demonstrates how to
 slice a continuous recording into fixed-length epochs, integrate blink
@@ -25,6 +30,7 @@ import logging
 from pathlib import Path
 
 import mne
+
 import pandas as pd
 
 from pyblinker.utils import slice_raw_into_mne_epochs
