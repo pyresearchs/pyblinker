@@ -7,7 +7,7 @@ import mne
 from mne.io import BaseRaw
 from tqdm import tqdm
 
-from .epochs import slice_raw_into_epochs, EPOCH_LEN
+from .epochs import slice_raw_into_epochs
 from .refinement import refine_blinks_from_epochs
 
 logger = logging.getLogger(__name__)
@@ -58,7 +58,7 @@ def prepare_refined_segments(
     raw: Union[str, Path, mne.io.BaseRaw],
     channel: str,
     *,
-    epoch_len: float = EPOCH_LEN,
+    epoch_len: float = 30.0,
     keep_epoch_signal: bool = False,
     progress_bar: bool = True,
 ) -> tuple[list[BaseRaw], list[dict[str, Any]]]:

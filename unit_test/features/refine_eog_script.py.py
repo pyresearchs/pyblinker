@@ -4,7 +4,7 @@ from pathlib import Path
 
 import mne
 
-from pyblinker.utils.epochs import slice_raw_into_epochs, EPOCH_LEN
+from pyblinker.utils.epochs import slice_raw_into_epochs
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -24,7 +24,7 @@ def main() -> None:
     if len(raw.annotations) == 0:
         raise ValueError("Raw recording has no annotations to refine")
 
-    segments, _, _, _ = slice_raw_into_epochs(raw, epoch_len=EPOCH_LEN)
+    segments, _, _, _ = slice_raw_into_epochs(raw)
 
 
 
