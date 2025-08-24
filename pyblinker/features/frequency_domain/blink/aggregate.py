@@ -1,10 +1,22 @@
-"""Aggregate frequency-domain features across epochs."""
+"""Utilities for summarizing blink spectrum metrics across epochs.
+
+This module exposes :func:`aggregate_frequency_domain_features`, a high-level
+helper that gathers per-blink frequency-domain measurements for each epoch and
+returns them in a tidy :class:`pandas.DataFrame`. For a given sequence of blink
+annotations, the function groups blinks by their ``epoch_index``, retrieves the
+corresponding epoch signal, and delegates the per-epoch spectral calculation to
+``compute_frequency_domain_features``. The resulting table contains one row per
+epoch with columns such as peak blink-rate frequency, broadband power, spectral
+entropy, and wavelet energy. Epochs that lack a signal or blinks are filled with
+``NaN`` values so downstream analyses can maintain alignment with the original
+epoch numbering.
+"""
 from typing import Iterable, Dict, Any, List
 import logging
 import pandas as pd
 import numpy as np
 
-from .features import compute_frequency_domain_features
+from ..features import compute_frequency_domain_features
 
 logger = logging.getLogger(__name__)
 
