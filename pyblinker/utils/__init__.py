@@ -15,6 +15,7 @@ from .refinement import (
 )
 from .raw_preprocessing import prepare_refined_segments
 from .misc import create_annotation
+from .blink_metadata import onset_entry_to_blinks
 
 __all__ = [
     "slice_raw_to_segments",
@@ -29,4 +30,5 @@ __all__ = [
     "plot_refined_blinks",
     "prepare_refined_segments",
     "create_annotation",
+    "onset_entry_to_blinks",
 ]
