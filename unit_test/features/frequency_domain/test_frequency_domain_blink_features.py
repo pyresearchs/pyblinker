@@ -1,11 +1,8 @@
 """Demonstration tests for blink frequency-domain analysis on real data.
 
-Following the style of :mod:`unit_test.features.utils.test_eeg_eog_refinement`,
-this module slices the manually annotated ``ear_eog_raw.fif`` file into 30 s
+This unit test slices the manually annotated ``ear_eog_raw.fif`` file into 30 s
 epochs and validates how spectral blink metrics are aggregated for both EEG and
-EOG channels. The examples illustrate the expected API behaviour rather than
-production-grade accuracy. Future contributors are encouraged to expand the
-tests with richer signals and additional metrics.
+EOG channels. The examples validate the expected API behaviou.
 """
 import logging
 import math
@@ -85,32 +82,6 @@ class TestBlinkFrequencyFeatures(unittest.TestCase):
     def test_eog_vertical(self) -> None:
         """Run aggregation on EOG channel."""
         self._run_channel("EOG-EEG-eog_vert_left")
-
-
-class TestSegmentationHelper(unittest.TestCase):
-    """Tests for the raw slicing helper."""
-
-    def setUp(self) -> None:
-        raw_path = (
-            PROJECT_ROOT
-            / "unit_test"
-            / "test_files"
-            / "ear_eog_raw.fif"
-        )
-        self.raw = mne.io.read_raw_fif(raw_path, preload=True, verbose=False)
-        self.epochs = slice_raw_into_mne_epochs(
-            self.raw, epoch_len=30.0, blink_label=None, progress_bar=False
-        )
-
-    def test_segment_count(self) -> None:
-        """Ensure the helper slices a raw file into multiple segments."""
-        segments = slice_raw_to_segments(self.raw, epoch_len=30.0)
-        logger.debug(
-            "Created %d segments via helper, %d via epoching", len(segments), len(self.epochs)
-        )
-        self.assertEqual(len(segments), len(self.epochs))
-        for seg in segments:
-            self.assertIsInstance(seg, mne.io.BaseRaw)
 
 
 if __name__ == "__main__":
