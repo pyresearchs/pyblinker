@@ -1,11 +1,11 @@
 """Demonstration tests for blink frequency-domain analysis on real data.
 
 Following the style of :mod:`unit_test.features.utils.test_eeg_eog_refinement`,
-this module slices the recorded ``ear_eog_raw.fif`` file into 30 s epochs,
-detects blinks on both EEG and EOG channels, and validates how spectral blink
-metrics are aggregated. The examples illustrate the expected API behaviour
-rather than production-grade accuracy. Future contributors are encouraged to
-expand the tests with richer signals and additional metrics.
+this module slices the manually annotated ``ear_eog_raw.fif`` file into 30 s
+epochs and validates how spectral blink metrics are aggregated for both EEG and
+EOG channels. The examples illustrate the expected API behaviour rather than
+production-grade accuracy. Future contributors are encouraged to expand the
+tests with richer signals and additional metrics.
 """
 import logging
 import math
@@ -14,7 +14,6 @@ from pathlib import Path
 
 import mne
 
-from pyblinker.blinker.blink_epoch_mapper import find_blinks_epoch
 from pyblinker.features.frequency_domain.blink.aggregate import (
     aggregate_frequency_domain_features,
 )
@@ -27,7 +26,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 
 class TestBlinkFrequencyFeatures(unittest.TestCase):
-    """Validate frequency-domain metrics derived from detected blinks."""
+    """Validate frequency-domain metrics derived from annotated blinks."""
 
     def setUp(self) -> None:
         raw_path = (
@@ -45,27 +44,25 @@ class TestBlinkFrequencyFeatures(unittest.TestCase):
 
     def _run_channel(self, channel: str) -> None:
         logger.info("Frequency-domain features on %s", channel)
-        params = {"sfreq": self.sfreq, "min_event_len": 0.05, "std_threshold": 1.5}
-        epochs = find_blinks_epoch(
-            self.epochs.copy(), ch_name=channel, params=params, boundary_policy="majority"
-        )
+        epochs = self.epochs.copy().pick(channel)
         blinks = []
         data = epochs.get_data(picks=[0]).squeeze()
         empty_epoch = None
-        for idx, onsets in enumerate(epochs.metadata["blink_onsets"]):
+        for idx, onset in enumerate(epochs.metadata["blink_onset"]):
             signal = data[idx]
-            if isinstance(onsets, list) and onsets:
-                for o in onsets:
-                    blinks.append(
-                        {
-                            "epoch_index": idx,
-                            "epoch_signal": signal,
-                            "refined_start_frame": int(float(o) * self.sfreq),
-                        }
-                    )
-            else:
+            if onset is None:
                 if empty_epoch is None:
                     empty_epoch = idx
+                continue
+            onset_list = onset if isinstance(onset, list) else [onset]
+            for o in onset_list:
+                blinks.append(
+                    {
+                        "epoch_index": idx,
+                        "epoch_signal": signal,
+                        "refined_start_frame": int(float(o) * self.sfreq),
+                    }
+                )
         if empty_epoch is None:
             empty_epoch = 0
         freq_df = aggregate_frequency_domain_features(
