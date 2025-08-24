@@ -1,5 +1,6 @@
 """Demonstration tests for blink frequency-domain analysis on real data.
-
+This test assume we already find the blinks location either via BLINKER (via eeg) approach,
+manually (via mne annotations), or other algorithms.
 This unit test slices the manually annotated ``ear_eog_raw.fif`` file into 30 s
 epochs and validates how spectral blink metrics are aggregated for both EEG and
 EOG channels. The examples validate the expected API behaviou.
