@@ -10,7 +10,7 @@ import logging
 from pathlib import Path
 import mne
 
-from pyblinker.features.kinematics.kinematic_features import compute_kinematic_features
+from pyblinker.blink_features.kinematics.kinematic_features import compute_kinematic_features
 from unit_test.features.fixtures.mock_ear_generation import _generate_refined_ear
 
 logger = logging.getLogger(__name__)

@@ -9,7 +9,7 @@ import unittest
 import math
 import logging
 
-from pyblinker.features.blink_events.event_features.inter_blink_interval import compute_ibi_features
+from pyblinker.blink_features.blink_events.event_features.inter_blink_interval import compute_ibi_features
 from unit_test.features.fixtures.mock_ear_generation import _generate_refined_ear
 
 logger = logging.getLogger(__name__)

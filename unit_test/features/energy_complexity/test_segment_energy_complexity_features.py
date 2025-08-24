@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 
 from pyblinker.utils.epochs import slice_raw_into_epochs
-from pyblinker.features.energy_complexity.segment_features import compute_time_domain_features
+from pyblinker.blink_features.energy_complexity.segment_features import compute_time_domain_features
 
 logger = logging.getLogger(__name__)
 

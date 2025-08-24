@@ -15,7 +15,7 @@ import unittest
 import mne
 import pandas as pd
 
-from pyblinker.features.blink_events import generate_blink_dataframe
+from pyblinker.blink_features.blink_events import generate_blink_dataframe
 from pyblinker.utils.epochs import slice_raw_into_epochs
 
 logger = logging.getLogger(__name__)

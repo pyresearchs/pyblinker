@@ -7,7 +7,7 @@ import unittest
 import math
 import logging
 
-from pyblinker.features.open_eye.features import (
+from pyblinker.blink_features.open_eye.features import (
     baseline_mean_epoch,
     baseline_drift_epoch,
     baseline_std_epoch,

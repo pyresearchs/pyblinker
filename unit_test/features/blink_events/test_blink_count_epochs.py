@@ -10,7 +10,7 @@ from pathlib import Path
 import pandas as pd
 import mne
 
-from pyblinker.features.blink_events.event_features.blink_count_epochs import blink_count_epochs
+from pyblinker.blink_features.blink_events.event_features.blink_count_epochs import blink_count_epochs
 from unit_test.ground_truth.epoch_blink_overlay import summarize_blink_counts
 
 logger = logging.getLogger(__name__)

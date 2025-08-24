@@ -14,9 +14,9 @@ import numpy as np
 import pandas as pd
 
 from pyblinker.utils.epochs import slice_raw_into_epochs
-from pyblinker.features.blink_events import generate_blink_dataframe
-from pyblinker.features.frequency_domain.segment_features import compute_frequency_domain_features
-from pyblinker.features.energy_complexity.segment_features import compute_time_domain_features
+from pyblinker.blink_features.blink_events import generate_blink_dataframe
+from pyblinker.blink_features.frequency_domain.segment_features import compute_frequency_domain_features
+from pyblinker.blink_features.energy_complexity.segment_features import compute_time_domain_features
 from pyblinker.segment_blink_properties import compute_segment_blink_properties
 
 logger = logging.getLogger(__name__)

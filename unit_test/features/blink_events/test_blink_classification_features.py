@@ -3,7 +3,7 @@
 import unittest
 import logging
 
-from pyblinker.features.blink_events.classification import aggregate_classification_features
+from pyblinker.blink_features.blink_events.classification import aggregate_classification_features
 from unit_test.features.fixtures.mock_ear_generation import _generate_refined_ear
 
 logger = logging.getLogger(__name__)

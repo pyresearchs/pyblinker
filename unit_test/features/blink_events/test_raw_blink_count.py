@@ -26,7 +26,7 @@ import mne
 import pandas as pd
 
 from pyblinker.utils import prepare_refined_segments
-from pyblinker.features.blink_events.event_features.blink_count import blink_count_epoch
+from pyblinker.blink_features.blink_events.event_features.blink_count import blink_count_epoch
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +78,7 @@ class TestRawBlinkCount(unittest.TestCase):
         int
             Number of blink annotations.
         """
-        from pyblinker.features.blink_events.event_features.blink_count import blink_count_epoch
+        from pyblinker.blink_features.blink_events.event_features.blink_count import blink_count_epoch
 
         return blink_count_epoch(raw, label=label)
 

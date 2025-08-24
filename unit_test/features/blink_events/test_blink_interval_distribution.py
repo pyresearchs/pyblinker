@@ -9,7 +9,7 @@ import logging
 from pathlib import Path
 import mne
 
-from pyblinker.features.blink_events.event_features.blink_interval_distribution import (
+from pyblinker.blink_features.blink_events.event_features.blink_interval_distribution import (
     blink_interval_distribution_segment,
     aggregate_blink_interval_distribution,
 )
