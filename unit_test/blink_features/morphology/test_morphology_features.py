@@ -5,7 +5,7 @@ import math
 import logging
 
 from pyblinker.blink_features.morphology.morphology_features import compute_morphology_features
-from unit_test.features.fixtures.mock_ear_generation import _generate_refined_ear
+from unit_test.blink_features.fixtures.mock_ear_generation import _generate_refined_ear
 
 logger = logging.getLogger(__name__)
 

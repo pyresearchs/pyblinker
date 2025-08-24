@@ -16,7 +16,7 @@ from pyblinker.blink_features.waveform_features import (
     neg_amp_vel_ratio_zero,
     aggregate_waveform_features,
 )
-from unit_test.features.fixtures.mock_ear_generation import _generate_refined_ear
+from unit_test.blink_features.fixtures.mock_ear_generation import _generate_refined_ear
 
 logger = logging.getLogger(__name__)
 

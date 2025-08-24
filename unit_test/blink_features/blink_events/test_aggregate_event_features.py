@@ -1,6 +1,6 @@
 import unittest
 from pyblinker.blink_features.blink_events.event_features import aggregate_blink_event_features
-from unit_test.features.fixtures.mock_ear_generation import _generate_refined_ear
+from unit_test.blink_features.fixtures.mock_ear_generation import _generate_refined_ear
 
 
 class TestAggregateBlinkFeatures(unittest.TestCase):

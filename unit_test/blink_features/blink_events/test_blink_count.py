@@ -8,7 +8,7 @@ import unittest
 import logging
 
 from pyblinker.blink_features.blink_events.event_features.blink_count import blink_count_epoch
-from unit_test.features.fixtures.mock_ear_generation import _generate_refined_ear
+from unit_test.blink_features.fixtures.mock_ear_generation import _generate_refined_ear
 
 logger = logging.getLogger(__name__)
 

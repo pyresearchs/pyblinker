@@ -12,7 +12,7 @@ import unittest
 import mne
 import numpy as np
 
-from unit_test.features.fixtures.mock_raw_generation import generate_mock_raw
+from unit_test.blink_features.fixtures.mock_raw_generation import generate_mock_raw
 
 from pyblinker.utils import prepare_refined_segments
 from pyblinker.utils.epochs import slice_into_mini_raws

@@ -4,7 +4,7 @@ import logging
 import unittest
 
 from pyblinker.blink_features.ear_metrics import aggregate_ear_features, ear_before_blink_avg_epoch
-from unit_test.features.fixtures.mock_ear_generation import _generate_refined_ear
+from unit_test.blink_features.fixtures.mock_ear_generation import _generate_refined_ear
 
 logger = logging.getLogger(__name__)
 

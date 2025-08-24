@@ -2,7 +2,7 @@
 import numpy as np
 
 from pyblinker.ear.blink_epoch_mapper import _get_blink_position_epoching_ear
-from unit_test.features.fixtures.mock_ear_generation import _generate_refined_ear
+from unit_test.blink_features.fixtures.mock_ear_generation import _generate_refined_ear
 
 
 def test_adaptive_mad_detects_mock_blinks() -> None:
