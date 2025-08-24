@@ -83,6 +83,10 @@ class TestBlinkFrequencyFeatures(unittest.TestCase):
         """Run aggregation on EOG channel."""
         self._run_channel("EOG-EEG-eog_vert_left")
 
+    def test_ear_avg_ear(self) -> None:
+        """Run aggregation on averaged EAR channel."""
+        self._run_channel("EAR-avg_ear")
+
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
