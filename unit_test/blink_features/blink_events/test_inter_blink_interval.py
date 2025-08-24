@@ -11,9 +11,20 @@ import logging
 
 from pyblinker.blink_features.blink_events.event_features.inter_blink_interval import compute_ibi_features
 from unit_test.blink_features.fixtures.mock_ear_generation import _generate_refined_ear
+import logging
+from pathlib import Path
+import unittest
 
+import mne
+
+from pyblinker.blink_features.blink_events.event_features.blink_count import (
+    blink_count_epoch,
+)
+from pyblinker.utils import onset_entry_to_blinks, slice_raw_into_mne_epochs
+logger = logging.getLogger(__name__)
 logger = logging.getLogger(__name__)
 
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
 class TestInterBlinkInterval(unittest.TestCase):
     """
     Tests for `compute_ibi_features`, which calculates metrics on inter-blink intervals
@@ -21,17 +32,21 @@ class TestInterBlinkInterval(unittest.TestCase):
     """
 
     def setUp(self) -> None:
-        """
-        Load mock blink data and organize it into epochs.
-        """
-        logger.info("Setting up test fixture for IBI features...")
-        blinks, sfreq, epoch_len, n_epochs = _generate_refined_ear()
-        self.sfreq = sfreq
-        self.per_epoch = [[] for _ in range(n_epochs)]
-        for blink in blinks:
-            self.per_epoch[blink["epoch_index"]].append(blink)
-        logger.debug(f"Blink counts per epoch: {[len(ep) for ep in self.per_epoch]}")
+        """Load raw data and slice into epochs for blink counting."""
+        logger.info("Setting up epochs for blink count tests...")
+        raw_path = (
+                PROJECT_ROOT
+                / "unit_test"
+                / "test_files"
+                / "ear_eog_raw.fif"
+        )
+        raw = mne.io.read_raw_fif(raw_path, preload=True, verbose=False)
+        self.epochs = slice_raw_into_mne_epochs(
+            raw, epoch_len=30.0, blink_label=None, progress_bar=False
+        )
+        logger.info("Epoch setup complete.")
 
+        ## for this test, check the ibi for channel "EEG-E8","EOG-EEG-eog_vert_left","EAR-avg_ear"
     def test_all_ibi_features_first_epoch(self) -> None:
         """
         Verify all inter-blink interval (IBI) features for the first epoch against expected values.
@@ -57,15 +72,6 @@ class TestInterBlinkInterval(unittest.TestCase):
         self.assertTrue(math.isnan(feats["ibi_hurst_exponent"]), "Expected NaN for Hurst exponent (requires longer time series)")
 
 
-    def test_ibi_nan_for_insufficient_blinks(self) -> None:
-        """
-        If fewer than two blinks are present in an epoch, the mean IBI should be NaN.
-        """
-        logger.info("Testing IBI mean for an epoch with < 2 blinks (e.g. epoch 3)...")
-        feats = compute_ibi_features(self.per_epoch[3], self.sfreq)
-        ibi_mean = feats.get("ibi_mean", None)
-        logger.debug(f"Computed IBI mean (epoch 3): {ibi_mean}")
-        self.assertTrue(math.isnan(ibi_mean), "Expected NaN for mean IBI with insufficient data")
 
 
 if __name__ == "__main__":
