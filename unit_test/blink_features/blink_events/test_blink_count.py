@@ -1,16 +1,22 @@
-"""
-Unit tests for :mod:`blink_count` feature extraction.
+"""Unit tests for :mod:`blink_count` feature extraction.
 
-Validates blink counting logic across multiple epochs.
+Validates blink counting logic across multiple epochs using metadata.
 """
 
-import unittest
 import logging
+from pathlib import Path
+import unittest
 
-from pyblinker.blink_features.blink_events.event_features.blink_count import blink_count_epoch
-from unit_test.blink_features.fixtures.mock_ear_generation import _generate_refined_ear
+import mne
+
+from pyblinker.blink_features.blink_events.event_features.blink_count import (
+    blink_count_epoch,
+)
+from pyblinker.utils import onset_entry_to_blinks, slice_raw_into_mne_epochs
 
 logger = logging.getLogger(__name__)
+
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 class TestBlinkCount(unittest.TestCase):
     """
@@ -19,31 +25,41 @@ class TestBlinkCount(unittest.TestCase):
     """
 
     def setUp(self) -> None:
-        """
-        Generate mock blink data and split it by epoch index.
-        """
-        logger.info("Setting up mock blink data for blink count tests...")
-        blinks, sfreq, epoch_len, n_epochs = _generate_refined_ear()
-        self.per_epoch = [[] for _ in range(n_epochs)]
-        for blink in blinks:
-            self.per_epoch[blink["epoch_index"]].append(blink)
-        logger.debug(f"Blink counts per epoch: {[len(ep) for ep in self.per_epoch]}")
+        """Load raw data and slice into epochs for blink counting."""
+        logger.info("Setting up epochs for blink count tests...")
+        raw_path = (
+            PROJECT_ROOT
+            / "unit_test"
+            / "test_files"
+            / "ear_eog_raw.fif"
+        )
+        raw = mne.io.read_raw_fif(raw_path, preload=True, verbose=False)
+        self.epochs = slice_raw_into_mne_epochs(
+            raw, epoch_len=30.0, blink_label=None, progress_bar=False
+        )
+        logger.info("Epoch setup complete.")
 
     def test_counts(self) -> None:
         """
         Verify blink count for known epochs:
-        - Epoch 0: Contains 3 blinks.
+        - Epoch 0: Contains 2 blinks.
         - Epoch 3: Contains 0 blinks.
         """
         logger.info("Testing blink count for epoch 0...")
-        count_epoch_0 = blink_count_epoch(self.per_epoch[0])
-        logger.debug(f"Epoch 0 blink count: {count_epoch_0}")
-        self.assertEqual(count_epoch_0, 3, "Expected 3 blinks in epoch 0")
+        metadata = self.epochs.metadata
+        self.assertIsNotNone(metadata, "Epoch metadata is missing")
+
+        blinks_epoch_0 = onset_entry_to_blinks(metadata.loc[0, "blink_onset"])
+        count_epoch_0 = blink_count_epoch(blinks_epoch_0)
+        logger.debug("Epoch 0 blink count: %d", count_epoch_0)
+        self.assertEqual(count_epoch_0, 2, "Expected 2 blinks in epoch 0")
 
         logger.info("Testing blink count for epoch 3...")
-        count_epoch_3 = blink_count_epoch(self.per_epoch[3])
-        logger.debug(f"Epoch 3 blink count: {count_epoch_3}")
+        blinks_epoch_3 = onset_entry_to_blinks(metadata.loc[3, "blink_onset"])
+        count_epoch_3 = blink_count_epoch(blinks_epoch_3)
+        logger.debug("Epoch 3 blink count: %d", count_epoch_3)
         self.assertEqual(count_epoch_3, 0, "Expected 0 blinks in epoch 3")
+        logger.info("Blink count tests completed.")
 
 
 if __name__ == "__main__":
