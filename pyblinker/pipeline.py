@@ -12,7 +12,7 @@ from .blink_features.blink_events.event_features import (
 )
 from .blink_features.morphology import aggregate_morphology_features
 from .blink_features.kinematics import aggregate_kinematic_features
-from .blink_features.energy_complexity import aggregate_energy_complexity_features
+from .blink_features.energy import aggregate_energy_complexity_features
 from .blink_features.open_eye import aggregate_open_eye_features
 from .blink_features.ear_metrics import aggregate_ear_features
 from .blink_features.waveform_features import aggregate_waveform_features
