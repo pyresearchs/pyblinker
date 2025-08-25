@@ -1,5 +1,3 @@
-"""Blink count feature."""
-
 """Blink count feature utilities."""
 
 from typing import List, Dict, Union, Optional

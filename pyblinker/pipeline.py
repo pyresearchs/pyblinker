@@ -7,8 +7,7 @@ import pandas as pd
 import mne
 
 from .blink_features.blink_events.event_features import (
-    aggregate_blink_event_features,
-    aggregate_blink_interval_distribution,
+    aggregate_blink_event_features
 )
 from .blink_features.morphology import aggregate_morphology_features
 from .blink_features.kinematics import aggregate_kinematic_features

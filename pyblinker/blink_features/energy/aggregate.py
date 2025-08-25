@@ -3,7 +3,7 @@ from typing import Any, Dict, Iterable, List
 import logging
 import pandas as pd
 
-from .energy_complexity_features import compute_energy_complexity_features
+from .energy_complexity_features import compute_energy_features
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +38,7 @@ def aggregate_energy_complexity_features(
 
     records = []
     for epoch_idx, epoch_blinks in enumerate(per_epoch):
-        feats = compute_energy_complexity_features(epoch_blinks, sfreq)
+        feats = compute_energy_features(epoch_blinks, sfreq)
         record = {"epoch": epoch_idx}
         record.update(feats)
         records.append(record)

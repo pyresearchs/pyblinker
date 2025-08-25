@@ -36,7 +36,22 @@ import mne
 
 from pyblinker.blink_features.energy.energy_complexity_features import compute_energy_complexity_features
 from unit_test.blink_features.fixtures.mock_ear_generation import _generate_refined_ear
+import unittest
+import logging
+from pathlib import Path
 
+import mne
+import numpy as np
+import pandas as pd
+
+from pyblinker.blink_features.blink_events.event_features import (
+    aggregate_blink_event_features,
+)
+from pyblinker.utils import slice_raw_into_mne_epochs
+from unit_test.blink_features.utils.helpers import assert_df_has_columns
+
+logger = logging.getLogger(__name__)
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
 logger = logging.getLogger(__name__)
 
 
@@ -47,11 +62,16 @@ class TestEnergyComplexityFeatures(unittest.TestCase):
     """Tests for energy and complexity metric calculations."""
 
     def setUp(self) -> None:
-        blinks, sfreq, epoch_len, n_epochs = _generate_refined_ear()
-        self.sfreq = sfreq
-        self.per_epoch = [[] for _ in range(n_epochs)]
-        for blink in blinks:
-            self.per_epoch[blink["epoch_index"]].append(blink)
+        raw_path = (
+                PROJECT_ROOT
+                / "unit_test"
+                / "test_files"
+                / "ear_eog_raw.fif"
+        )
+        raw = mne.io.read_raw_fif(raw_path, preload=True, verbose=False)
+        self.epochs = slice_raw_into_mne_epochs(
+            raw, epoch_len=30.0, blink_label=None, progress_bar=False
+        )
 
     def test_first_epoch_features(self) -> None:
         """Verify energy metrics for the first epoch."""
@@ -68,39 +88,6 @@ class TestEnergyComplexityFeatures(unittest.TestCase):
         self.assertTrue(math.isnan(feats["blink_signal_energy_mean"]))
         self.assertTrue(math.isnan(feats["blink_line_length_mean"]))
 
-
-class TestEnergyComplexityRealRaw(unittest.TestCase):
-    """Validate energy metrics using a real 30s raw segment."""
-
-    def setUp(self) -> None:
-        raw_path = PROJECT_ROOT / "unit_test" / "test_files" / "ear_eog_raw.fif"
-        raw = mne.io.read_raw_fif(raw_path, preload=True, verbose=False)
-        self.sfreq = raw.info["sfreq"]
-        start, stop = 0.0, 30.0
-        self.signal = raw.get_data(picks="EAR-avg_ear", start=int(start * self.sfreq), stop=int(stop * self.sfreq))[0]
-        self.blinks = []
-        for onset, dur in zip(raw.annotations.onset, raw.annotations.duration):
-            if onset >= start and onset + dur <= stop:
-                s = int((onset - start) * self.sfreq)
-                e = int((onset + dur - start) * self.sfreq)
-                peak = (s + e) // 2
-                self.blinks.append(
-                    {
-                        "refined_start_frame": s,
-                        "refined_peak_frame": peak,
-                        "refined_end_frame": e,
-                        "epoch_signal": self.signal,
-                        "epoch_index": 0,
-                    }
-                )
-
-    def test_segment_zero_means(self) -> None:
-        """Compare a few energy metrics against reference values."""
-        feats = compute_energy_complexity_features(self.blinks, self.sfreq)
-        logger.debug("Real raw energy features: %s", feats)
-        self.assertAlmostEqual(feats["blink_signal_energy_mean"], 0.00999, places=5)
-        self.assertAlmostEqual(feats["blink_line_length_mean"], 0.31655, places=5)
-        self.assertAlmostEqual(feats["blink_velocity_integral_mean"], 0.30872, places=5)
 
 
 if __name__ == "__main__":

@@ -8,7 +8,7 @@ from ..morphology.morphology_features import _safe_stats
 logger = logging.getLogger(__name__)
 
 
-def compute_energy_complexity_features(blinks: List[Dict[str, Any]], sfreq: float) -> Dict[str, float]:
+def compute_energy_features(blinks: List[Dict[str, Any]], sfreq: float) -> Dict[str, float]:
     """Compute aggregated energy and complexity metrics for an epoch.
 
     Signal energy and line length reflect how forcefully and how far the

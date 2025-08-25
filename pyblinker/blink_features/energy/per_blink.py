@@ -6,7 +6,7 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 
-def compute_blink_energy_complexity(blink: Dict[str, Any], sfreq: float) -> Dict[str, float]:
+def compute_blink_energy(blink: Dict[str, Any], sfreq: float) -> Dict[str, float]:
     """Compute energy-related metrics for a single blink.
 
     These features quantify the overall effort of a blink and the
