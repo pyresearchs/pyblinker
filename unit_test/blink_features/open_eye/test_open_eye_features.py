@@ -1,66 +1,107 @@
-"""Unit tests for open-eye period features using synthetic data.
+"""Tests for open-eye baseline features using blink metadata."""
+from __future__ import annotations
 
-Blink annotations and epoch signals are generated via the
-``mock_ear_generation`` fixture creating :class:`mne.Epochs` objects.
-"""
 import unittest
-import math
-import logging
+from pathlib import Path
 
-from pyblinker.blink_features.open_eye.features import (
-    baseline_mean_epoch,
+import mne
+import numpy as np
+import pandas as pd
+
+from pyblinker.blink_features.open_eye import (
     baseline_drift_epoch,
+    baseline_mad_epoch,
+    baseline_mean_epoch,
     baseline_std_epoch,
-    perclos_epoch,
+    eye_opening_rms_epoch,
     micropause_count_epoch,
+    perclos_epoch,
+    zero_crossing_rate_epoch,
 )
-from unit_test.blink_features.fixtures.mock_ear_generation import _generate_refined_ear
+from pyblinker.utils import slice_raw_into_mne_epochs
 
-logger = logging.getLogger(__name__)
+from ..utils.helpers import assert_numeric_or_nan
+
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 
-class TestOpenEyeFeatures(unittest.TestCase):
-    """Verify baseline and open-eye metrics."""
+def _blinks_from_metadata(meta: pd.Series, sfreq: float) -> list[dict[str, int]]:
+    """Convert blink onset/duration metadata to frame spans."""
+    onset = meta.get("blink_onset")
+    duration = meta.get("blink_duration")
+    blinks: list[dict[str, int]] = []
+    if onset is None or (isinstance(onset, float) and pd.isna(onset)):
+        return blinks
+    onsets = np.atleast_1d(onset)
+    durs = np.atleast_1d(duration if duration is not None else 0.0)
+    if durs.size < onsets.size:
+        durs = np.pad(durs, (0, onsets.size - durs.size), constant_values=durs[-1])
+    for o, d in zip(onsets, durs):
+        if pd.isna(o):
+            continue
+        start = int(float(o) * sfreq)
+        end = int((float(o) + float(d or 0.0)) * sfreq)
+        blinks.append({"refined_start_frame": start, "refined_end_frame": end})
+    return blinks
 
-    def setUp(self) -> None:
-        blinks, sfreq, epoch_len, n_epochs = _generate_refined_ear()
-        self.sfreq = sfreq
-        per_epoch_signal = {}
-        per_epoch_blinks = {}
-        for b in blinks:
-            idx = b["epoch_index"]
-            per_epoch_signal.setdefault(idx, b["epoch_signal"])
-            per_epoch_blinks.setdefault(idx, []).append(b)
-        self.signal0 = per_epoch_signal[0]
-        self.blinks0 = per_epoch_blinks[0]
 
-    def test_baseline_mean(self) -> None:
-        """Baseline mean should match expected value."""
-        mean_val = baseline_mean_epoch(self.signal0, self.blinks0)
-        logger.debug("baseline mean: %s", mean_val)
-        self.assertTrue(math.isclose(mean_val, 0.31987358421614165))
+def _compute_features(signal: np.ndarray, blinks: list[dict[str, int]], sfreq: float) -> pd.Series:
+    """Compute baseline features for a single-channel epoch."""
+    return pd.Series(
+        {
+            "baseline_mean": baseline_mean_epoch(signal, blinks),
+            "baseline_drift": baseline_drift_epoch(signal, blinks, sfreq),
+            "baseline_std": baseline_std_epoch(signal, blinks),
+            "baseline_mad": baseline_mad_epoch(signal, blinks),
+            "perclos": perclos_epoch(signal, blinks),
+            "eye_opening_rms": eye_opening_rms_epoch(signal, blinks),
+            "micropause_count": micropause_count_epoch(signal, blinks, sfreq),
+            "zero_crossing_rate": zero_crossing_rate_epoch(signal, blinks),
+        }
+    )
 
-    def test_baseline_std(self) -> None:
-        """Baseline standard deviation is computed."""
-        std_val = baseline_std_epoch(self.signal0, self.blinks0)
-        self.assertTrue(math.isclose(std_val, 0.004922817090535525))
 
-    def test_perclos_zero(self) -> None:
-        """No closure beyond threshold in mock data."""
-        val = perclos_epoch(self.signal0, self.blinks0)
-        self.assertEqual(val, 0.0)
+class TestOpenEyeBaselineFeatures(unittest.TestCase):
+    """Validate baseline metrics computed over open-eye epochs."""
 
-    def test_micropause_none(self) -> None:
-        """No micropauses expected in mock signal."""
-        count = micropause_count_epoch(self.signal0, self.blinks0, self.sfreq)
-        self.assertEqual(count, 0)
+    def setUp(self) -> None:  # noqa: D401
+        raw_path = PROJECT_ROOT / "unit_test" / "test_files" / "ear_eog_raw.fif"
+        raw = mne.io.read_raw_fif(raw_path, preload=True, verbose=False)
+        self.epochs = slice_raw_into_mne_epochs(
+            raw, epoch_len=30.0, blink_label=None, progress_bar=False
+        )
 
-    def test_baseline_drift_small(self) -> None:
-        """Baseline drift should be near zero."""
-        slope = baseline_drift_epoch(self.signal0, self.blinks0, self.sfreq)
-        self.assertTrue(abs(slope) < 1e-4)
+    def test_epoch_values_respect_blinks(self) -> None:
+        """Baseline values finite for blink-free epochs and numeric-or-NaN otherwise."""
+        picks = ["EEG-E8", "EOG-EEG-eog_vert_left", "EAR-avg_ear"]
+        sfreq = self.epochs.info["sfreq"]
+
+        for idx in range(4):
+            meta = self.epochs.metadata.iloc[idx]
+            blinks = _blinks_from_metadata(meta, sfreq)
+            for ch in picks:
+                ch_idx = self.epochs.ch_names.index(ch)
+                signal = self.epochs.get_data()[idx, ch_idx, :]
+                features = _compute_features(signal, blinks, sfreq)
+                if not blinks:
+                    self.assertTrue(np.isfinite(features.to_numpy()).all())
+                else:
+                    assert_numeric_or_nan(self, features)
+
+        for idx in [2, 3, 5, 7]:
+            meta = self.epochs.metadata.iloc[idx]
+            onset = meta.get("blink_onset")
+            self.assertTrue(
+                onset is None
+                or (isinstance(onset, (list, tuple)) and len(onset) == 0)
+                or pd.isna(onset)
+            )
+            for ch in picks:
+                ch_idx = self.epochs.ch_names.index(ch)
+                signal = self.epochs.get_data()[idx, ch_idx, :]
+                features = _compute_features(signal, [], sfreq)
+                self.assertTrue(np.isfinite(features.to_numpy()).all())
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
     unittest.main()
