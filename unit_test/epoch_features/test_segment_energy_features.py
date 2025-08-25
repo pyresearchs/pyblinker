@@ -1,4 +1,4 @@
-"""Tests for time-domain complexity metrics on raw segments."""
+"""Tests for time-domain energy metrics on raw segments."""
 import logging
 import unittest
 from pathlib import Path
@@ -12,11 +12,11 @@ from pyblinker.blink_features.energy.segment_features import compute_time_domain
 
 logger = logging.getLogger(__name__)
 
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
-class TestSegmentEnergyComplexity(unittest.TestCase):
-    """Validate energy and complexity metrics for a real segment."""
+class TestSegmentEnergyFeatures(unittest.TestCase):
+    """Validate energy metrics for a real segment."""
 
     def setUp(self) -> None:
         raw_path = PROJECT_ROOT / "unit_test" / "test_files" / "ear_eog_raw.fif"

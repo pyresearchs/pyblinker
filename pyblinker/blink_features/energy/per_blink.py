@@ -1,4 +1,4 @@
-"""Per-blink energy and complexity feature calculations."""
+"""Per-blink energy feature calculations."""
 from typing import Any, Dict
 import logging
 import numpy as np
@@ -36,7 +36,7 @@ def compute_blink_energy(blink: Dict[str, Any], sfreq: float) -> Dict[str, float
     dt = 1.0 / sfreq
 
     if segment.size < 2:
-        logging.warning("Segment too short to compute energy/complexity. Returning NaNs.")
+        logging.warning("Segment too short to compute energy metrics. Returning NaNs.")
         return {
             "blink_signal_energy": float("nan"),
             "teager_kaiser_energy": float("nan"),

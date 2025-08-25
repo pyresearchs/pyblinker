@@ -1,95 +1,80 @@
-"""
-Blink feature extraction tests.
-
-This module contains unit tests for per-blink feature computation, using both
-synthetic :class:`mne.Epochs` data and real ``mne.io.Raw`` segments loaded
-from ``ear_eog_raw.fif``.  Testing on both fabricated epochs and cropped raw
-segments is important for debugging, since the feature functions must work
-consistently regardless of how blink annotations are generated.
-
-The tested feature set includes:
-
-- **Energy-based features**
-  - Total energy (Δt * Σ x²)
-  - Duration-invariant measures such as average power and RMS amplitude
-  - Area under the curve (Δt * Σ |x|)
-
-- **Amplitude and slope features**
-  - Peak amplitude
-  - Maximum slope / peak velocity via finite differences
-
-- **Temporal / morphological features**
-  - Blink duration (samples, seconds)
-  - Rise and decay times, symmetry measures, and time-to-peak
-
-Together, these features provide a comprehensive representation of each blink’s
-strength, duration, and shape, while separating duration-driven effects from
-amplitude-driven ones.  Complexity metrics (entropy, fractal dimension, etc.)
-may be added later but are not yet stable at 30 Hz per-blink sampling.
-"""
+"""Tests for blink energy feature extraction."""
+from __future__ import annotations
 
 import unittest
-import math
-import logging
-from pathlib import Path
-import mne
-
-from pyblinker.blink_features.energy.energy_complexity_features import compute_energy_complexity_features
-from unit_test.blink_features.fixtures.mock_ear_generation import _generate_refined_ear
-import unittest
-import logging
 from pathlib import Path
 
 import mne
-import numpy as np
-import pandas as pd
-
-from pyblinker.blink_features.blink_events.event_features import (
-    aggregate_blink_event_features,
-)
+from pyblinker.blink_features.energy.energy_features import compute_energy_features
 from pyblinker.utils import slice_raw_into_mne_epochs
 from unit_test.blink_features.utils.helpers import assert_df_has_columns
 
-logger = logging.getLogger(__name__)
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
-logger = logging.getLogger(__name__)
-
-
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 
-class TestEnergyComplexityFeatures(unittest.TestCase):
-    """Tests for energy and complexity metric calculations."""
+class TestEnergyFeatures(unittest.TestCase):
+    """Verify energy metrics computed from :class:`mne.Epochs`."""
 
     def setUp(self) -> None:
+        """Load test epochs with blink metadata."""
         raw_path = (
-                PROJECT_ROOT
-                / "unit_test"
-                / "test_files"
-                / "ear_eog_raw.fif"
+            PROJECT_ROOT
+            / "unit_test"
+            / "test_files"
+            / "ear_eog_raw.fif"
         )
         raw = mne.io.read_raw_fif(raw_path, preload=True, verbose=False)
         self.epochs = slice_raw_into_mne_epochs(
             raw, epoch_len=30.0, blink_label=None, progress_bar=False
         )
 
-    def test_first_epoch_features(self) -> None:
-        """Verify energy metrics for the first epoch."""
-        feats = compute_energy_complexity_features(self.per_epoch[0], self.sfreq)
-        logger.debug(f"Energy features epoch 0: {feats}")
-        self.assertTrue(math.isclose(feats["blink_signal_energy_mean"], 0.007137))
-        self.assertTrue(math.isclose(feats["blink_line_length_mean"], 0.38))
-        self.assertTrue(math.isclose(feats["blink_velocity_integral_mean"], 0.19))
+    def test_single_channel_columns(self) -> None:
+        """Returned DataFrame has expected columns for one channel."""
+        ch = "EEG-E8"
+        df = compute_energy_features(self.epochs, picks=ch)
+        expected = [
+            f"blink_signal_energy_mean_{ch}",
+            f"blink_signal_energy_std_{ch}",
+            f"blink_signal_energy_cv_{ch}",
+            f"teager_kaiser_energy_mean_{ch}",
+            f"teager_kaiser_energy_std_{ch}",
+            f"teager_kaiser_energy_cv_{ch}",
+            f"blink_line_length_mean_{ch}",
+            f"blink_line_length_std_{ch}",
+            f"blink_line_length_cv_{ch}",
+            f"blink_velocity_integral_mean_{ch}",
+            f"blink_velocity_integral_std_{ch}",
+            f"blink_velocity_integral_cv_{ch}",
+        ]
+        assert_df_has_columns(self, df, expected)
+        self.assertEqual(len(df), len(self.epochs))
 
-    def test_nan_with_no_blinks(self) -> None:
-        """Epoch without blinks should yield NaN for energy mean."""
-        feats = compute_energy_complexity_features(self.per_epoch[3], self.sfreq)
-        logger.debug(f"Energy features epoch 3: {feats}")
-        self.assertTrue(math.isnan(feats["blink_signal_energy_mean"]))
-        self.assertTrue(math.isnan(feats["blink_line_length_mean"]))
+    def test_epoch_without_blinks_is_nan(self) -> None:
+        """Epochs lacking blinks yield NaNs for all metrics."""
+        df = compute_energy_features(self.epochs, picks="EAR-avg_ear")
+        no_blink_idx = self.epochs.metadata.index[
+            self.epochs.metadata["blink_onset"].isna()
+        ][0]
+        self.assertTrue(df.loc[no_blink_idx].isna().all())
 
+    def test_multiple_channels(self) -> None:
+        """Processing multiple channels produces suffixed columns."""
+        picks = ["EEG-E8", "EOG-EEG-eog_vert_left"]
+        df = compute_energy_features(self.epochs, picks=picks)
+        for ch in picks:
+            prefix = [
+                f"blink_signal_energy_mean_{ch}",
+                f"teager_kaiser_energy_mean_{ch}",
+                f"blink_line_length_mean_{ch}",
+                f"blink_velocity_integral_mean_{ch}",
+            ]
+            assert_df_has_columns(self, df, prefix)
+
+    def test_missing_channel_raises(self) -> None:
+        """Requesting an unknown channel results in ``ValueError``."""
+        with self.assertRaises(ValueError):
+            compute_energy_features(self.epochs, picks="bogus")
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
     unittest.main()

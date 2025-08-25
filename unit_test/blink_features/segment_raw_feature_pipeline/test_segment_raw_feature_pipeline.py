@@ -1,9 +1,9 @@
 """Integration test for full segment-level feature pipeline.
 
-This test combines frequency-domain metrics, time-domain energy and complexity
-features, and averaged blink properties into a single DataFrame for each raw
-segment.  It exercises the pipeline with ``run_fit`` disabled and enabled to
-ensure both paths complete successfully.
+This test combines frequency-domain metrics, time-domain energy features,
+and averaged blink properties into a single DataFrame for each raw segment.
+It exercises the pipeline with ``run_fit`` disabled and enabled to ensure both
+paths complete successfully.
 """
 import logging
 import unittest
