@@ -1,77 +1,103 @@
-"""Aggregate blink event features."""
-from typing import Dict, Iterable, List, Sequence, Set
+"""Aggregate blink event features using :class:`mne.Epochs` metadata."""
+from __future__ import annotations
+
+from typing import Iterable, Sequence
 
 import logging
+
+import mne
+import numpy as np
 import pandas as pd
 
-from .blink_count import blink_count_epoch
-from .blink_rate import blink_rate_epoch
-from .inter_blink_interval import compute_ibi_features
+from .blink_count import blink_count
+from .inter_blink_interval import inter_blink_interval_epochs
+from .utils import normalize_picks, require_channels
 
 logger = logging.getLogger(__name__)
 
 
 def aggregate_blink_event_features(
-    blinks: Iterable[Dict[str, int]],
-    sfreq: float,
-    epoch_len: float,
-    n_epochs: int,
+    epochs: mne.Epochs,
+    picks: str | Iterable[str],
     features: Sequence[str] | None = None,
 ) -> pd.DataFrame:
-    """Aggregate blink-event based metrics for multiple epochs.
+    """Aggregate blink-event metrics for each epoch.
 
     Parameters
     ----------
-    blinks : Iterable[dict]
-        Iterable of blink annotations containing an ``epoch_index`` field.
-    sfreq : float
-        Sampling frequency of the recording in Hertz.
-    epoch_len : float
-        Length of each epoch in seconds.
-    n_epochs : int
-        Total number of epochs to aggregate.
-
-    features : Sequence[str] | None, optional
-        Iterable of feature groups to compute. Valid options are
-        ``"blink_count"``, ``"blink_rate"`` and ``"ibi"``.  Passing ``None``
+    epochs : mne.Epochs
+        Epoch object with metadata containing ``blink_onset`` and
+        ``blink_duration`` columns.
+    picks : str or iterable of str
+        Channel name(s) used when computing inter-blink interval (IBI)
+        statistics. The same IBI values are used for all channels because
+        blink timing is not channel-specific in the metadata yet.
+    features : sequence of str or None, optional
+        Subset of feature groups to compute. Valid keys are
+        ``"blink_total"``, ``"blink_rate"`` and ``"ibi"``. Passing ``None``
         (default) computes all features.
 
     Returns
     -------
     pandas.DataFrame
-        DataFrame indexed by epoch containing the selected features for
-        each epoch.
+        DataFrame indexed like ``epochs`` containing one row per epoch with the
+        requested features. Columns may include ``blink_total``, ``blink_rate``
+        and ``ibi_<channel>`` depending on ``features``.
+
+    Raises
+    ------
+    ValueError
+        If an unknown feature key is requested or if required channels are
+        missing from ``epochs`` when ``"ibi"`` is selected.
     """
-    logger.info("Aggregating blink features over %s epochs", n_epochs)
 
-    valid: Set[str] = {"blink_count", "blink_rate", "ibi"}
-    selected: Set[str]
-    if features is None:
-        selected = valid
-    else:
-        selected = set(features)
-        invalid = selected - valid
-        if invalid:
-            raise ValueError(f"Unknown feature keys: {sorted(invalid)}")
+    logger.info("Aggregating blink features for %d epochs", len(epochs))
 
-    per_epoch: List[List[Dict[str, int]]] = [list() for _ in range(n_epochs)]
-    for blink in blinks:
-        idx = blink["epoch_index"]
-        if 0 <= idx < n_epochs:
-            per_epoch[idx].append(blink)
-    records = []
-    for epoch_idx, epoch_blinks in enumerate(per_epoch):
-        record = {"epoch": epoch_idx}
+    valid = {"blink_total", "blink_rate", "ibi"}
+    selected = set(features) if features is not None else valid
+    invalid = selected - valid
+    if invalid:
+        raise ValueError(f"Unknown feature keys: {sorted(invalid)}")
 
-        if "blink_count" in selected:
-            record["blink_count"] = blink_count_epoch(epoch_blinks)
+    pieces: list[pd.DataFrame] = []
 
+    if selected & {"blink_total", "blink_rate"}:
+        counts_df = blink_count(epochs)[["blink_count"]].rename(
+            columns={"blink_count": "blink_total"}
+        )
+        pieces.append(counts_df)
+
+    if "ibi" in selected:
+        picks_list = normalize_picks(picks)
+        require_channels(epochs, picks_list)
+        ibis_df = inter_blink_interval_epochs(epochs, picks_list).drop(
+            columns=["blink_onset", "blink_duration"], errors="ignore"
+        )
+        pieces.append(ibis_df)
+    elif not selected:
+        # If no features selected we still need an empty index-aligned frame
+        pieces.append(pd.DataFrame(index=range(len(epochs))))
+
+    df = pd.concat(pieces, axis=1) if pieces else pd.DataFrame(index=range(len(epochs)))
+
+    if "blink_rate" in selected:
+        epoch_len = epochs.tmax - epochs.tmin + 1.0 / epochs.info["sfreq"]
+        df["blink_rate"] = df["blink_total"] / epoch_len * 60.0
+
+    # Reduce to requested columns if a subset was specified
+    if features is not None:
+        cols: list[str] = []
+        if "blink_total" in selected:
+            cols.append("blink_total")
         if "blink_rate" in selected:
-            record["blink_rate"] = blink_rate_epoch(epoch_blinks, epoch_len)
-
+            cols.append("blink_rate")
         if "ibi" in selected:
-            record.update(compute_ibi_features(epoch_blinks, sfreq))
+            cols.extend(df.columns[df.columns.str.startswith("ibi_")].tolist())
+        df = df[cols]
 
-        records.append(record)
-    df = pd.DataFrame.from_records(records).set_index("epoch")
+    logger.debug("Aggregated feature DataFrame shape: %s", df.shape)
     return df
+
+
+__all__ = ["aggregate_blink_event_features"]
+

@@ -1,8 +1,11 @@
 """Blink count feature."""
 
+"""Blink count feature utilities."""
+
 from typing import List, Dict, Union, Optional
 import logging
 import numpy as np
+import pandas as pd
 import mne
 
 
@@ -56,3 +59,43 @@ def blink_count_epoch(
     else:
         logger.error("Unsupported type passed to blink_count_epoch: %s", type(blinks))
         raise TypeError(f"Unsupported input type: {type(blinks)}")
+
+
+def blink_count(epochs: mne.Epochs) -> pd.DataFrame:
+    """Count blinks for each epoch using metadata.
+
+    Parameters
+    ----------
+    epochs : mne.Epochs
+        Epoch object whose metadata includes ``blink_onset`` and
+        ``blink_duration`` columns.
+
+    Returns
+    -------
+    pandas.DataFrame
+        DataFrame indexed like ``epochs`` with passthrough metadata columns
+        (``blink_onset`` and ``blink_duration``) and a new ``blink_count``
+        column. ``blink_count`` is ``0`` when an epoch contains no blinks.
+
+    Raises
+    ------
+    ValueError
+        If required metadata columns are missing.
+    """
+    logger.info("Counting blinks across %d epochs", len(epochs))
+    metadata = epochs.metadata
+    if metadata is None or not {"blink_onset", "blink_duration"}.issubset(metadata.columns):
+        raise ValueError("Epochs.metadata must contain 'blink_onset' and 'blink_duration' columns")
+
+    df = metadata[["blink_onset", "blink_duration"]].copy()
+
+    def _count(entry: object) -> int:
+        if isinstance(entry, list):
+            return len(entry)
+        if entry is None or pd.isna(entry):
+            return 0
+        return 1
+
+    df["blink_count"] = metadata["blink_onset"].apply(_count).astype(float)
+    logger.debug("Blink counts per epoch: %s", df["blink_count"].tolist())
+    return df
