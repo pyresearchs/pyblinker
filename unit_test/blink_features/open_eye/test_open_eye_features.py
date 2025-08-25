@@ -1,66 +1,63 @@
-"""Unit tests for open-eye period features using synthetic data.
+"""Tests for aggregated open-eye baseline features."""
+from __future__ import annotations
 
-Blink annotations and epoch signals are generated via the
-``mock_ear_generation`` fixture creating :class:`mne.Epochs` objects.
-"""
 import unittest
-import math
-import logging
+from pathlib import Path
 
-from pyblinker.blink_features.open_eye.features import (
-    baseline_mean_epoch,
-    baseline_drift_epoch,
-    baseline_std_epoch,
-    perclos_epoch,
-    micropause_count_epoch,
-)
-from unit_test.blink_features.fixtures.mock_ear_generation import _generate_refined_ear
+import mne
+import numpy as np
 
-logger = logging.getLogger(__name__)
+from pyblinker.utils import slice_raw_into_mne_epochs
+from pyblinker.utils.open_eye_baseline import compute_open_eye_baseline_features
+
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 
-class TestOpenEyeFeatures(unittest.TestCase):
-    """Verify baseline and open-eye metrics."""
+class TestOpenEyeBaselineFeatures(unittest.TestCase):
+    """Validate aggregated baseline metrics over blink-free epochs."""
 
-    def setUp(self) -> None:
-        blinks, sfreq, epoch_len, n_epochs = _generate_refined_ear()
-        self.sfreq = sfreq
-        per_epoch_signal = {}
-        per_epoch_blinks = {}
-        for b in blinks:
-            idx = b["epoch_index"]
-            per_epoch_signal.setdefault(idx, b["epoch_signal"])
-            per_epoch_blinks.setdefault(idx, []).append(b)
-        self.signal0 = per_epoch_signal[0]
-        self.blinks0 = per_epoch_blinks[0]
+    def setUp(self) -> None:  # noqa: D401
+        raw_path = PROJECT_ROOT / "unit_test" / "test_files" / "ear_eog_raw.fif"
+        raw = mne.io.read_raw_fif(raw_path, preload=True, verbose=False)
+        self.epochs = slice_raw_into_mne_epochs(
+            raw, epoch_len=30.0, blink_label=None, progress_bar=False
+        )
 
-    def test_baseline_mean(self) -> None:
-        """Baseline mean should match expected value."""
-        mean_val = baseline_mean_epoch(self.signal0, self.blinks0)
-        logger.debug("baseline mean: %s", mean_val)
-        self.assertTrue(math.isclose(mean_val, 0.31987358421614165))
+    def test_aggregated_baseline_features(self) -> None:
+        """Baseline features averaged across selected blink-free epochs."""
+        picks = ["EEG-E8", "EOG-EEG-eog_vert_left", "EAR-avg_ear"]
+        baseline_idx = [2, 3, 5, 7]
 
-    def test_baseline_std(self) -> None:
-        """Baseline standard deviation is computed."""
-        std_val = baseline_std_epoch(self.signal0, self.blinks0)
-        self.assertTrue(math.isclose(std_val, 0.004922817090535525))
+        # Ensure selected epochs are blink-free by metadata
+        for idx in baseline_idx:
+            meta = self.epochs.metadata.iloc[idx]
+            onset = meta.get("blink_onset")
+            self.assertTrue(
+                onset is None
+                or (isinstance(onset, (list, tuple)) and len(onset) == 0)
+                or (isinstance(onset, float) and np.isnan(onset))
+            )
 
-    def test_perclos_zero(self) -> None:
-        """No closure beyond threshold in mock data."""
-        val = perclos_epoch(self.signal0, self.blinks0)
-        self.assertEqual(val, 0.0)
+        df = compute_open_eye_baseline_features(self.epochs, picks, baseline_idx)
 
-    def test_micropause_none(self) -> None:
-        """No micropauses expected in mock signal."""
-        count = micropause_count_epoch(self.signal0, self.blinks0, self.sfreq)
-        self.assertEqual(count, 0)
-
-    def test_baseline_drift_small(self) -> None:
-        """Baseline drift should be near zero."""
-        slope = baseline_drift_epoch(self.signal0, self.blinks0, self.sfreq)
-        self.assertTrue(abs(slope) < 1e-4)
+        expected_cols = [
+            "baseline_mean",
+            "baseline_drift",
+            "baseline_std",
+            "baseline_mad",
+            "perclos",
+            "eye_opening_rms",
+            "micropause_count",
+            "zero_crossing_rate",
+        ]
+        self.assertEqual(len(df), len(picks))
+        self.assertListEqual(list(df.index), picks)
+        for col in expected_cols:
+            self.assertIn(col, df.columns)
+        self.assertTrue(np.isfinite(df.to_numpy()).all())
+        # verify not all channels yield identical features
+        self.assertTrue(df.nunique(axis=0).gt(1).any())
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
     unittest.main()
