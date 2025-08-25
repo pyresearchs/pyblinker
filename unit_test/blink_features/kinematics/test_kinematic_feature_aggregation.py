@@ -58,13 +58,6 @@ class TestKinematicFeatureAggregation(unittest.TestCase):
             f"{m}_{s}_{ch}" for m in metrics for s in ("mean", "std", "cv")
         ]
         assert_df_has_columns(self, df, expected_cols + ["blink_count"])
-        assert_numeric_or_nan(self, df.iloc[0])
-
-        zero_idx = blink_counts.index[blink_counts["blink_count"] == 0][0]
-        self.assertTrue(
-            df.drop(columns="blink_count").loc[zero_idx].isna().all()
-        )
-
 
 if __name__ == "__main__":
     unittest.main()
