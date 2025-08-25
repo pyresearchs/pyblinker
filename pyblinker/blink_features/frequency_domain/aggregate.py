@@ -1,82 +1,125 @@
-"""Utilities for summarizing blink spectrum metrics across epochs.
+"""Aggregate wavelet blink features across epochs."""
 
-This module exposes :func:`aggregate_frequency_domain_features`, a high-level
-helper that gathers per-blink frequency-domain measurements for each epoch and
-returns them in a tidy :class:`pandas.DataFrame`. For a given sequence of blink
-annotations, the function groups blinks by their ``epoch_index``, retrieves the
-corresponding epoch signal, and delegates the per-epoch spectral calculation to
-``compute_frequency_domain_features``. The resulting table contains one row per
-epoch with columns such as peak blink-rate frequency, broadband power, spectral
-entropy, and wavelet energy. Epochs that lack a signal or blinks are filled with
-``NaN`` values so downstream analyses can maintain alignment with the original
-epoch numbering.
-"""
-from typing import Iterable, Dict, Any, List
+from __future__ import annotations
+
+from typing import Sequence, Dict, List
 import logging
-import pandas as pd
-import numpy as np
+import warnings
 
-from pyblinker.blink_features.frequency_domain.features import compute_frequency_domain_features
+import mne
+import numpy as np
+import pandas as pd
+
+from .features import _compute_wavelet_energies
+from ..energy.helpers import _extract_blink_windows, _segment_to_samples
 
 logger = logging.getLogger(__name__)
 
 
-def aggregate_frequency_domain_features(
-    blinks: Iterable[Dict[str, Any]],
-    sfreq: float,
-    n_epochs: int,
-) -> pd.DataFrame:
-    """Aggregate frequency-domain metrics for multiple epochs.
+class FrequencyDomainBlinkFeatureExtractor:
+    """Compute wavelet-energy blink features from MNE objects."""
 
-    Parameters
-    ----------
-    blinks : Iterable[dict]
-        Blink annotations with ``epoch_index`` and ``epoch_signal``.
-    sfreq : float
-        Sampling frequency in Hertz.
-    n_epochs : int
-        Number of epochs to aggregate.
+    def __init__(self, epochs: mne.Epochs | None = None, raw: mne.io.BaseRaw | None = None):
+        self.epochs = epochs
+        self.raw = raw
 
-    Returns
-    -------
-    pandas.DataFrame
-        DataFrame indexed by epoch with frequency-domain features.
-    """
-    logger.info("Aggregating frequency-domain features over %d epochs", n_epochs)
-    per_epoch_signal: List[np.ndarray | None] = [None for _ in range(n_epochs)]
-    per_epoch_blinks: List[List[Dict[str, Any]]] = [list() for _ in range(n_epochs)]
+    def _sampling_frequency(self) -> float:
+        """Return sampling frequency from available MNE object."""
+        if hasattr(self, "epochs") and self.epochs is not None:
+            return float(self.epochs.info["sfreq"])
+        if hasattr(self, "raw") and self.raw is not None:
+            return float(self.raw.info["sfreq"])
+        raise ValueError("Neither self.epochs nor self.raw defined (need MNE object).")
 
-    for blink in blinks:
-        idx = blink["epoch_index"]
-        if 0 <= idx < n_epochs:
-            per_epoch_blinks[idx].append(blink)
-            if per_epoch_signal[idx] is None:
-                per_epoch_signal[idx] = np.asarray(blink["epoch_signal"], dtype=float)
+    def compute(self, picks: str | Sequence[str] | None = None) -> pd.DataFrame:
+        """Compute DWT energies for each epoch.
 
-    records = []
-    for idx in range(n_epochs):
-        signal = per_epoch_signal[idx]
-        blinks_epoch = per_epoch_blinks[idx]
-        if signal is None:
-            feats = {
-                "blink_rate_peak_freq": float("nan"),
-                "blink_rate_peak_power": float("nan"),
-                "broadband_power_0_5_2": float("nan"),
-                "broadband_com_0_5_2": float("nan"),
-                "high_freq_entropy_2_13": float("nan"),
-                "one_over_f_slope": float("nan"),
-                "band_power_ratio": float("nan"),
-                "wavelet_energy_d1": float("nan"),
-                "wavelet_energy_d2": float("nan"),
-                "wavelet_energy_d3": float("nan"),
-                "wavelet_energy_d4": float("nan"),
-            }
+        Parameters
+        ----------
+        picks : str | list of str | None, optional
+            Channel name(s) to include. When multiple channels are supplied
+            they are averaged before feature extraction. ``None`` uses all
+            channels.
+
+        Returns
+        -------
+        pandas.DataFrame
+            DataFrame indexed like ``epochs`` with columns
+            ``wavelet_energy_d1`` .. ``wavelet_energy_d4``.
+
+        Warns
+        -----
+        UserWarning
+            If the sampling frequency is below 30 Hz, features may be
+            unreliable.
+        """
+
+        if self.epochs is None:
+            raise ValueError("self.epochs is required for feature computation")
+
+        sfreq = self._sampling_frequency()
+        if sfreq < 30:
+            warnings.warn(
+                "Frequency-domain features may be unreliable below 30 Hz", UserWarning
+            )
+
+        if picks is None:
+            ch_names = self.epochs.ch_names
+        elif isinstance(picks, str):
+            ch_names = [picks]
         else:
-            feats = compute_frequency_domain_features(blinks_epoch, signal, sfreq)
-        record = {"epoch": idx}
-        record.update(feats)
-        records.append(record)
+            ch_names = list(picks)
 
-    df = pd.DataFrame.from_records(records).set_index("epoch")
-    logger.debug("Aggregated frequency-domain DataFrame shape: %s", df.shape)
-    return df
+        missing = [ch for ch in ch_names if ch not in self.epochs.ch_names]
+        if missing:
+            raise ValueError(f"Channels not found: {missing}")
+
+        data = self.epochs.get_data(picks=ch_names).mean(axis=1)
+        n_epochs, n_times = data.shape
+        index = (
+            self.epochs.metadata.index
+            if isinstance(self.epochs.metadata, pd.DataFrame)
+            else pd.RangeIndex(n_epochs)
+        )
+
+        records: List[Dict[str, float]] = []
+        for ei in range(n_epochs):
+            metadata_row = (
+                self.epochs.metadata.iloc[ei]
+                if isinstance(self.epochs.metadata, pd.DataFrame)
+                else pd.Series(dtype=float)
+            )
+            windows = _extract_blink_windows(metadata_row)
+            level_vals: Dict[int, List[float]] = {i: [] for i in range(1, 5)}
+            for onset_s, duration_s in windows:
+                sl = _segment_to_samples(onset_s, duration_s, sfreq, n_times)
+                segment = data[ei, sl]
+                energies = _compute_wavelet_energies(segment, sfreq)
+                for lvl, val in enumerate(energies, start=1):
+                    level_vals[lvl].append(val)
+            record: Dict[str, float] = {}
+            for lvl in range(1, 5):
+                vals = level_vals[lvl]
+                if not vals or np.all(np.isnan(vals)):
+                    record[f"wavelet_energy_d{lvl}"] = float("nan")
+                else:
+                    record[f"wavelet_energy_d{lvl}"] = float(np.nanmean(vals))
+            records.append(record)
+
+        df = pd.DataFrame.from_records(
+            records,
+            index=index,
+            columns=[f"wavelet_energy_d{i}" for i in range(1, 5)],
+        )
+        logger.debug("Frequency-domain feature DataFrame shape: %s", df.shape)
+        return df
+
+
+def aggregate_frequency_domain_features(
+    epochs: mne.Epochs, picks: str | Sequence[str] | None = None
+) -> pd.DataFrame:
+    """Convenience function to compute frequency-domain blink features."""
+
+    extractor = FrequencyDomainBlinkFeatureExtractor(epochs=epochs)
+    return extractor.compute(picks=picks)
+
