@@ -11,7 +11,7 @@ from .blink_features.blink_events.event_features import (
 )
 from .blink_features.morphology import aggregate_morphology_features
 from .blink_features.kinematics import aggregate_kinematic_features
-from .blink_features.energy import aggregate_energy_complexity_features
+from .blink_features.energy import aggregate_energy_features
 from .blink_features.open_eye import aggregate_open_eye_features
 from .blink_features.ear_metrics import aggregate_ear_features
 from .blink_features.waveform_features import aggregate_waveform_features
@@ -92,7 +92,7 @@ def extract_features(
         df_events = pd.concat([df_events, df_kin], axis=1)
 
     if features is None or "energy" in features:
-        df_energy = aggregate_energy_complexity_features(blinks, sfreq, n_epochs)
+        df_energy = aggregate_energy_features(blinks, sfreq, n_epochs)
         df_events = pd.concat([df_events, df_energy], axis=1)
 
     if features is None or "open_eye" in features:

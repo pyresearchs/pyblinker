@@ -1,6 +1,6 @@
 """Integration test replicating the ``segment_features`` script.
 
-This test illustrates how to compute both time-domain complexity and
+This test illustrates how to compute both time-domain energy and
 frequency-domain metrics for 30-second raw segments. It processes the
 bundled ``ear_eog_raw.fif`` file and extracts features for all channels whose
 names start with ``EAR``, ``EOG`` or ``EEG``. The number of blinks in each

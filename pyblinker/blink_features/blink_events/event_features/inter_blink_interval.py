@@ -85,7 +85,7 @@ def compute_ibi_features(blinks: List[Dict[str, int]], sfreq: float) -> Dict[str
     -------
     dict
         Dictionary with summary metrics of inter-blink intervals including mean,
-        standard deviation and complexity measures.
+        standard deviation and nonlinear measures.
     """
     starts = np.array([b["refined_start_frame"] for b in blinks], dtype=float)
     ends = np.array([b["refined_end_frame"] for b in blinks], dtype=float)
