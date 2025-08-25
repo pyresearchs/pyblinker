@@ -36,25 +36,30 @@ class TestAggregateBlinkFeatures(unittest.TestCase):
         csv_path = (
             PROJECT_ROOT / "unit_test" / "test_files" / "ear_eog_blink_count_epoch.csv"
         )
-        self.expected_total = pd.read_csv(csv_path)["blink_count"].sum()
+        self.expected_counts = (
+            pd.read_csv(csv_path)["blink_count"].iloc[: len(self.epochs)].tolist()
+        )
+        self.epoch_len = (
+            self.epochs.tmax - self.epochs.tmin + 1.0 / self.epochs.info["sfreq"]
+        )
 
     def test_aggregate_all_features(self) -> None:
         picks = ["EEG-E8", "EOG-EEG-eog_vert_left", "EAR-avg_ear"]
         df = aggregate_blink_event_features(self.epochs, picks=picks)
         expected_cols = ["blink_total", "blink_rate"] + [f"ibi_{p}" for p in picks]
         assert_df_has_columns(self, df, expected_cols)
-        self.assertEqual(len(df), 1)
+        self.assertEqual(len(df), len(self.epochs))
 
-        self.assertEqual(df.loc[0, "blink_total"], self.expected_total)
-        epoch_len = self.epochs.tmax - self.epochs.tmin + 1.0 / self.epochs.info["sfreq"]
-        total_duration = epoch_len * len(self.epochs)
-        expected_rate = self.expected_total / total_duration * 60.0
-        self.assertAlmostEqual(df.loc[0, "blink_rate"], expected_rate)
+        self.assertListEqual(df["blink_total"].tolist(), self.expected_counts)
+        for idx in range(4):
+            expected_rate = self.expected_counts[idx] / self.epoch_len * 60.0
+            self.assertAlmostEqual(df.loc[idx, "blink_rate"], expected_rate)
 
         for col in expected_cols:
             self.assertTrue(np.issubdtype(df[col].dtype, np.number))
         for ch in picks:
-            self.assertTrue(np.isfinite(df.loc[0, f"ibi_{ch}"]))
+            vals = df[f"ibi_{ch}"].iloc[:4]
+            self.assertTrue(vals.apply(lambda v: np.isfinite(v) or np.isnan(v)).all())
 
     def test_missing_channel(self) -> None:
         with self.assertRaises(ValueError):
@@ -66,6 +71,7 @@ class TestAggregateBlinkFeatures(unittest.TestCase):
         )
         assert_df_has_columns(self, df, ["blink_total"])
         self.assertEqual(list(df.columns), ["blink_total"])
+        self.assertEqual(len(df), len(self.epochs))
 
 
 if __name__ == "__main__":
