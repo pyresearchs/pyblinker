@@ -1,4 +1,8 @@
-"""Verify per-blink aggregation matches compute_energy_features."""
+"""Verify per-blink aggregation matches compute_energy_features.
+
+The resulting :class:`pandas.DataFrame` also includes blink counts per epoch
+from ``ear_eog_blink_count_epoch.csv`` to clarify rows with missing values.
+"""
 from __future__ import annotations
 
 import unittest
@@ -39,6 +43,14 @@ class TestEnergyAggregation(unittest.TestCase):
         """Manual computation equals compute_energy_features."""
         ch = "EEG-E8"
         df = compute_energy_features(self.epochs, picks=ch)
+        blink_counts_path = (
+            PROJECT_ROOT
+            / "unit_test"
+            / "test_files"
+            / "ear_eog_blink_count_epoch.csv"
+        )
+        blink_counts = pd.read_csv(blink_counts_path, index_col="epoch_id")
+        df = df.join(blink_counts)
         sfreq = float(self.epochs.info["sfreq"])
         data = self.epochs.get_data(picks=[ch])
         n_epochs, _, n_times = data.shape
@@ -82,7 +94,12 @@ class TestEnergyAggregation(unittest.TestCase):
         manual_df = pd.DataFrame.from_records(
             records, index=self.epochs.metadata.index
         )
+        manual_df = manual_df.join(blink_counts)
         pd.testing.assert_frame_equal(df, manual_df)
+        zero_idx = blink_counts.index[blink_counts["blink_count"] == 0][0]
+        self.assertTrue(
+            df.drop(columns="blink_count").loc[zero_idx].isna().all()
+        )
 
 
 if __name__ == "__main__":
