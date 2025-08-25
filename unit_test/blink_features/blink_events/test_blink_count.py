@@ -8,21 +8,21 @@ from pathlib import Path
 import unittest
 
 import mne
+import numpy as np
+import pandas as pd
 
 from pyblinker.blink_features.blink_events.event_features.blink_count import (
-    blink_count_epoch,
+    blink_count,
 )
-from pyblinker.utils import onset_entry_to_blinks, slice_raw_into_mne_epochs
+from pyblinker.utils import slice_raw_into_mne_epochs
+from unit_test.blink_features.utils.helpers import assert_df_has_columns
 
 logger = logging.getLogger(__name__)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 class TestBlinkCount(unittest.TestCase):
-    """
-    Unit tests for the `blink_count_epoch` function, which returns the number
-    of blinks present in a given epoch's blink list.
-    """
+    """Unit tests for blink counting from ``mne.Epochs`` metadata."""
 
     def setUp(self) -> None:
         """Load raw data and slice into epochs for blink counting."""
@@ -37,29 +37,39 @@ class TestBlinkCount(unittest.TestCase):
         self.epochs = slice_raw_into_mne_epochs(
             raw, epoch_len=30.0, blink_label=None, progress_bar=False
         )
+        # Load ground truth blink counts for cross-verification
+        csv_path = (
+            PROJECT_ROOT
+            / "unit_test"
+            / "test_files"
+            / "ear_eog_blink_count_epoch.csv"
+        )
+        expected_full = pd.read_csv(csv_path).set_index("epoch_id")["blink_count"].astype(float)
+        # Align ground truth with available epochs
+        self.expected_counts = expected_full.loc[self.epochs.metadata.index]
         logger.info("Epoch setup complete.")
 
     def test_counts(self) -> None:
-        """
-        Verify blink count for known epochs:
-        - Epoch 0: Contains 2 blinks.
-        - Epoch 3: Contains 0 blinks.
-        """
-        logger.info("Testing blink count for epoch 0...")
-        metadata = self.epochs.metadata
-        self.assertIsNotNone(metadata, "Epoch metadata is missing")
+        """Verify blink counts are derived from metadata correctly."""
+        df = blink_count(self.epochs)
+        assert_df_has_columns(self, df, ["blink_onset", "blink_duration", "blink_count"])
+        self.assertEqual(len(df), len(self.epochs))
 
-        blinks_epoch_0 = onset_entry_to_blinks(metadata.loc[0, "blink_onset"])
-        count_epoch_0 = blink_count_epoch(blinks_epoch_0)
-        logger.debug("Epoch 0 blink count: %d", count_epoch_0)
-        self.assertEqual(count_epoch_0, 2, "Expected 2 blinks in epoch 0")
-
-        logger.info("Testing blink count for epoch 3...")
-        blinks_epoch_3 = onset_entry_to_blinks(metadata.loc[3, "blink_onset"])
-        count_epoch_3 = blink_count_epoch(blinks_epoch_3)
-        logger.debug("Epoch 3 blink count: %d", count_epoch_3)
-        self.assertEqual(count_epoch_3, 0, "Expected 0 blinks in epoch 3")
-        logger.info("Blink count tests completed.")
+        # passthrough metadata check
+        pd.testing.assert_series_equal(
+            df["blink_onset"], self.epochs.metadata["blink_onset"], check_names=False
+        )
+        pd.testing.assert_series_equal(
+            df["blink_duration"], self.epochs.metadata["blink_duration"], check_names=False
+        )
+        # Verify blink counts against ground truth CSV for every epoch
+        pd.testing.assert_series_equal(
+            df["blink_count"], self.expected_counts, check_names=False
+        )
+        self.assertTrue(np.issubdtype(df["blink_count"].dtype, np.number))
+        for idx, expected in self.expected_counts.items():
+            self.assertEqual(df.loc[idx, "blink_count"], expected)
+            self.assertTrue(np.isfinite(df.loc[idx, "blink_count"]))
 
 
 if __name__ == "__main__":
