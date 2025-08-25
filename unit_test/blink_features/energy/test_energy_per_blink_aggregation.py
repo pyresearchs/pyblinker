@@ -14,6 +14,7 @@ import pandas as pd
 from pyblinker.blink_features.energy.energy_features import compute_energy_features
 from pyblinker.utils import slice_raw_into_mne_epochs
 from unit_test.blink_features.utils.energy_manual import manual_epoch_energy_features
+from ..utils.helpers import assert_df_has_columns, assert_numeric_or_nan
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
@@ -53,6 +54,17 @@ class TestEnergyAggregation(unittest.TestCase):
         )
         blink_counts = pd.read_csv(blink_counts_path, index_col="epoch_id")
         df = df.join(blink_counts)
+        metrics = (
+            "blink_signal_energy",
+            "teager_kaiser_energy",
+            "blink_line_length",
+            "blink_velocity_integral",
+        )
+        expected_cols = [
+            f"{m}_{s}_{ch}" for m in metrics for s in ("mean", "std", "cv")
+        ]
+        assert_df_has_columns(self, df, expected_cols + ["blink_count"])
+        assert_numeric_or_nan(self, df.iloc[0])
         sfreq = float(self.epochs.info["sfreq"])
         data = self.epochs.get_data(picks=[ch])
         records = [

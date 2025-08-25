@@ -1,5 +1,8 @@
-"""Per-blink kinematic metrics."""
-from typing import Any, Dict
+"""Per-blink kinematic metrics based on metadata windows."""
+
+from __future__ import annotations
+
+from typing import Dict
 
 import logging
 import numpy as np
@@ -7,69 +10,118 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 
-def compute_blink_kinematics(blink: Dict[str, Any], sfreq: float) -> Dict[str, float]:
-    """Compute kinematic quantities for a single blink.
-
-    Blink kinematics capture the dynamics of eyelid motion. Peak velocity and
-    acceleration decrease and movements become smoother when drivers grow
-    fatigued, while the amplitude-velocity ratio (AVR) rises. These changes have
-    been linked to increased crash risk in driving studies.
+def compute_segment_kinematics(segment: np.ndarray, sfreq: float) -> Dict[str, float]:
+    """Compute kinematic quantities for a single blink segment.
 
     Parameters
     ----------
-    blink : dict
-        Blink annotation containing ``refined_start_frame``, ``refined_peak_frame``,
-        ``refined_end_frame`` and ``epoch_signal``.
+    segment : numpy.ndarray
+        1-D array containing the signal samples for the blink.
     sfreq : float
-        Sampling frequency of the recording in Hertz.
+        Sampling frequency of ``segment`` in Hertz.
 
     Returns
     -------
     dict
-        Dictionary with peak velocity, acceleration, jerk and AVR for the blink.
+        Mapping of metric name to value. ``NaN`` is returned for metrics that
+        cannot be computed due to short segments or non-monotonicity.
     """
-    start = int(blink["refined_start_frame"])
-    end = int(blink["refined_end_frame"])
-    signal = np.asarray(blink["epoch_signal"], dtype=float)
 
-    segment = signal[start : end + 1]
-    dt = 1.0 / sfreq
-    # Ensure the segment is long enough to compute gradients
-    if len(segment) < 2:
-        logger.warning("Segment too short to compute kinematics. Returning NaNs.")
-        return {
-            "v_max": float("nan"),
-            "a_max": float("nan"),
-            "j_max": float("nan"),
-            "avr": float("nan"),
-        }
+    seg = np.asarray(segment, dtype=float)
+    if seg.size == 0:
+        logger.warning("Empty blink segment provided. Returning NaNs.")
+        return {metric: float("nan") for metric in (
+            "peak_amp",
+            "t2p",
+            "vel_mean",
+            "vel_peak",
+            "acc_mean",
+            "acc_peak",
+            "rise_time",
+            "fall_time",
+            "auc",
+            "symmetry",
+        )}
 
-    velocity = np.gradient(segment, dt)
-    acceleration = np.gradient(velocity, dt)
-    jerk = np.gradient(acceleration, dt)
+    abs_seg = np.abs(seg)
+    peak_amp = float(np.max(abs_seg))
+    peak_idx = int(np.argmax(abs_seg))
+    t2p = peak_idx / sfreq
 
-    abs_velocity = np.abs(velocity)
-    abs_acceleration = np.abs(acceleration)
-    abs_jerk = np.abs(jerk)
+    if seg.size >= 2:
+        velocity = np.diff(seg) * sfreq
+        abs_vel = np.abs(velocity)
+        vel_mean = float(np.mean(abs_vel))
+        vel_peak = float(np.max(abs_vel))
+    else:
+        vel_mean = float("nan")
+        vel_peak = float("nan")
 
-    v_max = float(np.max(abs_velocity)) if abs_velocity.size > 0 else float("nan")
-    a_max = float(np.max(abs_acceleration)) if abs_acceleration.size > 0 else float("nan")
-    j_max = float(np.max(abs_jerk)) if abs_jerk.size > 0 else float("nan")
+    if seg.size >= 3:
+        acceleration = np.diff(np.diff(seg)) * (sfreq ** 2)
+        abs_acc = np.abs(acceleration)
+        acc_mean = float(np.mean(abs_acc))
+        acc_peak = float(np.max(abs_acc))
+    else:
+        acc_mean = float("nan")
+        acc_peak = float("nan")
 
-    amplitude = signal[start] - float(np.min(segment))
-    avr = amplitude / v_max if v_max != 0 and not np.isnan(v_max) else float("nan")
+    ten = 0.1 * peak_amp
+    ninety = 0.9 * peak_amp
 
-    logger.debug(
-        "Blink kinematics computed: v_max=%s, a_max=%s, j_max=%s, avr=%s",
-        v_max,
-        a_max,
-        j_max,
-        avr,
-    )
+    # Rise time
+    idx_10 = next((i for i in range(peak_idx + 1) if abs_seg[i] >= ten), None)
+    idx_90 = next((i for i in range(peak_idx + 1) if abs_seg[i] >= ninety), None)
+    if (
+        idx_10 is not None
+        and idx_90 is not None
+        and idx_90 > idx_10
+        and np.all(np.diff(abs_seg[idx_10 : idx_90 + 1]) >= 0)
+    ):
+        rise_time = (idx_90 - idx_10) / sfreq
+    else:
+        rise_time = float("nan")
 
-    return {
-        "v_max": v_max,
-        "a_max": a_max,
-        "j_max": j_max,
-        "avr": avr,
+    # Fall time
+    idx_90_fall = None
+    for i in range(peak_idx, abs_seg.size):
+        if abs_seg[i] <= ninety:
+            idx_90_fall = i
+            break
+    idx_10_fall = None
+    if idx_90_fall is not None:
+        for i in range(idx_90_fall, abs_seg.size):
+            if abs_seg[i] <= ten:
+                idx_10_fall = i
+                break
+    if (
+        idx_90_fall is not None
+        and idx_10_fall is not None
+        and idx_10_fall > idx_90_fall
+        and np.all(np.diff(abs_seg[idx_90_fall : idx_10_fall + 1]) <= 0)
+    ):
+        fall_time = (idx_10_fall - idx_90_fall) / sfreq
+    else:
+        fall_time = float("nan")
+
+    auc = float(np.sum(abs_seg) / sfreq)
+    area_left = float(np.sum(abs_seg[:peak_idx]) / sfreq)
+    area_right = float(np.sum(abs_seg[peak_idx:]) / sfreq)
+    symmetry = (area_left - area_right) / (area_left + area_right + 1e-8)
+
+    metrics = {
+        "peak_amp": peak_amp,
+        "t2p": t2p,
+        "vel_mean": vel_mean,
+        "vel_peak": vel_peak,
+        "acc_mean": acc_mean,
+        "acc_peak": acc_peak,
+        "rise_time": rise_time,
+        "fall_time": fall_time,
+        "auc": auc,
+        "symmetry": symmetry,
     }
+
+    logger.debug("Per-blink kinematics: %s", metrics)
+    return metrics
+
