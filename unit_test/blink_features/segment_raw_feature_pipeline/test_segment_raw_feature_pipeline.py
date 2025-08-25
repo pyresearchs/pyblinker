@@ -118,13 +118,7 @@ class TestSegmentRawFeaturePipeline(unittest.TestCase):
         self.assertIsInstance(df, pd.DataFrame)
         self.assertEqual(len(df), len(self.segments))
         self.assertIn("blink_count", df.columns)
-        expected_fd = {
-            "blink_rate_peak_freq",
-            "blink_rate_peak_power",
-            "broadband_power_0_5_2",
-            "broadband_com_0_5_2",
-            "high_freq_entropy_2_13",
-        }
+        expected_fd = {f"wavelet_energy_d{i}" for i in range(1, 5)}
         expected_td = {"energy", "teager", "line_length", "velocity_integral"}
         self.assertTrue(expected_fd.issubset(df.columns))
         self.assertTrue(expected_td.issubset(df.columns))
@@ -139,13 +133,7 @@ class TestSegmentRawFeaturePipeline(unittest.TestCase):
         self.assertIsInstance(df, pd.DataFrame)
         self.assertEqual(len(df), len(self.segments))
         self.assertIn("blink_count", df.columns)
-        expected_fd = {
-            "blink_rate_peak_freq",
-            "blink_rate_peak_power",
-            "broadband_power_0_5_2",
-            "broadband_com_0_5_2",
-            "high_freq_entropy_2_13",
-        }
+        expected_fd = {f"wavelet_energy_d{i}" for i in range(1, 5)}
         expected_td = {"energy", "teager", "line_length", "velocity_integral"}
         self.assertTrue(expected_fd.issubset(df.columns))
         self.assertTrue(expected_td.issubset(df.columns))
