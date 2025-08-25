@@ -15,19 +15,9 @@ from ..energy.helpers import _extract_blink_windows, _segment_to_samples, _safe_
 
 logger = logging.getLogger(__name__)
 
-_METRICS = (
-    "peak_amp",
-    "t2p",
-    "vel_mean",
-    "vel_peak",
-    "acc_mean",
-    "acc_peak",
-    "rise_time",
-    "fall_time",
-    "auc",
-    "symmetry",
-)
-_STATS = ("mean", "std", "cv")
+# Derive metric and statistic names from helper functions to avoid hardcoding
+_METRICS = tuple(compute_segment_kinematics(np.zeros(3), 1.0).keys())
+_STATS = tuple(_safe_stats([]).keys())
 
 
 def _make_columns(ch_names: Sequence[str]) -> List[str]:
