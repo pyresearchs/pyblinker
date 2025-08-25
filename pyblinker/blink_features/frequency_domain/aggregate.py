@@ -16,7 +16,7 @@ import logging
 import pandas as pd
 import numpy as np
 
-from ..features import compute_frequency_domain_features
+from pyblinker.blink_features.frequency_domain.features import compute_frequency_domain_features
 
 logger = logging.getLogger(__name__)
 

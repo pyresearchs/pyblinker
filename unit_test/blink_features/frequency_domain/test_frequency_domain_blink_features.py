@@ -12,10 +12,10 @@ from pathlib import Path
 
 import mne
 
-from pyblinker.blink_features.frequency_domain.blink.aggregate import (
+from pyblinker.blink_features.frequency_domain.aggregate import (
     aggregate_frequency_domain_features,
 )
-from pyblinker.utils import slice_raw_into_mne_epochs, slice_raw_to_segments
+from pyblinker.utils import slice_raw_into_mne_epochs
 
 logger = logging.getLogger(__name__)
 
