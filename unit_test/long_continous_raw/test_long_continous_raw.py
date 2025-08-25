@@ -21,7 +21,7 @@ from pyblinker.segment_blink_properties import (
 
 logger = logging.getLogger(__name__)
 
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 class TestLongContinuousRaw(unittest.TestCase):
