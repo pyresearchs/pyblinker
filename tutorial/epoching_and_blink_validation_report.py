@@ -21,8 +21,10 @@ def main() -> None:
         / "ear_eog_raw.fif"
     )
     raw = mne.io.read_raw_fif(raw_path, preload=True, verbose=False)
+    # Treat all annotations as blink candidates since the demo file does not
+    # use the label "blink" for its events.
     epochs = slice_raw_into_mne_epochs_refine_annot(
-        raw, epoch_len=30.0, blink_label="blink", progress_bar=True
+        raw, epoch_len=30.0, blink_label=None, progress_bar=True
     )
     report = add_blink_plots_to_report(
         epochs,
