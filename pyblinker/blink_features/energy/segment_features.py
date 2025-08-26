@@ -1,4 +1,4 @@
-"""Time-domain complexity features for 30-second segments."""
+"""Time-domain energy features for 30-second segments."""
 from typing import Dict
 import logging
 import numpy as np
@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 
 def compute_time_domain_features(signal: np.ndarray, sfreq: float) -> Dict[str, float]:
-    """Compute energy and complexity metrics for a signal segment.
+    """Compute energy metrics for a signal segment.
 
     Parameters
     ----------

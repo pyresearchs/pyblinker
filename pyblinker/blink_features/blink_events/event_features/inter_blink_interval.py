@@ -1,8 +1,12 @@
 """Inter-blink interval based features."""
-from typing import Dict, List, Sequence
+from typing import Dict, List, Sequence, Iterable
 
 import logging
 import numpy as np
+import pandas as pd
+import mne
+
+from .utils import normalize_picks, require_channels
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +85,7 @@ def compute_ibi_features(blinks: List[Dict[str, int]], sfreq: float) -> Dict[str
     -------
     dict
         Dictionary with summary metrics of inter-blink intervals including mean,
-        standard deviation and complexity measures.
+        standard deviation and nonlinear measures.
     """
     starts = np.array([b["refined_start_frame"] for b in blinks], dtype=float)
     ends = np.array([b["refined_end_frame"] for b in blinks], dtype=float)
@@ -139,3 +143,69 @@ def compute_ibi_features(blinks: List[Dict[str, int]], sfreq: float) -> Dict[str
         "ibi_permutation_entropy": pe,
         "ibi_hurst_exponent": hurst,
     }
+
+
+def inter_blink_interval_epochs(
+    epochs: mne.Epochs, picks: str | Iterable[str]
+) -> pd.DataFrame:
+    """Compute mean inter-blink interval per channel for each epoch.
+
+    Parameters
+    ----------
+    epochs : mne.Epochs
+        Epoch object whose metadata contains ``blink_onset`` and
+        ``blink_duration`` columns.
+    picks : str or iterable of str
+        Channel name(s) for which IBI columns are created. The same IBI values
+        are used for all channels because blink timing is not channel-specific
+        in the metadata yet.
+
+    Returns
+    -------
+    pandas.DataFrame
+        DataFrame indexed like ``epochs`` with passthrough metadata columns and
+        one ``ibi_<channel>`` column per requested channel.  Epochs with fewer
+        than two blinks receive ``NaN``.
+
+    Raises
+    ------
+    ValueError
+        If required metadata columns are missing or a requested channel does
+        not exist in ``epochs``.
+
+    Notes
+    -----
+    When multiple blinks occur within an epoch, the mean interval between
+    consecutive blinks is returned. If a single blink or no blink is present,
+    ``NaN`` is assigned.
+    """
+    picks_list = normalize_picks(picks)
+    require_channels(epochs, picks_list)
+    metadata = epochs.metadata
+    if metadata is None or not {"blink_onset", "blink_duration"}.issubset(metadata.columns):
+        raise ValueError("Epochs.metadata must contain 'blink_onset' and 'blink_duration' columns")
+
+    ibis: List[float] = []
+    for onset, duration in zip(metadata["blink_onset"], metadata["blink_duration"]):
+        onsets = (
+            onset
+            if isinstance(onset, list)
+            else ([] if onset is None or pd.isna(onset) else [float(onset)])
+        )
+        durations = (
+            duration
+            if isinstance(duration, list)
+            else ([] if duration is None or pd.isna(duration) else [float(duration)])
+        )
+        if len(onsets) < 2:
+            ibis.append(float("nan"))
+            continue
+        ends = [o + d for o, d in zip(onsets, durations)]
+        intervals = [onsets[i + 1] - ends[i] for i in range(len(onsets) - 1)]
+        ibis.append(float(np.mean(intervals)) if intervals else float("nan"))
+
+    df = metadata[["blink_onset", "blink_duration"]].copy()
+    for ch in picks_list:
+        df[f"ibi_{ch}"] = ibis
+    logger.debug("Computed channel-wise IBI DataFrame shape: %s", df.shape)
+    return df

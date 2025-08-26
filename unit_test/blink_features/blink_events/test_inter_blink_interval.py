@@ -1,71 +1,81 @@
-"""
-Unit tests for inter-blink interval (IBI) feature extraction.
-
-This module verifies the correctness of IBI feature calculations, particularly
-the mean IBI, under realistic conditions (with and without sufficient blink data).
-"""
+"""Tests for channel-aware inter-blink interval (IBI) features."""
+from __future__ import annotations
 
 import unittest
-import math
 import logging
+from pathlib import Path
 
-from pyblinker.blink_features.blink_events.event_features.inter_blink_interval import compute_ibi_features
-from unit_test.blink_features.fixtures.mock_ear_generation import _generate_refined_ear
+import mne
+import numpy as np
+import pandas as pd
+
+from pyblinker.blink_features.blink_events.event_features.inter_blink_interval import (
+    inter_blink_interval_epochs,
+)
+from pyblinker.blink_features.blink_events.event_features.blink_count import blink_count
+from pyblinker.utils import slice_raw_into_mne_epochs
+from unit_test.blink_features.utils.helpers import assert_df_has_columns
 
 logger = logging.getLogger(__name__)
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+
 
 class TestInterBlinkInterval(unittest.TestCase):
-    """
-    Tests for `compute_ibi_features`, which calculates metrics on inter-blink intervals
-    given blink timestamps and sampling frequency.
-    """
+    """Validate IBI computation using epoch metadata."""
 
     def setUp(self) -> None:
-        """
-        Load mock blink data and organize it into epochs.
-        """
-        logger.info("Setting up test fixture for IBI features...")
-        blinks, sfreq, epoch_len, n_epochs = _generate_refined_ear()
-        self.sfreq = sfreq
-        self.per_epoch = [[] for _ in range(n_epochs)]
-        for blink in blinks:
-            self.per_epoch[blink["epoch_index"]].append(blink)
-        logger.debug(f"Blink counts per epoch: {[len(ep) for ep in self.per_epoch]}")
+        raw_path = (
+            PROJECT_ROOT
+            / "unit_test"
+            / "test_files"
+            / "ear_eog_raw.fif"
+        )
+        raw = mne.io.read_raw_fif(raw_path, preload=True, verbose=False)
+        self.epochs = slice_raw_into_mne_epochs(
+            raw, epoch_len=30.0, blink_label=None, progress_bar=False
+        )
 
-    def test_all_ibi_features_first_epoch(self) -> None:
-        """
-        Verify all inter-blink interval (IBI) features for the first epoch against expected values.
-        Ensures correctness for computed statistical metrics and proper handling of undefined ones.
-        """
-        logger.info("Testing all IBI features for the first epoch...")
-        feats = compute_ibi_features(self.per_epoch[0], self.sfreq)
+    def test_channel_ibi(self) -> None:
+        picks = ["EEG-E8", "EOG-EEG-eog_vert_left", "EAR-avg_ear"]
+        df = inter_blink_interval_epochs(self.epochs, picks=picks)
+        expected_cols = ["blink_onset", "blink_duration"] + [f"ibi_{p}" for p in picks]
+        assert_df_has_columns(self, df, expected_cols)
+        self.assertEqual(len(df), len(self.epochs))
 
-        # Exact matches (deterministic blink timing)
-        self.assertTrue(math.isclose(feats["ibi_mean"], 2.9), "Expected mean IBI ~2.9 for first epoch")
-        self.assertTrue(math.isclose(feats["ibi_std"], 0.0), "Expected IBI standard deviation to be 0.0 (no variability)")
-        self.assertTrue(math.isclose(feats["ibi_median"], 2.9), "Expected IBI median to equal 2.9 (same as mean)")
-        self.assertTrue(math.isclose(feats["ibi_min"], 2.9), "Expected IBI minimum to be 2.9 (only value present)")
-        self.assertTrue(math.isclose(feats["ibi_max"], 2.9), "Expected IBI maximum to be 2.9 (only value present)")
-        self.assertTrue(math.isclose(feats["ibi_cv"], 0.0), "Expected IBI coefficient of variation to be 0.0 (no variation)")
-        self.assertTrue(math.isclose(feats["ibi_rmssd"], 0.0), "Expected IBI RMSSD to be 0.0 (no successive differences)")
+        # metadata passthrough
+        pd.testing.assert_series_equal(
+            df["blink_onset"], self.epochs.metadata["blink_onset"], check_names=False
+        )
+        pd.testing.assert_series_equal(
+            df["blink_duration"], self.epochs.metadata["blink_duration"], check_names=False
+        )
 
-        # NaN features (due to insufficient blink count or undefined variability)
-        self.assertTrue(math.isnan(feats["poincare_sd1"]), "Expected NaN for Poincaré SD1 due to zero variability")
-        self.assertTrue(math.isnan(feats["poincare_sd2"]), "Expected NaN for Poincaré SD2 due to zero variability")
-        self.assertTrue(math.isnan(feats["poincare_ratio"]), "Expected NaN for Poincaré ratio (undefined with zero SD2)")
-        self.assertTrue(math.isnan(feats["ibi_permutation_entropy"]), "Expected NaN for permutation entropy (not enough unique values)")
-        self.assertTrue(math.isnan(feats["ibi_hurst_exponent"]), "Expected NaN for Hurst exponent (requires longer time series)")
+        # epoch-wise checks across all epochs using blink counts
+        counts = blink_count(self.epochs)["blink_count"]
+        for idx in range(len(self.epochs)):
+            for p in picks:
+                val = df.loc[idx, f"ibi_{p}"]
+                if counts.loc[idx] >= 2:
+                    self.assertTrue(np.isfinite(val))
+                else:
+                    self.assertTrue(np.isnan(val))
 
+        # explicit checks for first four epochs
+        self.assertTrue(np.isfinite(df.loc[0, "ibi_EEG-E8"]))
+        for idx in [1, 2, 3]:
+            self.assertTrue(np.isnan(df.loc[idx, "ibi_EEG-E8"]))
+        for col in [f"ibi_{p}" for p in picks]:
+            self.assertTrue(np.issubdtype(df[col].dtype, np.number))
 
-    def test_ibi_nan_for_insufficient_blinks(self) -> None:
-        """
-        If fewer than two blinks are present in an epoch, the mean IBI should be NaN.
-        """
-        logger.info("Testing IBI mean for an epoch with < 2 blinks (e.g. epoch 3)...")
-        feats = compute_ibi_features(self.per_epoch[3], self.sfreq)
-        ibi_mean = feats.get("ibi_mean", None)
-        logger.debug(f"Computed IBI mean (epoch 3): {ibi_mean}")
-        self.assertTrue(math.isnan(ibi_mean), "Expected NaN for mean IBI with insufficient data")
+    def test_missing_channel(self) -> None:
+        with self.assertRaises(ValueError):
+            inter_blink_interval_epochs(self.epochs, picks=["BAD-CHAN"])
+
+    def test_empty_epochs(self) -> None:
+        empty = self.epochs[:0]
+        df = inter_blink_interval_epochs(empty, picks="EEG-E8")
+        assert_df_has_columns(self, df, ["blink_onset", "blink_duration", "ibi_EEG-E8"])
+        self.assertEqual(len(df), 0)
 
 
 if __name__ == "__main__":

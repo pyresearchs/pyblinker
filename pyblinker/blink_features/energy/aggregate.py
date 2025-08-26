@@ -1,19 +1,30 @@
-"""Aggregate blink energy and complexity features."""
+"""Aggregate blink energy features across epochs."""
+from __future__ import annotations
+
 from typing import Any, Dict, Iterable, List
 import logging
 import pandas as pd
 
-from .energy_complexity_features import compute_energy_complexity_features
+from .helpers import _safe_stats
+from .per_blink import compute_blink_energy
 
 logger = logging.getLogger(__name__)
 
+_METRICS = (
+    "blink_signal_energy",
+    "teager_kaiser_energy",
+    "blink_line_length",
+    "blink_velocity_integral",
+)
+_STATS = ("mean", "std", "cv")
 
-def aggregate_energy_complexity_features(
+
+def aggregate_energy_features(
     blinks: Iterable[Dict[str, Any]],
     sfreq: float,
     n_epochs: int,
 ) -> pd.DataFrame:
-    """Aggregate energy and complexity metrics across epochs.
+    """Aggregate energy metrics for each epoch.
 
     Parameters
     ----------
@@ -27,22 +38,39 @@ def aggregate_energy_complexity_features(
     Returns
     -------
     pandas.DataFrame
-        DataFrame indexed by epoch with energy and complexity features.
+        DataFrame indexed by epoch with energy features.
     """
-    logger.info("Aggregating energy and complexity features over %d epochs", n_epochs)
+    logger.info("Aggregating energy features over %d epochs", n_epochs)
     per_epoch: List[List[Dict[str, Any]]] = [list() for _ in range(n_epochs)]
     for blink in blinks:
         idx = blink["epoch_index"]
         if 0 <= idx < n_epochs:
             per_epoch[idx].append(blink)
 
-    records = []
-    for epoch_idx, epoch_blinks in enumerate(per_epoch):
-        feats = compute_energy_complexity_features(epoch_blinks, sfreq)
-        record = {"epoch": epoch_idx}
-        record.update(feats)
+    records: List[Dict[str, float]] = []
+    for epoch_blinks in per_epoch:
+        energies: List[float] = []
+        tkeo_vals: List[float] = []
+        lengths: List[float] = []
+        vel_ints: List[float] = []
+        for blink in epoch_blinks:
+            metrics = compute_blink_energy(blink, sfreq)
+            energies.append(metrics["blink_signal_energy"])
+            tkeo_vals.append(metrics["teager_kaiser_energy"])
+            lengths.append(metrics["blink_line_length"])
+            vel_ints.append(metrics["blink_velocity_integral"])
+        stats_energy = _safe_stats(energies)
+        stats_tkeo = _safe_stats(tkeo_vals)
+        stats_len = _safe_stats(lengths)
+        stats_vel = _safe_stats(vel_ints)
+        record: Dict[str, float] = {}
+        for metric, stats in zip(
+            _METRICS, (stats_energy, stats_tkeo, stats_len, stats_vel)
+        ):
+            for stat_name, value in stats.items():
+                record[f"{metric}_{stat_name}"] = value
         records.append(record)
 
-    df = pd.DataFrame.from_records(records).set_index("epoch")
-    logger.debug("Aggregated energy-complexity DataFrame shape: %s", df.shape)
+    df = pd.DataFrame.from_records(records, index=pd.RangeIndex(n_epochs))
+    logger.debug("Aggregated energy DataFrame shape: %s", df.shape)
     return df

@@ -1,38 +1,43 @@
-"""Frequency-domain metrics for 30-second segments."""
+"""Frequency-domain features for arbitrary segments."""
+
+from __future__ import annotations
+
 from typing import Any, Dict, List
 import logging
 
 import numpy as np
 
-from .features import compute_frequency_domain_features as _compute_fd_features
+from .features import _compute_wavelet_energies
 
 logger = logging.getLogger(__name__)
 
 
 def compute_frequency_domain_features(
-    blinks: List[Dict[str, Any]],
-    segment_signal: np.ndarray,
-    sfreq: float,
+    blinks: List[Dict[str, Any]], segment_signal: np.ndarray, sfreq: float
 ) -> Dict[str, float]:
-    """Compute spectral and wavelet metrics for one segment.
-
-    This is a thin wrapper around
-    :func:`pyblinker.features.frequency_domain.features.compute_frequency_domain_features`
-    so that segment-level processing mirrors the epoch-based API.
+    """Compute wavelet energies for a single signal segment.
 
     Parameters
     ----------
     blinks : list of dict
-        Blink annotations belonging to the segment.
+        Ignored and only kept for backward compatibility with older APIs.
     segment_signal : numpy.ndarray
-        Eyelid aperture samples for the segment.
+        Signal samples for the segment.
     sfreq : float
-        Sampling frequency of the recording in Hertz.
+        Sampling frequency of ``segment_signal`` in Hertz.
 
     Returns
     -------
     dict
-        Dictionary with frequency-domain features.
+        Mapping from ``wavelet_energy_d1`` .. ``wavelet_energy_d4`` to their
+        corresponding energy values. Levels that cannot be computed are ``NaN``.
     """
-    logger.info("Computing frequency-domain features for %d blinks", len(blinks))
-    return _compute_fd_features(blinks, segment_signal, sfreq)
+
+    logger.info(
+        "Computing segment frequency-domain features (n=%d sfreq=%.2f)",
+        len(segment_signal),
+        sfreq,
+    )
+    energies = _compute_wavelet_energies(np.asarray(segment_signal, dtype=float), sfreq)
+    return {f"wavelet_energy_d{i+1}": val for i, val in enumerate(energies)}
+

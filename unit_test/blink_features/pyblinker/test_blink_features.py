@@ -278,22 +278,3 @@ def test_lines_intersection_first_two(
 
     x_right = np.arange(232, 242, dtype=int)
     _ = lines_intersection(signal=candidate_signal, x_left=x_left, x_right=x_right)
-    # col_result = [
-    #     "leftSlope",
-    #     "rightSlope",
-    #     "averLeftVelocity",
-    #     "averRightVelocity",
-    #     "rightR2",
-    #     "leftR2",
-    #     "xIntersect",
-    #     "yIntersect",
-    #     "leftXIntercept",
-    #     "rightXIntercept",
-    # ]
-    # assert isinstance(result, tuple) and len(result) == 14
-    # for i, v in enumerate(result):
-    #     assert isinstance(v, float)
-    #     if i >= 10:
-    #         assert np.isnan(v)
-    #     else:
-    #         assert np.isfinite(v)
