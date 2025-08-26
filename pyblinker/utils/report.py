@@ -45,6 +45,8 @@ def add_blink_plots_to_report(
 ) -> mne.Report:
     """
     Add per-epoch/per-blink/per-channel plots into an MNE Report for validation.
+    Signals are shown with semi-transparent lines and large sample markers to aid
+    visual inspection.
 
     Parameters
     ----------
@@ -174,8 +176,17 @@ def add_blink_plots_to_report(
                         t = t_seg
 
                     fig, ax = plt.subplots(figsize=(7.5, 3.0))
-                    ax.plot(t, y, lw=1.0)
-                    ax.set_title(f"Epoch {ei} • Blink {bi} • {mod.upper()} • {ch_name}")
+                    line = ax.plot(t, y, lw=1.0, alpha=0.6)[0]
+                    ax.scatter(
+                        t,
+                        y,
+                        s=25.0,
+                        color=line.get_color(),
+                        zorder=3,
+                    )
+                    ax.set_title(
+                        f"Epoch {ei} • Blink {bi} • {mod.upper()} • {ch_name}"
+                    )
                     ax.set_xlabel("Time from epoch start (s)")
                     ax.set_ylabel("Amplitude")
 
