@@ -226,7 +226,12 @@ def add_blink_plots_to_report(
 
 def main() -> None:
     """Build a blink validation report for the demo raw file."""
-    raw_path = Path(__file__).resolve().parents[1] / "test_files" / "ear_eog_raw.fif"
+    raw_path = (
+        Path(__file__).resolve().parents[2]
+        / "unit_test"
+        / "test_files"
+        / "ear_eog_raw.fif"
+    )
     raw = mne.io.read_raw_fif(raw_path, preload=True, verbose=False)
     epochs = slice_raw_into_mne_epochs_refine_annot(
         raw, epoch_len=30.0, blink_label="blink", progress_bar=True
