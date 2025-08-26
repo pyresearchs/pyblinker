@@ -96,13 +96,6 @@ def extract_features(
         df_freq = aggregate_frequency_domain_features(blinks, sfreq, n_epochs)
         df_events = pd.concat([df_events, df_freq], axis=1)
 
-    if features is None or "waveform" in features:
-        df_wave = aggregate_waveform_features(blinks, sfreq, n_epochs)
-        df_events = pd.concat([df_events, df_wave], axis=1)
-
-    if features is None or "morphology" in features:
-        df_morph = aggregate_morphology_features(blinks, sfreq, n_epochs)
-        df = pd.concat([df_events, df_morph], axis=1)
     else:
         df = df_events
 
