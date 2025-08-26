@@ -1,6 +1,7 @@
 """Utility functions for pyblinker."""
 from .segments import slice_raw_to_segments
 from .epochs import (
+    slice_raw_into_mne_epochs,
     slice_raw_into_epochs,
     save_epoch_raws,
     generate_epoch_report,
@@ -14,9 +15,11 @@ from .refinement import (
 )
 from .raw_preprocessing import prepare_refined_segments
 from .misc import create_annotation
+from .blink_metadata import onset_entry_to_blinks
 
 __all__ = [
     "slice_raw_to_segments",
+    "slice_raw_into_mne_epochs",
     "slice_raw_into_epochs",
     "save_epoch_raws",
     "generate_epoch_report",
@@ -27,4 +30,5 @@ __all__ = [
     "plot_refined_blinks",
     "prepare_refined_segments",
     "create_annotation",
+    "onset_entry_to_blinks",
 ]
