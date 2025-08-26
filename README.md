@@ -16,7 +16,7 @@ workflows across neuroscience and related fields, ultimately streamlining resear
 * Compatibility with both continuous and epoch-based datasets.
 * Support for single-channel and multi-channel signals.
 * Computation of blink characteristics such as amplitude, duration, and peak-to-peak interval.
-* Per-epoch feature extraction, including EAR metrics, energy complexity, frequency-domain measures, blink morphology, and waveform features.
+* Per-epoch feature extraction, including EAR metrics, energy features, frequency-domain measures, blink morphology, and waveform features.
 * Generation of blink time series for visualization and validation.
 
 

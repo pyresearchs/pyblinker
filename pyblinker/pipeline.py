@@ -6,18 +6,17 @@ from typing import Iterable, Dict, Sequence, Optional
 import pandas as pd
 import mne
 
-from .features.blink_events.event_features import (
-    aggregate_blink_event_features,
-    aggregate_blink_interval_distribution,
+from .blink_features.blink_events.event_features import (
+    aggregate_blink_event_features
 )
-from .features.morphology import aggregate_morphology_features
-from .features.kinematics import aggregate_kinematic_features
-from .features.energy_complexity import aggregate_energy_complexity_features
-from .features.open_eye import aggregate_open_eye_features
-from .features.ear_metrics import aggregate_ear_features
-from .features.waveform_features import aggregate_waveform_features
-from .features.frequency_domain import aggregate_frequency_domain_features
-from .features.blink_events.classification import aggregate_classification_features
+from .blink_features.morphology import aggregate_morphology_features
+from .blink_features.kinematics import aggregate_kinematic_features
+from .blink_features.energy import aggregate_energy_features
+from .blink_features.open_eye import aggregate_open_eye_features
+from .blink_features.ear_metrics import aggregate_ear_features
+from .blink_features.waveform_features import aggregate_waveform_features
+from .blink_features.frequency_domain import aggregate_frequency_domain_features
+from .blink_features.blink_events.classification import aggregate_classification_features
 
 # Configure root logger
 logging.basicConfig(level=logging.INFO)
@@ -93,7 +92,7 @@ def extract_features(
         df_events = pd.concat([df_events, df_kin], axis=1)
 
     if features is None or "energy" in features:
-        df_energy = aggregate_energy_complexity_features(blinks, sfreq, n_epochs)
+        df_energy = aggregate_energy_features(blinks, sfreq, n_epochs)
         df_events = pd.concat([df_events, df_energy], axis=1)
 
     if features is None or "open_eye" in features:
