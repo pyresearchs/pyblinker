@@ -1,12 +1,13 @@
 import math
 import logging
-from typing import Optional, List, Dict, Any, Iterable
+from pathlib import Path
+from typing import Any, Dict, Iterable, List, Optional
 
+import matplotlib.pyplot as plt
 import mne
 import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
 from tqdm import tqdm
+from refine_annotation.util import slice_raw_into_mne_epochs_refine_annot
 
 logger = logging.getLogger(__name__)
 
@@ -221,3 +222,29 @@ def add_blink_plots_to_report(
                 _plot_mod("ear", picks_ear, data_ear, ref_ear)
 
     return report
+
+
+def main() -> None:
+    """Build a blink validation report for the demo raw file."""
+    raw_path = Path(__file__).resolve().parents[1] / "test_files" / "ear_eog_raw.fif"
+    raw = mne.io.read_raw_fif(raw_path, preload=True, verbose=False)
+    epochs = slice_raw_into_mne_epochs_refine_annot(
+        raw, epoch_len=30.0, blink_label="blink", progress_bar=True
+    )
+    report = add_blink_plots_to_report(
+        epochs,
+        pad_pre=0.5,
+        pad_post=0.5,
+        limit_per_epoch=None,
+        decim=2,
+        include_modalities=("eeg", "eog", "ear"),
+        progress_bar=True,
+    )
+    out_path = Path("blink_validation_report.html")
+    report.save(out_path, overwrite=True)
+    logger.info("Saved blink report to %s", out_path)
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    main()
