@@ -78,6 +78,30 @@ def aggregate_waveform_features(
     return df
 
 
+def _blink_feature_values(blink: Dict[str, Any], sfreq: float) -> Dict[str, float]:
+    """Compute waveform metrics for a single blink window.
+
+    Parameters
+    ----------
+    blink : dict
+        Blink description containing ``refined_start_frame``,
+        ``refined_end_frame`` and ``epoch_signal`` keys.
+    sfreq : float
+        Sampling frequency in Hertz.
+
+    Returns
+    -------
+    dict
+        Mapping of feature names to values for the provided blink.
+    """
+
+    return {
+        "duration_base_mean": duration_base(blink, sfreq),
+        "duration_zero_mean": duration_zero(blink, sfreq),
+        "neg_amp_vel_ratio_zero_mean": neg_amp_vel_ratio_zero(blink, sfreq),
+    }
+
+
 def compute_epoch_waveform_features(
     epochs: mne.Epochs, picks: str | Sequence[str] | None = None
 ) -> pd.DataFrame:
@@ -132,6 +156,8 @@ def compute_epoch_waveform_features(
     if n_epochs == 0:
         return pd.DataFrame(index=index, columns=columns, dtype=float)
 
+    logger.info("Computing waveform features for %d epochs", n_epochs)
+
     data = epochs.get_data(picks=ch_names)
     records: List[Dict[str, float]] = []
 
@@ -142,37 +168,37 @@ def compute_epoch_waveform_features(
             else pd.Series(dtype=float)
         )
         windows = _extract_blink_windows(metadata_row)
-        record: Dict[str, float] = {}
-        per_channel: Dict[str, Dict[str, List[float]]] = {
-            ch: {c: [] for c in base_cols} for ch in ch_names
-        }
+        sample_windows = []
         for onset_s, duration_s in windows:
             sl = _segment_to_samples(onset_s, duration_s, sfreq, n_times)
-            if sl.stop - sl.start <= 1:
-                continue
-            for ci, ch in enumerate(ch_names):
-                blink = {
-                    "refined_start_frame": sl.start,
-                    "refined_end_frame": sl.stop - 1,
-                    "epoch_signal": data[ei, ci],
-                }
-                per_channel[ch]["duration_base_mean"].append(
-                    duration_base(blink, sfreq)
+            if sl.stop - sl.start > 1:
+                sample_windows.append(sl)
+        record: Dict[str, float] = {}
+        for ci, ch in enumerate(ch_names):
+            signal = data[ei, ci]
+            feats = [
+                _blink_feature_values(
+                    {
+                        "refined_start_frame": sl.start,
+                        "refined_end_frame": sl.stop - 1,
+                        "epoch_signal": signal,
+                    },
+                    sfreq,
                 )
-                per_channel[ch]["duration_zero_mean"].append(
-                    duration_zero(blink, sfreq)
-                )
-                per_channel[ch]["neg_amp_vel_ratio_zero_mean"].append(
-                    neg_amp_vel_ratio_zero(blink, sfreq)
-                )
-        for ch in ch_names:
-            for col in base_cols:
-                arr = np.asarray(per_channel[ch][col], dtype=float)
-                record[f"{col}_{ch}"] = float(np.nanmean(arr)) if arr.size else float("nan")
+                for sl in sample_windows
+            ]
+            if feats:
+                arr = np.array([[f[c] for c in base_cols] for f in feats], dtype=float)
+                means = np.nanmean(arr, axis=0)
+            else:
+                means = np.full(len(base_cols), np.nan)
+            for col, val in zip(base_cols, means):
+                record[f"{col}_{ch}"] = float(val)
         for col in base_cols:
             record[col] = record[f"{col}_{ch_names[0]}"]
         records.append(record)
 
     df = pd.DataFrame.from_records(records, index=index, columns=columns)
     logger.debug("Epoch waveform feature DataFrame shape: %s", df.shape)
+    logger.info("Computed waveform features for %d epochs", len(df))
     return df
