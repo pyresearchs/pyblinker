@@ -43,17 +43,12 @@ def main() -> None:
     md = epochs.metadata.copy()
     md["epoch_id"] = md.index
     merged = md.merge(blink_counts, on="epoch_id", how="left")
-    counts_match = (
+    if not (
         merged["n_blinks"].fillna(0).astype(int)
         == merged["blink_count"].fillna(0).astype(int)
-    )
-    if counts_match.all():
-        logger.info("Blink counts in metadata align with CSV")
-    else:
-        logger.warning(
-            "CSV blink counts do not match metadata n_blinks:\n%s",
-            merged.loc[~counts_match, ["epoch_id", "n_blinks", "blink_count"]],
-        )
+    ).all():
+        raise AssertionError("CSV blink counts do not match metadata n_blinks")
+    logger.info("Blink counts in metadata align with CSV")
 
     report = add_blink_plots_to_report(
         epochs,
