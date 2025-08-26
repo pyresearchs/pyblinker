@@ -5,6 +5,7 @@ import logging
 from pathlib import Path
 
 import mne
+import pandas as pd
 
 from refine_annotation.util import slice_raw_into_mne_epochs_refine_annot
 from pyblinker.utils.report import add_blink_plots_to_report
@@ -13,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 def main() -> None:
-    """Build epochs and create a blink validation report."""
+    """Build epochs, validate blink counts, and create an HTML report."""
     raw_path = (
         Path(__file__).resolve().parents[1]
         / "unit_test"
@@ -26,6 +27,25 @@ def main() -> None:
     epochs = slice_raw_into_mne_epochs_refine_annot(
         raw, epoch_len=30.0, blink_label=None, progress_bar=True
     )
+
+    # Cross-check blink counts with the provided CSV file.
+    csv_path = (
+        Path(__file__).resolve().parents[1]
+        / "unit_test"
+        / "test_files"
+        / "ear_eog_blink_count_epoch.csv"
+    )
+    blink_counts = pd.read_csv(csv_path)
+    md = epochs.metadata.copy()
+    md["epoch_id"] = md.index
+    merged = md.merge(blink_counts, on="epoch_id", how="left")
+    if not (
+        merged["n_blinks"].fillna(0).astype(int)
+        == merged["blink_count"].fillna(0).astype(int)
+    ).all():
+        raise AssertionError("CSV blink counts do not match metadata n_blinks")
+    logger.info("Blink counts in metadata align with CSV")
+
     report = add_blink_plots_to_report(
         epochs,
         pad_pre=0.5,
