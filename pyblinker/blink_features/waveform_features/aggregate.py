@@ -102,6 +102,87 @@ def _blink_feature_values(blink: Dict[str, Any], sfreq: float) -> Dict[str, floa
     }
 
 
+def _sample_windows_from_metadata(
+    metadata: pd.Series | Dict[str, Any], sfreq: float, n_times: int
+) -> List[slice]:
+    """Convert blink onset/duration metadata to sample windows.
+
+    Parameters
+    ----------
+    metadata : pandas.Series or dict
+        Metadata row containing ``blink_onset`` and ``blink_duration``.
+    sfreq : float
+        Sampling frequency in Hertz.
+    n_times : int
+        Number of samples in each epoch.
+
+    Returns
+    -------
+    list of slice
+        Sample index windows for each blink within the epoch.
+    """
+
+    logger.debug("Extracting sample windows from metadata")
+    windows = _extract_blink_windows(metadata)
+    sample_windows: List[slice] = []
+    for onset_s, duration_s in windows:
+        sl = _segment_to_samples(onset_s, duration_s, sfreq, n_times)
+        if sl.stop - sl.start > 1:
+            sample_windows.append(sl)
+    logger.debug("Found %d sample windows", len(sample_windows))
+    return sample_windows
+
+
+def _channel_feature_means(
+    signal: np.ndarray,
+    sample_windows: Sequence[slice],
+    sfreq: float,
+    base_cols: Sequence[str],
+) -> Dict[str, float]:
+    """Average blink waveform features for a single channel.
+
+    Parameters
+    ----------
+    signal : numpy.ndarray
+        One-dimensional epoch signal for a channel.
+    sample_windows : sequence of slice
+        Blink windows expressed as sample index ranges.
+    sfreq : float
+        Sampling frequency in Hertz.
+    base_cols : sequence of str
+        Names of features to compute.
+
+    Returns
+    -------
+    dict
+        Mapping of feature name to mean value across windows. ``NaN`` if no
+        valid windows were provided.
+    """
+
+    logger.debug(
+        "Computing channel features over %d windows", len(sample_windows)
+    )
+    feats = [
+        _blink_feature_values(
+            {
+                "refined_start_frame": sl.start,
+                "refined_end_frame": sl.stop - 1,
+                "epoch_signal": signal,
+            },
+            sfreq,
+        )
+        for sl in sample_windows
+    ]
+    if feats:
+        arr = np.array([[f[c] for c in base_cols] for f in feats], dtype=float)
+        means = np.nanmean(arr, axis=0)
+    else:
+        means = np.full(len(base_cols), np.nan)
+    result = {col: float(val) for col, val in zip(base_cols, means)}
+    logger.debug("Channel feature means: %s", result)
+    return result
+
+
 def compute_epoch_waveform_features(
     epochs: mne.Epochs, picks: str | Sequence[str] | None = None
 ) -> pd.DataFrame:
@@ -167,33 +248,13 @@ def compute_epoch_waveform_features(
             if isinstance(epochs.metadata, pd.DataFrame)
             else pd.Series(dtype=float)
         )
-        windows = _extract_blink_windows(metadata_row)
-        sample_windows = []
-        for onset_s, duration_s in windows:
-            sl = _segment_to_samples(onset_s, duration_s, sfreq, n_times)
-            if sl.stop - sl.start > 1:
-                sample_windows.append(sl)
+        sample_windows = _sample_windows_from_metadata(metadata_row, sfreq, n_times)
         record: Dict[str, float] = {}
         for ci, ch in enumerate(ch_names):
             signal = data[ei, ci]
-            feats = [
-                _blink_feature_values(
-                    {
-                        "refined_start_frame": sl.start,
-                        "refined_end_frame": sl.stop - 1,
-                        "epoch_signal": signal,
-                    },
-                    sfreq,
-                )
-                for sl in sample_windows
-            ]
-            if feats:
-                arr = np.array([[f[c] for c in base_cols] for f in feats], dtype=float)
-                means = np.nanmean(arr, axis=0)
-            else:
-                means = np.full(len(base_cols), np.nan)
-            for col, val in zip(base_cols, means):
-                record[f"{col}_{ch}"] = float(val)
+            means = _channel_feature_means(signal, sample_windows, sfreq, base_cols)
+            for col, val in means.items():
+                record[f"{col}_{ch}"] = val
         for col in base_cols:
             record[col] = record[f"{col}_{ch_names[0]}"]
         records.append(record)
