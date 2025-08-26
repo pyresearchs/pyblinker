@@ -24,7 +24,11 @@ class TestEnergyFeatures(unittest.TestCase):
             / "ear_eog_raw.fif"
         )
         raw = mne.io.read_raw_fif(raw_path, preload=True, verbose=False)
-        self.epochs = slice_raw_into_mne_epochs(
+        # self.epochs = slice_raw_into_mne_epochs(
+        #     raw, epoch_len=30.0, blink_label=None, progress_bar=False
+        # )
+        from refine_annotation.util import slice_raw_into_mne_epochs_refine_annot
+        self.epochs = slice_raw_into_mne_epochs_refine_annot(
             raw, epoch_len=30.0, blink_label=None, progress_bar=False
         )
 

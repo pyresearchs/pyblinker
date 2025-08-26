@@ -23,25 +23,28 @@ def refine_ear_extrema_and_threshold_stub(
     implementation merely validates that indices are within bounds and
     estimates a trough location if ``peak_rel_cvat`` is not supplied.
 
+    - outer_start (float): The lower bound index of the left-side search region.
+    - outer_end (float): The upper bound index of the right-side search region
+    - extremum_point: The frame index of the trough (or minimum) to evaluate crossings around.
     Returns
     -------
     tuple
         ``(start_frame, trough_frame, end_frame)`` indices within the segment.
     """
 
-    valid_trough = peak_rel_cvat
+    extremum_point = peak_rel_cvat
     if not (peak_rel_cvat is not None and 0 <= peak_rel_cvat < len(signal_segment)):
         if end_rel >= start_rel and len(signal_segment) > 0:
-            valid_trough = (start_rel + end_rel) // 2
+            extremum_point = (start_rel + end_rel) // 2
         else:
-            valid_trough = 0
+            extremum_point = 0
 
-    rs_stub = max(0, min(start_rel, len(signal_segment) - 1 if len(signal_segment) > 0 else 0))
-    re_stub = max(0, min(end_rel, len(signal_segment) - 1 if len(signal_segment) > 0 else 0))
-    if rs_stub > re_stub:
-        rs_stub = re_stub
+    outer_start = max(0, min(start_rel, len(signal_segment) - 1 if len(signal_segment) > 0 else 0))
+    outer_end = max(0, min(end_rel, len(signal_segment) - 1 if len(signal_segment) > 0 else 0))
+    if outer_start > outer_end:
+        outer_start = outer_end
 
-    return rs_stub, valid_trough, re_stub
+    return outer_start, extremum_point, outer_end
 
 
 
@@ -63,28 +66,30 @@ def refine_local_maximum_stub(
     - start_rel: Relative start index.
     - end_rel: Relative end index.
     - peak_rel_cvat: Optional initial guess for the peak index. If not within bounds, it is ignored.
+    - outer_start (float): The lower bound index of the left-side search region.
+    - outer_end (float): The upper bound index of the right-side search region
+    - extremum_point: The frame index of the peak (or maximum) to evaluate crossings around.
 
     Returns:
     - Tuple of (start_frame, peak_frame, end_frame), all relative to the segment.
     """
-    # n = len(signal_segment)
     n = len(signal_segment)
     if n == 0:
         return 0, 0, 0
 
-    rs_stub = max(0, min(start_rel, n - 1))
-    re_stub = max(0, min(end_rel, n - 1))
-    if rs_stub > re_stub:
-        rs_stub = re_stub = min(rs_stub, re_stub)
+    outer_start = max(0, min(start_rel, n - 1))
+    outer_end = max(0, min(end_rel, n - 1))
+    if outer_start > outer_end:
+        outer_start = outer_end = min(outer_start, outer_end)
 
-    if peak_rel_cvat is not None and rs_stub <= peak_rel_cvat <= re_stub:
-        valid_peak = peak_rel_cvat
+    if peak_rel_cvat is not None and outer_start <= peak_rel_cvat <= outer_end:
+        extremum_point = peak_rel_cvat
     else:
-        segment = signal_segment[rs_stub : re_stub + 1]
+        segment = signal_segment[outer_start : outer_end + 1]
         max_idx_local = int(np.argmax(segment))
-        valid_peak = rs_stub + max_idx_local
+        extremum_point = outer_start + max_idx_local
 
-    return rs_stub, valid_peak, re_stub
+    return outer_start, extremum_point, outer_end
 
 # --------------------------- helpers ---------------------------
 
