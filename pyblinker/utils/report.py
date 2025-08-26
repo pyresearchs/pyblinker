@@ -1,12 +1,13 @@
 import math
 import logging
-from typing import Optional, List, Dict, Any, Iterable
+from pathlib import Path
+from typing import Any, Dict, Iterable, List, Optional
 
+import matplotlib.pyplot as plt
 import mne
 import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
 from tqdm import tqdm
+from refine_annotation.util import slice_raw_into_mne_epochs_refine_annot
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +45,8 @@ def add_blink_plots_to_report(
 ) -> mne.Report:
     """
     Add per-epoch/per-blink/per-channel plots into an MNE Report for validation.
+    Signals are shown with semi-transparent lines and large sample markers to aid
+    visual inspection.
 
     Parameters
     ----------
@@ -173,8 +176,17 @@ def add_blink_plots_to_report(
                         t = t_seg
 
                     fig, ax = plt.subplots(figsize=(7.5, 3.0))
-                    ax.plot(t, y, lw=1.0)
-                    ax.set_title(f"Epoch {ei} • Blink {bi} • {mod.upper()} • {ch_name}")
+                    line = ax.plot(t, y, lw=1.0, alpha=0.6)[0]
+                    ax.scatter(
+                        t,
+                        y,
+                        s=25.0,
+                        color=line.get_color(),
+                        zorder=3,
+                    )
+                    ax.set_title(
+                        f"Epoch {ei} • Blink {bi} • {mod.upper()} • {ch_name}"
+                    )
                     ax.set_xlabel("Time from epoch start (s)")
                     ax.set_ylabel("Amplitude")
 
@@ -221,3 +233,36 @@ def add_blink_plots_to_report(
                 _plot_mod("ear", picks_ear, data_ear, ref_ear)
 
     return report
+
+
+def main() -> None:
+    """Build a blink validation report for the demo raw file."""
+    raw_path = (
+        Path(__file__).resolve().parents[2]
+        / "unit_test"
+        / "test_files"
+        / "ear_eog_raw.fif"
+    )
+    raw = mne.io.read_raw_fif(raw_path, preload=True, verbose=False)
+    # The demo annotations are not labeled "blink"; treat all annotations as
+    # candidate blink intervals to populate the metadata.
+    epochs = slice_raw_into_mne_epochs_refine_annot(
+        raw, epoch_len=30.0, blink_label=None, progress_bar=True
+    )
+    report = add_blink_plots_to_report(
+        epochs,
+        pad_pre=0.5,
+        pad_post=0.5,
+        limit_per_epoch=None,
+        decim=2,
+        include_modalities=("eeg", "eog", "ear"),
+        progress_bar=True,
+    )
+    out_path = Path("blink_validation_report.html")
+    report.save(out_path, overwrite=True)
+    logger.info("Saved blink report to %s", out_path)
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    main()

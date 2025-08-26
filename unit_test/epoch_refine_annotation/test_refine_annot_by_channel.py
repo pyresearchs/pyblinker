@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import List
 
 import numpy as np
+import pandas as pd
 import mne
 
 from refine_annotation.util import slice_raw_into_mne_epochs_refine_annot
@@ -40,15 +41,15 @@ def _pick_ear_channels(info: mne.Info) -> List[int]:
 class TestFromFile(unittest.TestCase):
     def setUp(self) -> None:
         raw_path = (
-                PROJECT_ROOT
-                / "unit_test"
-                / "test_files"
-                / "ear_eog_raw.fif"
+            PROJECT_ROOT
+            / "unit_test"
+            / "test_files"
+            / "ear_eog_raw.fif"
         )
-        raw = mne.io.read_raw_fif(raw_path, preload=True, verbose=False)
+        self.raw = mne.io.read_raw_fif(raw_path, preload=True, verbose=False)
         self.epoch_len = 30.0
         self.epochs = slice_raw_into_mne_epochs_refine_annot(
-            raw, epoch_len=self.epoch_len, blink_label=None, progress_bar=False
+            self.raw, epoch_len=self.epoch_len, blink_label=None, progress_bar=False
         )
         self.sfreq = float(self.raw.info["sfreq"])
 
@@ -129,6 +130,27 @@ class TestFromFile(unittest.TestCase):
                 _check_modality("blink_onset_eog".rsplit("_", 1)[0], "blink_onset_extremum_eog", is_trough=False)
             if "blink_onset_ear" in md.columns:
                 _check_modality("blink_onset_ear".rsplit("_", 1)[0], "blink_onset_extremum_ear", is_trough=True)
+
+    def test_merge_metadata_with_csv(self) -> None:
+        """Merge epoch metadata with blink counts to check empty blink rows."""
+        md = self.epochs.metadata.copy()
+        md["epoch_id"] = md.index
+        csv_path = (
+            PROJECT_ROOT
+            / "unit_test"
+            / "test_files"
+            / "ear_eog_blink_count_epoch.csv"
+        )
+        blink_counts = pd.read_csv(csv_path)
+        merged = md.merge(blink_counts, on="epoch_id", how="left")
+        self.assertEqual(len(merged), len(md))
+
+        zero_rows = merged[merged["blink_count"] == 0]
+        # When blink_count is zero, metadata should contain no blink information
+        self.assertTrue((zero_rows["n_blinks"] == 0).all())
+        for row in zero_rows.itertuples(index=False):
+            self.assertEqual(_listify(row.blink_onset), [])
+            self.assertEqual(_listify(row.blink_duration), [])
 
 
 
