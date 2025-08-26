@@ -28,6 +28,7 @@ class TestEnergyFeatures(unittest.TestCase):
             raw, epoch_len=30.0, blink_label=None, progress_bar=False
         )
 
+
     def test_single_channel_columns(self) -> None:
         """Returned DataFrame has expected columns for one channel."""
         ch = "EEG-E8"
