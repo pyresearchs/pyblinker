@@ -9,7 +9,7 @@ import mne
 from .blink_features.blink_events.event_features import (
     aggregate_blink_event_features
 )
-from .blink_features.morphology import aggregate_morphology_features
+
 from .blink_features.kinematics import aggregate_kinematic_features
 from .blink_features.energy import aggregate_energy_features
 from .blink_features.open_eye import aggregate_open_eye_features
@@ -69,13 +69,6 @@ def extract_features(
         blinks, sfreq, epoch_len, n_epochs, features
     )
 
-    if features is None or "blink_interval_dist" in features:
-        if raw_segments is None:
-            raise ValueError(
-                "raw_segments must be provided when blink_interval_dist is requested"
-            )
-        df_interval = aggregate_blink_interval_distribution(raw_segments, blink_label=None)
-        df_events = pd.concat([df_events, df_interval], axis=1)
 
     if features is None or "ear" in features:
         df_ear = aggregate_ear_features(blinks, sfreq, n_epochs)
