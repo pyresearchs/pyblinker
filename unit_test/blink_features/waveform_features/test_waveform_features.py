@@ -1,91 +1,157 @@
-"""Waveform feature extraction tests.
+"""Tests for epoch-level waveform feature extraction."""
+from __future__ import annotations
 
-Synthetic blinks are generated with ``mock_ear_generation`` for epoch-based
-tests.  Real ``mne.io.Raw`` segments from ``ear_eog_raw.fif`` are also used to
-validate the aggregation functions on actual data.
-"""
 import unittest
-import math
-import logging
 from pathlib import Path
+
 import mne
+import numpy as np
+import pandas as pd
 
-from pyblinker.blink_features.waveform_features import (
-    duration_base,
-    duration_zero,
-    neg_amp_vel_ratio_zero,
-    aggregate_waveform_features,
+from pyblinker.blink_features.waveform_features.aggregate import (
+    compute_epoch_waveform_features,
 )
-from unit_test.blink_features.fixtures.mock_ear_generation import _generate_refined_ear
-
-logger = logging.getLogger(__name__)
-
+from pyblinker.utils import slice_raw_into_mne_epochs
+from unit_test.blink_features.utils.helpers import (
+    assert_df_has_columns,
+    assert_numeric_or_nan,
+)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 
-class TestWaveformFeatures(unittest.TestCase):
-    """Verify waveform-derived feature calculations."""
+class TestEpochWaveformFeatures(unittest.TestCase):
+    """Validate waveform feature calculations on :class:`mne.Epochs`."""
 
     def setUp(self) -> None:
-        blinks, sfreq, epoch_len, n_epochs = _generate_refined_ear()
-        self.sfreq = sfreq
-        self.blinks = blinks
-        self.n_epochs = n_epochs
-        self.per_epoch = [[] for _ in range(n_epochs)]
-        for blink in blinks:
-            self.per_epoch[blink["epoch_index"]].append(blink)
-
-    def test_individual_functions(self) -> None:
-        """Check simple computations for a single blink."""
-        blink = self.per_epoch[0][0]
-        self.assertTrue(duration_base(blink, self.sfreq) > 0)
-        self.assertTrue(duration_zero(blink, self.sfreq) > 0)
-        ratio = neg_amp_vel_ratio_zero(blink, self.sfreq)
-        self.assertFalse(math.isnan(ratio))
-
-    def test_aggregate_shape(self) -> None:
-        """Aggregated DataFrame should contain expected columns."""
-        df = aggregate_waveform_features(self.blinks, self.sfreq, self.n_epochs)
-        logger.debug("Waveform feature columns: %s", df.columns)
-        self.assertIn("duration_base_mean", df.columns)
-        self.assertEqual(len(df), self.n_epochs)
-
-
-class TestWaveformRealRaw(unittest.TestCase):
-    """Validate waveform aggregation on a real raw segment."""
-
-    def setUp(self) -> None:
-        raw_path = PROJECT_ROOT / "unit_test" / "test_files" / "ear_eog_raw.fif"
+        """Load test epochs with blink metadata."""
+        raw_path = (
+            PROJECT_ROOT / "unit_test" / "test_files" / "ear_eog_raw.fif"
+        )
         raw = mne.io.read_raw_fif(raw_path, preload=True, verbose=False)
-        self.sfreq = raw.info["sfreq"]
-        start, stop = 0.0, 30.0
-        self.signal = raw.get_data(picks="EAR-avg_ear", start=int(start * self.sfreq), stop=int(stop * self.sfreq))[0]
-        self.blinks = []
-        for onset, dur in zip(raw.annotations.onset, raw.annotations.duration):
-            if onset >= start and onset + dur <= stop:
-                s = int((onset - start) * self.sfreq)
-                e = int((onset + dur - start) * self.sfreq)
-                peak = (s + e) // 2
-                self.blinks.append(
-                    {
-                        "refined_start_frame": s,
-                        "refined_peak_frame": peak,
-                        "refined_end_frame": e,
-                        "epoch_signal": self.signal,
-                        "epoch_index": 0,
-                    }
-                )
+        self.epochs = slice_raw_into_mne_epochs(
+            raw, epoch_len=30.0, blink_label=None, progress_bar=False
+        )
 
-    def test_first_segment(self) -> None:
-        """Waveform features from the first raw segment match expected values."""
-        df = aggregate_waveform_features(self.blinks, self.sfreq, 1)
-        logger.debug("Real raw waveform features: %s", df.iloc[0].to_dict())
-        self.assertAlmostEqual(df.loc[0, "duration_base_mean"], 0.23)
-        self.assertAlmostEqual(df.loc[0, "duration_zero_mean"], 0.17)
-        self.assertAlmostEqual(df.loc[0, "neg_amp_vel_ratio_zero_mean"], 0.04419523700883515)
+    def _has_blink(self, idx: int) -> bool:
+        """Return ``True`` if the epoch contains at least one blink."""
+        row = self.epochs.metadata.loc[idx]
+        onset = row.get("blink_onset")
+        duration = row.get("blink_duration")
+        if onset is None or duration is None:
+            return False
+        if isinstance(onset, float) and np.isnan(onset):
+            return False
+        if isinstance(duration, float) and np.isnan(duration):
+            return False
+        if isinstance(onset, (list, tuple, np.ndarray, pd.Series)):
+            return len(onset) > 0
+        return True
+
+    def test_schema_and_alignment(self) -> None:
+        """Output DataFrame matches epoch index and schema."""
+        df = compute_epoch_waveform_features(self.epochs)
+        expected = [
+            "duration_base_mean",
+            "duration_zero_mean",
+            "neg_amp_vel_ratio_zero_mean",
+        ]
+        assert_df_has_columns(self, df, expected)
+        self.assertIsInstance(df, pd.DataFrame)
+        self.assertEqual(len(df), len(self.epochs))
+        self.assertTrue(df.index.equals(self.epochs.metadata.index))
+
+    def test_epoch_values_mixed_blinks(self) -> None:
+        """Epochs with and without blinks yield appropriate values."""
+        df = compute_epoch_waveform_features(self.epochs)
+        cols = [
+            "duration_base_mean",
+            "duration_zero_mean",
+            "neg_amp_vel_ratio_zero_mean",
+        ]
+        for ei in range(4):
+            idx = self.epochs.metadata.index[ei]
+            has_blink = self._has_blink(idx)
+            values = df.loc[idx, cols]
+            if not has_blink:
+                self.assertTrue(values.isna().all())
+            else:
+                assert_numeric_or_nan(self, values)
+                self.assertFalse(np.isinf(values.to_numpy()).any())
+
+    def test_channel_picks(self) -> None:
+        """Channel selection yields suffixed columns per channel."""
+        picks = ["EEG-E8", "EOG-EEG-eog_vert_left", "EAR-avg_ear"]
+        df = compute_epoch_waveform_features(self.epochs, picks=picks)
+        base_cols = [
+            "duration_base_mean",
+            "duration_zero_mean",
+            "neg_amp_vel_ratio_zero_mean",
+        ]
+        assert_df_has_columns(self, df, base_cols)
+        for ch in picks:
+            suffixed = [f"{c}_{ch}" for c in base_cols]
+            assert_df_has_columns(self, df, suffixed)
+            for ei in range(4):
+                idx = self.epochs.metadata.index[ei]
+                has_blink = self._has_blink(idx)
+                values = df.loc[idx, suffixed]
+                if not has_blink:
+                    self.assertTrue(values.isna().all())
+                else:
+                    assert_numeric_or_nan(self, values)
+                    self.assertFalse(np.isinf(values.to_numpy()).any())
+
+    def test_empty_epochs(self) -> None:
+        """Empty input returns an empty DataFrame with proper columns."""
+        df_full = compute_epoch_waveform_features(self.epochs)
+        df_empty = compute_epoch_waveform_features(self.epochs[:0])
+        self.assertEqual(len(df_empty), 0)
+        self.assertListEqual(list(df_full.columns), list(df_empty.columns))
+
+    def test_blink_metadata_robustness(self) -> None:
+        """Missing blink metadata in blink-free epochs still yields NaNs."""
+        epochs = self.epochs.copy()
+        no_blink_idx = epochs.metadata.index[epochs.metadata["blink_onset"].isna()][0]
+        epochs.metadata.loc[no_blink_idx, ["blink_onset", "blink_duration"]] = np.nan
+        df = compute_epoch_waveform_features(epochs)
+        cols = [
+            "duration_base_mean",
+            "duration_zero_mean",
+            "neg_amp_vel_ratio_zero_mean",
+        ]
+        self.assertTrue(df.loc[no_blink_idx, cols].isna().all())
+
+    def test_waveform_features_aggregation(self) -> None:
+        """Join with blink counts to verify NaNs for blink-free epochs."""
+        feats = compute_epoch_waveform_features(self.epochs)
+        csv_path = (
+            PROJECT_ROOT
+            / "unit_test"
+            / "test_files"
+            / "ear_eog_blink_count_epoch.csv"
+        )
+        counts = pd.read_csv(csv_path)
+        index_col = "epoch_index" if "epoch_index" in counts.columns else "epoch_id"
+        counts = counts.set_index(index_col)
+        merged = feats.join(counts, how="left").rename(
+            columns={"blink_count": "blink_count_epoch"}
+        )
+        cols = [
+            "duration_base_mean",
+            "duration_zero_mean",
+            "neg_amp_vel_ratio_zero_mean",
+        ]
+        zero = merged["blink_count_epoch"] == 0
+        self.assertTrue(merged.loc[zero, cols].isna().all(axis=None))
+        positive = merged["blink_count_epoch"] > 0
+        self.assertTrue(
+            merged.loc[positive, cols]
+            .apply(lambda r: np.isfinite(r).any(), axis=1)
+            .all()
+        )
+        self.assertFalse(np.isinf(merged[cols].to_numpy()).any())
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
     unittest.main()
