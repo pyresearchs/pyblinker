@@ -11,7 +11,7 @@ import pandas as pd
 from pyblinker.blink_features.kinematics import compute_kinematic_features
 from pyblinker.utils import slice_raw_into_mne_epochs
 
-from ..utils.helpers import assert_df_has_columns, assert_numeric_or_nan
+from ..utils.helpers import assert_df_has_columns
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]

@@ -39,8 +39,7 @@ import pandas as pd
 
 from pyblinker.blinker.blink_epoch_mapper import (
     find_blinks_epoch,
-    add_blink_counts,
-    _get_blink_position_epoching,
+    add_blink_counts
 )
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
