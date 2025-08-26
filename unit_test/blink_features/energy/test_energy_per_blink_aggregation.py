@@ -69,7 +69,7 @@ class TestEnergyAggregation(unittest.TestCase):
         data = self.epochs.get_data(picks=[ch])
         records = [
             manual_epoch_energy_features(
-                data[ei, 0], self.epochs.metadata.iloc[ei], sfreq, ch
+                data[ei, 0], self.epochs.metadata.iloc[ei], sfreq, ch, ei
             )
             for ei in range(len(self.epochs))
         ]
