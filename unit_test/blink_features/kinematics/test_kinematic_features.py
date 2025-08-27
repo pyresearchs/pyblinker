@@ -69,7 +69,7 @@ class TestKinematicFeatures(unittest.TestCase):
         sfreq = float(self.epochs.info["sfreq"])
         data = self.epochs.get_data(picks=[ch])
         meta = self.epochs.metadata.iloc[0]
-        windows = _extract_blink_windows(meta)
+        windows = _extract_blink_windows(meta, ch, 0)
         per_metric = {m: [] for m in (
             "peak_amp",
             "t2p",

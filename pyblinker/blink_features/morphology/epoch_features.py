@@ -56,12 +56,8 @@ def compute_epoch_morphology_features(
     """
     logger.info("Computing morphology features for epochs")
 
-    if epochs.metadata is None or not {"blink_onset", "blink_duration"} <= set(
-        epochs.metadata.columns
-    ):
-        raise ValueError(
-            "epochs.metadata must contain 'blink_onset' and 'blink_duration' columns"
-        )
+    if epochs.metadata is None:
+        raise ValueError("epochs.metadata must be provided")
 
     if picks is None:
         ch_names = [
@@ -92,9 +88,9 @@ def compute_epoch_morphology_features(
     records: List[Dict[str, float]] = []
     for ei in range(n_epochs):
         meta_row = epochs.metadata.iloc[ei]
-        windows = _extract_blink_windows(meta_row)
         record: Dict[str, float] = {}
         for ch_idx, ch_name in enumerate(ch_names):
+            windows = _extract_blink_windows(meta_row, ch_name, ei)
             per_metric: Dict[str, List[float]] = {m: [] for m in _METRICS}
             for onset_s, duration_s in windows:
                 sl = _segment_to_samples(onset_s, duration_s, sfreq, n_times)

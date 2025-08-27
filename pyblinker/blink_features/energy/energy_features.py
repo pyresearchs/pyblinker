@@ -99,9 +99,9 @@ def compute_energy_features(
             if isinstance(epochs.metadata, pd.DataFrame)
             else pd.Series(dtype=float)
         )
-        windows = _extract_blink_windows(metadata_row)
         record: Dict[str, float] = {}
         for ci, ch in enumerate(ch_names):
+            windows = _extract_blink_windows(metadata_row, ch, ei)
             energies: List[float] = []
             tkeo_vals: List[float] = []
             lengths: List[float] = []

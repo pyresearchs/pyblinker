@@ -103,18 +103,26 @@ def _blink_feature_values(blink: Dict[str, Any], sfreq: float) -> Dict[str, floa
 
 
 def _sample_windows_from_metadata(
-    metadata: pd.Series | Dict[str, Any], sfreq: float, n_times: int
+    metadata: pd.Series | Dict[str, Any],
+    channel: str,
+    sfreq: float,
+    n_times: int,
+    epoch_index: int,
 ) -> List[slice]:
     """Convert blink onset/duration metadata to sample windows.
 
     Parameters
     ----------
     metadata : pandas.Series or dict
-        Metadata row containing ``blink_onset`` and ``blink_duration``.
+        Metadata row containing blink onset and duration information.
+    channel : str
+        Channel name used to infer which metadata columns to read.
     sfreq : float
         Sampling frequency in Hertz.
     n_times : int
         Number of samples in each epoch.
+    epoch_index : int
+        Index of the epoch, used for error messages.
 
     Returns
     -------
@@ -123,7 +131,7 @@ def _sample_windows_from_metadata(
     """
 
     logger.debug("Extracting sample windows from metadata")
-    windows = _extract_blink_windows(metadata)
+    windows = _extract_blink_windows(metadata, channel, epoch_index)
     sample_windows: List[slice] = []
     for onset_s, duration_s in windows:
         sl = _segment_to_samples(onset_s, duration_s, sfreq, n_times)
@@ -248,9 +256,11 @@ def compute_epoch_waveform_features(
             if isinstance(epochs.metadata, pd.DataFrame)
             else pd.Series(dtype=float)
         )
-        sample_windows = _sample_windows_from_metadata(metadata_row, sfreq, n_times)
         record: Dict[str, float] = {}
         for ci, ch in enumerate(ch_names):
+            sample_windows = _sample_windows_from_metadata(
+                metadata_row, ch, sfreq, n_times, ei
+            )
             signal = data[ei, ci]
             means = _channel_feature_means(signal, sample_windows, sfreq, base_cols)
             for col, val in means.items():
