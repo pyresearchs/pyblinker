@@ -144,6 +144,7 @@ class TestSegmentBlinkProperties(unittest.TestCase):
             run_fit=False,
             progress_bar=False,
         )
+
         logger.debug("Blink properties DataFrame:\n%s", df.head())
         self.assertIsInstance(df, pd.DataFrame)
         self.assertFalse(df.empty)
