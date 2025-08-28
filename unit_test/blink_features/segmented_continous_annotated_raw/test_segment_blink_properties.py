@@ -42,6 +42,38 @@ class TestSegmentBlinkProperties(unittest.TestCase):
             / "blink_properties_with_fit.pkl"
         )
 
+    def _metadata_to_long(self, epochs: mne.Epochs) -> pd.DataFrame:
+        """Convert list-based blink metadata to a long-format table.
+
+        Parameters
+        ----------
+        epochs : mne.Epochs
+            Epochs instance containing list-valued blink metadata.
+
+        Returns
+        -------
+        pandas.DataFrame
+            One row per blink with ``seg_id`` and ``blink_id`` identifiers.
+        """
+        rows: list[dict[str, float]] = []
+        md = epochs.metadata
+        for idx, row in md.iterrows():
+            n = int(row.get("n_blinks", 0))
+            if n <= 0:
+                continue
+            seg_id = int(epochs.selection[idx])
+            for i in range(n):
+                rec: dict[str, float] = {"seg_id": seg_id, "blink_id": i}
+                for col, val in row.items():
+                    if col == "n_blinks":
+                        continue
+                    if isinstance(val, list):
+                        rec[col] = val[i] if i < len(val) else float("nan")
+                    else:
+                        rec[col] = val
+                rows.append(rec)
+        return pd.DataFrame(rows)
+
     def _report_mismatches(
         self,
         result: pd.DataFrame,
@@ -90,13 +122,14 @@ class TestSegmentBlinkProperties(unittest.TestCase):
 
     def test_properties_match_reference(self) -> None:
         """Computed properties match the stored reference table."""
-        df = compute_segment_blink_properties(
+        compute_segment_blink_properties(
             self.epochs,
             self.params,
             channel="EEG-E8",
             progress_bar=False,
-            long_format=True,
-        ).copy()
+            long_format=False,
+        )
+        df = self._metadata_to_long(self.epochs)
 
         key_cols = ["seg_id", "blink_id"]
         other_id_cols = [
