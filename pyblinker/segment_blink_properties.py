@@ -20,6 +20,8 @@ from tqdm import tqdm
 
 from .blinker.fit_blink import FitBlinks
 from .blinker.extract_blink_properties import BlinkProperties
+from .blinker.base_left_right import create_left_right_base
+from .blink_features.blink_events.blink_dataframe import left_right_zero_crossing
 from .blink_features.waveform_features.aggregate import _sample_windows_from_metadata
 
 logger = logging.getLogger(__name__)
@@ -33,7 +35,7 @@ def compute_segment_blink_properties(
     channel: str | Sequence[str] = "EEG-E8",
     run_fit: bool = False,
     progress_bar: bool = True,
-) -> pd.DataFrame:
+) -> mne.Epochs | pd.DataFrame:
     """Calculate blink properties from raw segments or refined epochs.
 
     Parameters
@@ -60,11 +62,13 @@ def compute_segment_blink_properties(
 
     Returns
     -------
-    pandas.DataFrame
-        Table of blink properties. For the refined workflow the DataFrame
-        includes ``seg_id`` (epoch index) and ``blink_id`` (index within the
-        epoch). For the legacy workflow the output mirrors the historic
-        behaviour.
+    mne.Epochs | pandas.DataFrame
+        When ``segments`` is an :class:`mne.Epochs` instance, an
+        :class:`~mne.Epochs` object is returned where each epoch represents a
+        single blink and ``epochs.metadata`` holds the computed blink
+        properties including ``seg_id`` and ``blink_id``. When legacy raw
+        segments are provided, a ``pandas.DataFrame`` matching the historic
+        behaviour is returned.
     """
 
     # --- refined epoch workflow -------------------------------------------------
@@ -102,66 +106,89 @@ def compute_segment_blink_properties(
                 if not sample_windows:
                     continue
                 signal = data[ei, ci]
+                mod = (
+                    "eeg"
+                    if "eeg" in ch.lower()
+                    else ("eog" if "eog" in ch.lower() else "ear")
+                )
+                outer_starts = metadata_row.get(f"blink_outer_start_{mod}", [])
+                outer_ends = metadata_row.get(f"blink_outer_end_{mod}", [])
+                if not isinstance(outer_starts, (list, tuple, np.ndarray, pd.Series)):
+                    outer_starts = [outer_starts]
+                if not isinstance(outer_ends, (list, tuple, np.ndarray, pd.Series)):
+                    outer_ends = [outer_ends]
                 blink_rows = []
-                for sl in sample_windows:
+                for bi, sl in enumerate(sample_windows):
                     start = sl.start
                     end = sl.stop - 1
                     segment = signal[start : end + 1]
-                    if "ear" in ch.lower():
-                        peak_offset = int(np.argmin(segment))
-                    else:
-                        peak_offset = int(np.argmax(segment))
+                    peak_offset = (
+                        int(np.argmin(segment)) if "ear" in ch.lower() else int(np.argmax(segment))
+                    )
                     max_blink = start + peak_offset
                     max_value = signal[max_blink]
+                    outer_start = (
+                        int(outer_starts[bi]) if bi < len(outer_starts) else start
+                    )
+                    outer_end = (
+                        int(outer_ends[bi]) if bi < len(outer_ends) else end
+                    )
                     blink_rows.append(
                         {
-                            "left_base": start,
-                            "right_base": end,
-                            "left_zero": start,
-                            "right_zero": end,
+                            "start_blink": start,
+                            "end_blink": end,
+                            "outer_start": outer_start,
+                            "outer_end": outer_end,
                             "max_blink": max_blink,
                             "max_value": max_value,
                         }
                     )
-                df_epoch = pd.DataFrame.from_records(blink_rows)
-                if df_epoch.empty:
+                rows = pd.DataFrame.from_records(blink_rows)
+                if rows.empty:
+                    continue
+                def _zeros(row: pd.Series) -> tuple[float, float | None]:
+                    try:
+                        return left_right_zero_crossing(
+                            signal,
+                            row["max_blink"],
+                            row["outer_start"],
+                            row["outer_end"],
+                        )
+                    except Exception:
+                        return (np.nan, np.nan)
+
+                zeros = rows.apply(_zeros, axis=1, result_type="expand")
+                rows["left_zero"] = zeros[0]
+                rows["right_zero"] = zeros[1]
+                fitter = FitBlinks(candidate_signal=signal, df=rows.copy(), params=params)
+                try:
+                    fitter.dprocess_segment_raw(run_fit=run_fit)
+                except Exception:  # pragma: no cover - safeguard
+                    pass
+                try:
+                    frame_blinks = create_left_right_base(candidate_signal=signal, df=rows)
+                except ValueError:
                     continue
                 props = BlinkProperties(
-                    signal, df_epoch, sfreq, params, fitted=False
+                    signal, frame_blinks, sfreq, params, fitted=run_fit
                 ).df
                 props["seg_id"] = ei
                 props["blink_id"] = range(len(props))
-                props = props[
-                    [
-                        "seg_id",
-                        "blink_id",
-                        "inter_blink_max_vel_base",
-                        "inter_blink_max_amp",
-                        "time_shut_base",
-                        "neg_amp_vel_ratio_base",
-                        "pos_amp_vel_ratio_zero",
-                        "duration_base",
-                    ]
-                ]
                 records.append(props)
 
         if not records:
-            return pd.DataFrame(
-                columns=[
-                    "seg_id",
-                    "blink_id",
-                    "inter_blink_max_vel_base",
-                    "inter_blink_max_amp",
-                    "time_shut_base",
-                    "neg_amp_vel_ratio_base",
-                    "pos_amp_vel_ratio_zero",
-                    "duration_base",
-                ]
+            info = mne.create_info(ch_names, sfreq)
+            empty_md = pd.DataFrame()
+            return mne.EpochsArray(
+                np.zeros((0, len(ch_names), 1)), info, metadata=empty_md
             )
 
         result = pd.concat(records, ignore_index=True)
+        info = mne.create_info(ch_names, sfreq)
+        dummy = np.zeros((len(result), len(ch_names), 1), dtype=float)
+        blink_epochs = mne.EpochsArray(dummy, info, metadata=result)
         logger.info("Computed blink properties for %d blinks", len(result))
-        return result
+        return blink_epochs
 
     # --- legacy raw-segment workflow --------------------------------------------
     if run_fit:

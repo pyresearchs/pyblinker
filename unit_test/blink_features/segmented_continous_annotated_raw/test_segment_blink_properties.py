@@ -45,9 +45,10 @@ class TestSegmentBlinkProperties(unittest.TestCase):
 
     def test_properties_match_reference(self) -> None:
         """Computed properties match the stored reference table."""
-        df = compute_segment_blink_properties(
+        blink_epochs = compute_segment_blink_properties(
             self.epochs, None, self.params, channel="EEG-E8", progress_bar=False
         )
+        df = blink_epochs.metadata
         cols = [
             "inter_blink_max_vel_base",
             "inter_blink_max_amp",
@@ -67,15 +68,18 @@ class TestSegmentBlinkProperties(unittest.TestCase):
                 return float(val[0]) if len(val) else float("nan")
             return float(val)
 
-        df_first = df[cols].head(1).applymap(_first_scalar).reset_index(drop=True)
+        df_first = df[cols].head(3).applymap(_first_scalar).reset_index(drop=True)
         ref_first = (
-            self.reference[cols].head(1).applymap(_first_scalar).reset_index(drop=True)
+            self.reference[cols].head(3).applymap(_first_scalar).reset_index(drop=True)
         )
         atol = 1.1 / float(self.epochs.info["sfreq"])
-        for c in cols:
-            assert df_first.loc[0, c] == pytest.approx(
-                ref_first.loc[0, c], rel=1e-5, abs=atol
-            )
+        pd.testing.assert_frame_equal(
+            df_first,
+            ref_first,
+            check_dtype=False,
+            rtol=1e-5,
+            atol=atol,
+        )
 
 
 if __name__ == "__main__":  # pragma: no cover
