@@ -91,7 +91,7 @@ class TestSegmentBlinkProperties(unittest.TestCase):
     def test_properties_match_reference(self) -> None:
         """Computed properties match the stored reference table."""
         blink_epochs = compute_segment_blink_properties(
-            self.epochs, None, self.params, channel="EEG-E8", progress_bar=False
+            self.epochs, self.params, channel="EEG-E8", progress_bar=False
         )
         df = blink_epochs.metadata.copy()
 

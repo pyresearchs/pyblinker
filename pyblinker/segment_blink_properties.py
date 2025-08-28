@@ -1,23 +1,20 @@
 """Segment-level blink property extraction utilities.
 
-This module exposes :func:`compute_segment_blink_properties`, which can
-operate on either legacy ``mne.Raw`` segments with an accompanying blink
-annotation table or on :class:`mne.Epochs` produced by
-``slice_raw_into_mne_epochs_refine_annot``. In the latter case the epoch
-metadata provides refined blink windows that drive the computation.
+This module exposes :func:`compute_segment_blink_properties`, which operates on
+refined :class:`mne.Epochs` produced by
+``slice_raw_into_mne_epochs_refine_annot``. The epoch metadata provides the
+blink windows that drive the computation.
 
 Refactor goals achieved in this version:
 - Decomposed into small, focused functions (single responsibility).
 - No functions defined inside other functions.
 - No nested ``for`` loops; iteration is flattened where needed.
-- Public API preserved while improving readability and debuggability.
 """
 
 from __future__ import annotations
 
 from typing import Sequence, Dict, Any, List, Iterable, Tuple
 import logging
-import warnings
 import itertools
 
 import numpy as np
@@ -32,73 +29,41 @@ from .blink_features.waveform_features.aggregate import _sample_windows_from_met
 
 logger = logging.getLogger(__name__)
 
-
-# ------------------------------ Public API ------------------------------------
+ # ------------------------------ Public API ------------------------------------
 
 
 def compute_segment_blink_properties(
-    segments: Sequence[mne.io.BaseRaw] | mne.Epochs,
-    blink_df: pd.DataFrame | None,
+    epochs: mne.Epochs,
     params: Dict[str, Any],
     *,
     channel: str | Sequence[str] = "EEG-E8",
-    run_fit: bool = False,
     progress_bar: bool = True,
-) -> mne.Epochs | pd.DataFrame:
-    """Calculate blink properties from raw segments or refined epochs.
+) -> mne.Epochs:
+    """Calculate blink properties from refined epochs.
 
     Parameters
     ----------
-    segments
-        Either a sequence of Raw segments with legacy blink annotations or an
-        :class:`mne.Epochs` instance returned by
+    epochs
+        ``mne.Epochs`` instance produced by
         :func:`slice_raw_into_mne_epochs_refine_annot`.
-    blink_df
-        Legacy blink annotation table. Must be ``None`` when ``segments`` is an
-        :class:`mne.Epochs` instance as blink metadata are sourced from
-        ``epochs.metadata``.
     params
         Parameter dictionary forwarded to :class:`BlinkProperties`.
     channel
         Channel name(s) used for property extraction. Defaults to ``"EEG-E8"``.
-    run_fit
-        When using the legacy path this flag controls whether blink fitting is
-        executed. Ignored for the refined-epoch workflow.
     progress_bar
         Whether to display a progress bar during processing.
 
     Returns
     -------
-    mne.Epochs | pandas.DataFrame
+    mne.Epochs
     """
-    if is_refined_epoch_workflow(segments, blink_df):
-        logger.info("Running refined-epoch blink property computation")
-        return compute_from_refined_epochs(
-            epochs=segments,
-            params=params,
-            channel=channel,
-            progress_bar=progress_bar,
-        )
-
-    logger.info("Running legacy-segment blink property computation")
-    return compute_from_legacy_segments(
-        segments=segments,
-        blink_df=blink_df,
+    logger.info("Running refined-epoch blink property computation")
+    return compute_from_refined_epochs(
+        epochs=epochs,
         params=params,
         channel=channel,
-        run_fit=run_fit,
         progress_bar=progress_bar,
     )
-
-
-# ------------------------------ Workflow routing ------------------------------
-
-
-def is_refined_epoch_workflow(
-    segments: Sequence[mne.io.BaseRaw] | mne.Epochs, blink_df: pd.DataFrame | None
-) -> bool:
-    """Return ``True`` if we should use the refined-epochs workflow."""
-    return isinstance(segments, mne.Epochs) and blink_df is None
 
 
 # ------------------------------ Refined epochs path ---------------------------
@@ -354,63 +319,4 @@ def fit_and_extract_properties(
 
     return BlinkProperties(signal, frame_blinks, sfreq, params, fitted=run_fit).df
 
-
-# ------------------------------ Legacy raw-segment path ------------------------
-
-
-def compute_from_legacy_segments(
-    segments: Sequence[mne.io.BaseRaw],
-    blink_df: pd.DataFrame | None,
-    params: Dict[str, Any],
-    channel: str | Sequence[str],
-    run_fit: bool,
-    progress_bar: bool,
-) -> pd.DataFrame:
-    """Compute blink properties for legacy Raw segments using an annotation table."""
-    if run_fit:
-        warnings.warn(
-            "run_fit=True may drop blinks due to NaNs in fit range", RuntimeWarning
-        )
-
-    if blink_df is None or blink_df.empty or not segments:
-        return pd.DataFrame()
-
-    ch = channel if isinstance(channel, str) else list(channel)[0]
-    sfreq = float(segments[0].info["sfreq"])
-    logger.info("Computing blink properties for %d segments", len(segments))
-
-    all_props: List[pd.DataFrame] = []
-
-    iterator = tqdm(
-        enumerate(segments), total=len(segments), desc="Segments", disable=not progress_bar
-    )
-    for seg_id, raw in iterator:
-        seg_rows = prepare_blink_rows_for_segment(blink_df, seg_id)
-        if seg_rows is None or seg_rows.empty:
-            continue
-
-        signal = raw.get_data(picks=ch)[0]
-        props = fit_and_extract_properties(signal, seg_rows, sfreq, params, run_fit=run_fit)
-        if props is None or props.empty:
-            continue
-
-        props["seg_id"] = seg_id
-        all_props.append(props)
-
-    return pd.concat(all_props, ignore_index=True) if all_props else pd.DataFrame()
-
-
-def prepare_blink_rows_for_segment(
-    blink_df: pd.DataFrame, seg_id: int
-) -> pd.DataFrame | None:
-    """Filter and type-normalize the blink rows for one legacy segment."""
-    rows = blink_df[blink_df["seg_id"] == seg_id].copy()
-    if rows.empty:
-        return None
-
-    for col in ["start_blink", "end_blink", "outer_start", "outer_end", "left_zero"]:
-        rows[col] = rows[col].astype(int)
-    if "right_zero" in rows.columns:
-        rows["right_zero"] = rows["right_zero"].fillna(-1).astype(int)
-    return rows
 
