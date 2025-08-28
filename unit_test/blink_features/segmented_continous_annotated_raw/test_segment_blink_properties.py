@@ -1,4 +1,20 @@
-"""Integration test for blink property extraction with refined metadata."""
+"""Integration test for epoch-level blink metadata attachment.
+
+This test covers the canonical workflow used in the blink feature pipeline:
+
+1. ``compute_segment_blink_properties`` is executed with ``long_format=False``
+   so that per-blink measurements (e.g., onset, velocity, amplitude) are merged
+   into :attr:`mne.Epochs.metadata` as lists alongside a blink count.
+2. The helper :func:`metadata_to_long` converts the list-based metadata back into
+   a long-format table where each row represents a single detected blink.
+3. The resulting long table is compared against a stored reference DataFrame to
+   ensure that all blink property columns are preserved and numerically
+   consistent.
+
+The expectation is that transforming to and from epoch metadata does not alter
+any per-blink values and that the assertion view exactly matches the reference
+blink properties extracted from the same raw data.
+"""
 
 from __future__ import annotations
 
