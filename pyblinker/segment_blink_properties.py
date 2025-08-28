@@ -164,10 +164,9 @@ def compute_segment_blink_properties(
                 try:
                     fitter.dprocess_segment_raw(run_fit=run_fit)
                 except Exception:  # pragma: no cover - safeguard
-                    pass
-                try:
-                    frame_blinks = create_left_right_base(candidate_signal=signal, df=rows)
-                except ValueError:
+                    continue
+                frame_blinks = fitter.frame_blinks
+                if frame_blinks is None or frame_blinks.empty:
                     continue
                 props = BlinkProperties(
                     signal, frame_blinks, sfreq, params, fitted=run_fit
