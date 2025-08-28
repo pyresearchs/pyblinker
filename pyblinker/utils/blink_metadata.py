@@ -4,7 +4,6 @@ import logging
 from typing import Any, Dict, List
 
 import mne
-import numpy as np
 import pandas as pd
 
 logger = logging.getLogger(__name__)
@@ -42,8 +41,7 @@ def attach_blink_metadata(epochs: mne.Epochs, blink_df: pd.DataFrame) -> pd.Data
     All columns from ``blink_df`` (except ``seg_id`` and ``blink_id``) are
     converted into list-valued epoch-level metadata. Lists contain one entry per
     detected blink within the epoch. Additional convenience columns such as
-    ``blink_onset`` and ``blink_duration`` in seconds as well as numeric summary
-    statistics are also added.
+    ``blink_onset`` and ``blink_duration`` in seconds are also added.
 
     Parameters
     ----------
@@ -92,45 +90,6 @@ def attach_blink_metadata(epochs: mne.Epochs, blink_df: pd.DataFrame) -> pd.Data
     ]
     for col in cols_to_attach:
         epoch_meta[col] = group[col].apply(_list_or_nan).reindex(epoch_meta.index)
-
-    epoch_meta["blink_first_onset_s"] = group["blink_onset"].min().reindex(
-        epoch_meta.index
-    )
-    epoch_meta["blink_max_duration_s"] = group["blink_duration"].max().reindex(
-        epoch_meta.index
-    )
-
-    exclude_summary = {
-        "seg_id",
-        "blink_id",
-        "start_blink",
-        "max_blink",
-        "end_blink",
-        "outer_start",
-        "outer_end",
-        "left_zero",
-        "right_zero",
-        "max_blink_alternative",
-        "max_pos_vel_frame",
-        "max_neg_vel_frame",
-        "left_base",
-        "right_base",
-        "peak_max_blink",
-        "peak_time_blink",
-        "epoch_index",
-        "blink_onset",
-        "blink_duration",
-    }
-    numeric_cols = [
-        c
-        for c in df.select_dtypes(include=[np.number]).columns
-        if c not in exclude_summary
-    ]
-    if numeric_cols:
-        summary = group[numeric_cols].agg(["max", "mean"])
-        summary.columns = [f"{col}_{stat}" for col, stat in summary.columns]
-        summary = summary.reindex(epoch_meta.index)
-        epoch_meta = pd.concat([epoch_meta, summary], axis=1)
 
     epoch_meta.index.name = None
 

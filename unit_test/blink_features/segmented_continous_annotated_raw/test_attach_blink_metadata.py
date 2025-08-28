@@ -33,12 +33,14 @@ class TestAttachBlinkMetadata(unittest.TestCase):
             "p_avr_threshold": 3,
             "z_thresholds": np.array([[0.9, 0.98], [2.0, 5.0]]),
         }
-        blink_epochs = compute_segment_blink_properties(
-            epochs_full, self.params, channel="EEG-E8", progress_bar=False
-        )
-        self.blink_df = blink_epochs.metadata.copy()
-        # Drop the first epoch to exercise selection mapping
         self.epochs = epochs_full.copy().drop([0])
+        self.blink_df = compute_segment_blink_properties(
+            epochs_full.copy(),
+            self.params,
+            channel="EEG-E8",
+            progress_bar=False,
+            long_format=True,
+        )
 
     def test_metadata_attachment(self) -> None:
         """Blink metadata merged correctly and long table returned."""
