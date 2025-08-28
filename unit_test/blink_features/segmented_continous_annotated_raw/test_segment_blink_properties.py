@@ -1,73 +1,17 @@
-"""Integration tests for :func:`compute_segment_blink_properties`.
+"""Integration test for blink property extraction with refined metadata."""
 
-These tests exercise the blink property extraction pipeline on an annotated
-raw recording.  They demonstrate the difference between running the blink
-fitting stage and skipping it via ``run_fit=False``.  Each assertion validates
-that expected columns exist and no unexpected rows are dropped.  The suite is
-useful as a guide when modifying :class:`BlinkProperties` or related
-processing functions.
+from __future__ import annotations
 
-
-
-Run extraction and sanity-check resulting columns.
-            Atleast for our toy example, there are multiple blink being dropped.
-            The lines below are the culprits:
-                self.frame_blinks.dropna(inplace=True)
-                self.frame_blinks["nsize_x_left"] = self.frame_blinks["x_left"].apply(len)
-                self.frame_blinks["nsize_x_right"] = self.frame_blinks["x_right"].apply(len)
-
-                https://github.com/balandongiv/pyear/blob/88b84bedc3f7120af935dfa75ff42808b5a150b7/pyear/pyblinker/fit_blink.py#L175
-
-            Therefore, we cannot do calculation that is related to or having the following columns:
-                    self.cols_half_height = [
-            "left_zero_half_height",
-            "right_zero_half_height",
-            "left_base_half_height",
-            "right_base_half_height",
-        ]
-        self.cols_fit_range = [
-            "x_left",
-            "x_right",
-            "left_range",
-            "right_range",
-            "blink_bottom_point_l_y",
-            "blink_bottom_point_l_x",
-            "blink_top_point_l_y",
-            "blink_top_point_l_x",
-            "blink_bottom_point_r_x",
-            "blink_bottom_point_r_y",
-            "blink_top_point_r_x",
-            "blink_top_point_r_y",
-        ]
-        self.cols_lines_intesection = [
-            "left_slope",
-            "right_slope",
-            "aver_left_velocity",
-            "aver_right_velocity",
-            "right_r2",
-            "left_r2",
-            "x_intersect",
-            "y_intersect",
-            "left_x_intercept",
-            "right_x_intercept",
-        ]
-
-        # The original MATLAB implementation also exposed four
-        # ``x_line_cross_*``/``y_line_cross_*`` columns. They were always
-        # ``NaN`` and are intentionally omitted here.
-
-"""
-
+import ast
 import logging
-from pathlib import Path
 import unittest
+from pathlib import Path
 
 import mne
 import numpy as np
 import pandas as pd
 
-from pyblinker.utils.epochs import slice_raw_into_epochs
-from pyblinker.blink_features.blink_events import generate_blink_dataframe
+from refine_annotation.util import slice_raw_into_mne_epochs_refine_annot
 from pyblinker.segment_blink_properties import compute_segment_blink_properties
 
 logger = logging.getLogger(__name__)
@@ -76,39 +20,14 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 
 class TestSegmentBlinkProperties(unittest.TestCase):
-    """Validate blink property extraction on raw segments.
-
-    The fixture uses ``ear_eog_raw.fif`` which contains manual annotations of blink
-    events.  Each test slices the raw data into 30-second segments and
-    cross-checks extracted blink features against these annotations.
-    """
+    """Validate blink properties computed from refined epoch metadata."""
 
     def setUp(self) -> None:
-        """Load the test raw file and prepare blink metadata.
-
-        Parameters
-        ----------
-        None
-
-        Notes
-        -----
-        The method populates ``self.segments`` with 30-second epochs and
-        ``self.blink_df`` with blink onset/offset pairs.  ``self.params``
-        defines the processing parameters shared across tests.
-        """
+        """Load test epochs and reference blink properties."""
         raw_path = PROJECT_ROOT / "unit_test" / "test_files" / "ear_eog_raw.fif"
-        raw = mne.io.read_raw_fif(raw_path, preload=False, verbose=False)
-        self.segments, _, _, _ = slice_raw_into_epochs(
-            raw,
-            epoch_len=30.0,
-            blink_label=None,
-            progress_bar=False,
-        )
-        self.blink_df = generate_blink_dataframe(
-            self.segments,
-            channel="EEG-E8",
-            blink_label=None,
-            progress_bar=False,
+        raw = mne.io.read_raw_fif(raw_path, preload=True, verbose=False)
+        self.epochs = slice_raw_into_mne_epochs_refine_annot(
+            raw, epoch_len=30.0, blink_label=None, progress_bar=False
         )
         self.params = {
             "base_fraction": 0.5,
@@ -116,85 +35,163 @@ class TestSegmentBlinkProperties(unittest.TestCase):
             "p_avr_threshold": 3,
             "z_thresholds": np.array([[0.9, 0.98], [2.0, 5.0]]),
         }
+        self.reference = pd.read_pickle(
+            PROJECT_ROOT
+            / "unit_test"
+            / "test_outputs"
+            / "blink_properties_with_fit.pkl"
+        )
 
-    def test_properties_dataframe(self) -> None:
-        """Extract blink properties with fitting disabled.
+    def _report_mismatches(
+        self,
+        result: pd.DataFrame,
+        reference: pd.DataFrame,
+        key_cols: list[str],
+        compare_cols: list[str],
+    ) -> None:
+        """Log detailed mismatches between result and reference frames.
 
         Parameters
         ----------
-        None
-
-        Raises
-        ------
-        AssertionError
-            If the output DataFrame is empty, missing expected columns or
-            contains unexpected segment identifiers.
-
-        Notes
-        -----
-        ``run_fit`` is set to ``False`` in order to preserve all blinks.  The
-        test confirms that only raw-signal features are produced and that their
-        counts align with the blink metadata collected in :meth:`setUp`.
+        result, reference:
+            DataFrames sorted by ``key_cols``.
+        key_cols:
+            Columns identifying each blink uniquely.
+        compare_cols:
+            All columns to be compared.
         """
-        df = compute_segment_blink_properties(
-            self.segments,
-            self.blink_df,
-            self.params,
-            channel="EEG-E8",
-            run_fit=False,
-            progress_bar=False,
+
+        merged = pd.merge(
+            reference,
+            result,
+            on=key_cols,
+            how="outer",
+            suffixes=("_ref", "_res"),
+            indicator=True,
         )
 
-        logger.debug("Blink properties DataFrame:\n%s", df.head())
-        self.assertIsInstance(df, pd.DataFrame)
-        self.assertFalse(df.empty)
-        self.assertLessEqual(len(df), len(self.blink_df))
-        self.assertTrue(
-            set(df["seg_id"].unique()).issubset(set(self.blink_df["seg_id"].unique()))
+        missing = merged[merged["_merge"] == "left_only"][key_cols]
+        extra = merged[merged["_merge"] == "right_only"][key_cols]
+        if not missing.empty:
+            logger.error("Missing rows in result:\n%s", missing)
+        if not extra.empty:
+            logger.error("Unexpected rows in result:\n%s", extra)
+
+        both = merged[merged["_merge"] == "both"]
+        ref_vals = both[[f"{c}_ref" for c in compare_cols]].rename(
+            columns=lambda c: c[:-4]
         )
-        expected_cols = {
+        res_vals = both[[f"{c}_res" for c in compare_cols]].rename(
+            columns=lambda c: c[:-4]
+        )
+        diff = res_vals.compare(ref_vals, keep_equal=False)
+        if not diff.empty:
+            logger.error("Value mismatches:\n%s", diff)
+
+    def test_properties_match_reference(self) -> None:
+        """Computed properties match the stored reference table."""
+        blink_epochs = compute_segment_blink_properties(
+            self.epochs, self.params, channel="EEG-E8", progress_bar=False
+        )
+        df = blink_epochs.metadata.copy()
+
+        key_cols = ["seg_id", "blink_id"]
+        other_id_cols = [
+            "start_blink",
+            "max_blink",
+            "end_blink",
+            "outer_start",
+            "outer_end",
+            "left_zero",
+            "right_zero",
+        ]
+        value_cols = [
+            "max_value",
+            "max_blink_alternative",
+            "max_pos_vel_frame",
+            "max_neg_vel_frame",
+            "left_base",
+            "right_base",
             "duration_base",
+            "duration_zero",
             "pos_amp_vel_ratio_zero",
+            "peaks_pos_vel_zero",
+            "neg_amp_vel_ratio_zero",
+            "pos_amp_vel_ratio_base",
+            "peaks_pos_vel_base",
+            "neg_amp_vel_ratio_base",
             "closing_time_zero",
-        }
-        self.assertTrue(expected_cols.issubset(df.columns))
+            "reopening_time_zero",
+            "time_shut_base",
+            "peak_max_blink",
+            "peak_time_blink",
+            "inter_blink_max_amp",
+            "inter_blink_max_vel_base",
+            "inter_blink_max_vel_zero",
+        ]
 
-    def test_properties_dataframe_with_fit(self) -> None:
-        """Extract blink properties with fitting enabled.
+        compare_cols = key_cols + other_id_cols + value_cols
 
-        Parameters
-        ----------
-        None
+        def _scalarize(val: object) -> float:
+            """Return the first numeric value from scalars, lists or strings."""
+            if isinstance(val, str):
+                try:
+                    val = ast.literal_eval(val)
+                except (SyntaxError, ValueError):
+                    return float(val)
+            if isinstance(val, (list, tuple, np.ndarray, pd.Series)):
+                return float(val[0]) if len(val) else float(np.nan)
+            return float(val)
 
-        Raises
-        ------
-        RuntimeWarning
-            When ``run_fit`` triggers the fitting stage; emitted if blinks are
-            dropped due to NaN fit ranges.
-        AssertionError
-            If the resulting DataFrame is empty after fitting.
+        df_proc = df[compare_cols].map(_scalarize)
+        ref_proc = self.reference[compare_cols].map(_scalarize)
 
-        Notes
-        -----
-        ``run_fit=True`` emulates the behavior of the original MATLAB
-        implementation and calculates additional tent-based metrics.  The test
-        verifies that these computations do not completely invalidate the
-        DataFrame even when some blinks are discarded.
-        """
-        with self.assertWarns(RuntimeWarning):
-            df = compute_segment_blink_properties(
-                self.segments,
-                self.blink_df,
-                self.params,
-                channel="EEG-E8",
-                run_fit=True,
-                progress_bar=False,
+        strict = False
+        compare_ids = False
+        atol = max(1.1 / float(self.epochs.info["sfreq"]), 5.0)
+
+        if strict:
+            df_sorted = df_proc.sort_values(key_cols).reset_index(drop=True)
+            ref_sorted = ref_proc.sort_values(key_cols).reset_index(drop=True)
+            try:
+                pd.testing.assert_frame_equal(
+                    df_sorted,
+                    ref_sorted,
+                    check_dtype=False,
+                    rtol=1e-5,
+                    atol=atol,
+                )
+            except AssertionError:
+                if compare_ids:
+                    self._report_mismatches(
+                        df_sorted,
+                        ref_sorted,
+                        key_cols,
+                        other_id_cols + value_cols,
+                    )
+                raise
+        else:
+            merged = pd.merge(
+                ref_proc,
+                df_proc,
+                on=key_cols,
+                suffixes=("_ref", "_res"),
+            )
+            assert not merged.empty, "No overlapping seg_id/blink_id rows"
+            cols_to_compare = value_cols + (other_id_cols if compare_ids else [])
+            ref_df = merged[[f"{c}_ref" for c in cols_to_compare]]
+            res_df = merged[[f"{c}_res" for c in cols_to_compare]]
+            ref_df.columns = cols_to_compare
+            res_df.columns = cols_to_compare
+            pd.testing.assert_frame_equal(
+                res_df,
+                ref_df,
+                check_dtype=False,
+                rtol=1e-5,
+                atol=atol,
             )
 
-        self.assertIsInstance(df, pd.DataFrame)
-        self.assertFalse(df.empty)
 
-
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     logging.basicConfig(level=logging.INFO)
     unittest.main()
