@@ -1,19 +1,15 @@
-"""Integration test for epoch-level blink metadata attachment.
+"""Integration test for long-format blink property extraction.
 
-This test covers the canonical workflow used in the blink feature pipeline:
+This test complements ``test_segment_blink_properties.py``. That file runs
+``compute_segment_blink_properties`` with ``long_format=False`` and then
+reconstructs a per-blink table from the list-valued epoch metadata before
+asserting equality with a stored reference.
 
-1. ``compute_segment_blink_properties`` is executed with ``long_format=False``
-   so that per-blink measurements (e.g., onset, velocity, amplitude) are merged
-   into :attr:`mne.Epochs.metadata` as lists alongside a blink count.
-2. The helper :func:`metadata_to_long` converts the list-based metadata back into
-   a long-format table where each row represents a single detected blink.
-3. The resulting long table is compared against a stored reference DataFrame to
-   ensure that all blink property columns are preserved and numerically
-   consistent.
-
-The expectation is that transforming to and from epoch metadata does not alter
-any per-blink values and that the assertion view exactly matches the reference
-blink properties extracted from the same raw data.
+Here we exercise the alternate code path by calling
+``compute_segment_blink_properties`` with ``long_format=True``. The function
+returns the per-blink DataFrame directly while still attaching list-based
+metadata to the epochs as a side effect. Comparing this returned table against
+the same reference ensures both modes produce identical blink properties.
 """
 
 from __future__ import annotations
@@ -29,7 +25,6 @@ import pandas as pd
 from refine_annotation.util import slice_raw_into_mne_epochs_refine_annot
 from pyblinker.segment_blink_properties import compute_segment_blink_properties
 from unit_test.utils.blink_compare_utils import (
-    metadata_to_long,
     report_mismatches,
     scalarize,
 )
@@ -39,8 +34,8 @@ logger = logging.getLogger(__name__)
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 
-class TestSegmentBlinkProperties(unittest.TestCase):
-    """Validate blink properties computed from refined epoch metadata."""
+class TestSegmentBlinkPropertiesLong(unittest.TestCase):
+    """Validate blink properties returned in long-format."""
 
     def setUp(self) -> None:
         """Load test epochs and reference blink properties."""
@@ -64,15 +59,14 @@ class TestSegmentBlinkProperties(unittest.TestCase):
 
 
     def test_properties_match_reference(self) -> None:
-        """Computed properties match the stored reference table."""
-        compute_segment_blink_properties(
+        """Returned properties match the stored reference table."""
+        df = compute_segment_blink_properties(
             self.epochs,
             self.params,
             channel="EEG-E8",
             progress_bar=False,
-            long_format=False,
+            long_format=True,
         )
-        df = metadata_to_long(self.epochs)
 
         key_cols = ["seg_id", "blink_id"]
         other_id_cols = [

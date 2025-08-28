@@ -22,6 +22,8 @@ import pandas as pd
 import mne
 from tqdm import tqdm
 
+from .utils.blink_metadata import attach_blink_metadata
+
 from .blinker.fit_blink import FitBlinks
 from .blinker.extract_blink_properties import BlinkProperties
 from .blink_features.blink_events.blink_dataframe import left_right_zero_crossing
@@ -38,7 +40,8 @@ def compute_segment_blink_properties(
     *,
     channel: str | Sequence[str] = "EEG-E8",
     progress_bar: bool = True,
-) -> mne.Epochs:
+    long_format: bool = False,
+) -> mne.Epochs | pd.DataFrame:
     """Calculate blink properties from refined epochs.
 
     Parameters
@@ -52,18 +55,27 @@ def compute_segment_blink_properties(
         Channel name(s) used for property extraction. Defaults to ``"EEG-E8"``.
     progress_bar
         Whether to display a progress bar during processing.
+    long_format
+        If ``True``, return a long-format :class:`pandas.DataFrame` of per-blink
+        properties. Otherwise, merge blink lists into ``epochs.metadata`` and
+        return ``epochs``.
 
     Returns
     -------
-    mne.Epochs
+    mne.Epochs or pandas.DataFrame
+        Updated ``epochs`` with blink metadata or a long-format blink table
+        depending on ``long_format``.
     """
     logger.info("Running refined-epoch blink property computation")
-    return compute_from_refined_epochs(
+    blink_epochs = compute_from_refined_epochs(
         epochs=epochs,
         params=params,
         channel=channel,
         progress_bar=progress_bar,
     )
+    blink_df = blink_epochs.metadata.copy()
+    filtered_df = attach_blink_metadata(epochs, blink_df)
+    return filtered_df if long_format else epochs
 
 
 # ------------------------------ Refined epochs path ---------------------------
