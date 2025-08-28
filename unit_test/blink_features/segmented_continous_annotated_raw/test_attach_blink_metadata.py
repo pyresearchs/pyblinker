@@ -48,13 +48,53 @@ class TestAttachBlinkMetadata(unittest.TestCase):
         self.assertEqual(len(md), len(self.epochs))
         self.assertListEqual(list(md.index), list(range(len(self.epochs))))
 
+        expected_cols = [
+            "start_blink",
+            "max_blink",
+            "end_blink",
+            "outer_start",
+            "outer_end",
+            "left_zero",
+            "right_zero",
+            "max_value",
+            "max_blink_alternative",
+            "max_pos_vel_frame",
+            "max_neg_vel_frame",
+            "left_base",
+            "right_base",
+            "duration_base",
+            "duration_zero",
+            "pos_amp_vel_ratio_zero",
+            "peaks_pos_vel_zero",
+            "neg_amp_vel_ratio_zero",
+            "pos_amp_vel_ratio_base",
+            "peaks_pos_vel_base",
+            "neg_amp_vel_ratio_base",
+            "closing_time_zero",
+            "reopening_time_zero",
+            "time_shut_base",
+            "peak_max_blink",
+            "peak_time_blink",
+            "inter_blink_max_amp",
+            "inter_blink_max_vel_base",
+            "inter_blink_max_vel_zero",
+        ]
+        self.assertTrue(set(expected_cols).issubset(md.columns))
+
         for _, row in md.iterrows():
             if row["n_blinks"] == 0:
                 self.assertTrue(pd.isna(row["blink_onset"]))
                 self.assertTrue(pd.isna(row["blink_duration"]))
+                for col in expected_cols:
+                    self.assertTrue(pd.isna(row[col]))
             else:
                 self.assertEqual(len(row["blink_onset"]), row["n_blinks"])
                 self.assertEqual(len(row["blink_duration"]), row["n_blinks"])
+                for col in expected_cols:
+                    self.assertIsInstance(row[col], list)
+                self.assertEqual(len(row["start_blink"]), row["n_blinks"])
+                self.assertEqual(len(row["max_blink"]), row["n_blinks"])
+                self.assertEqual(len(row["end_blink"]), row["n_blinks"])
 
         # Numeric summaries allow selection
         _ = self.epochs[self.epochs.metadata["n_blinks"] >= 0]

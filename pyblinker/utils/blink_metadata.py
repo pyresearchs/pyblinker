@@ -39,6 +39,12 @@ def onset_entry_to_blinks(onset: Any) -> List[Dict[str, float]]:
 def attach_blink_metadata(epochs: mne.Epochs, blink_df: pd.DataFrame) -> pd.DataFrame:
     """Aggregate per-blink properties and merge them into epoch metadata.
 
+    All columns from ``blink_df`` (except ``seg_id`` and ``blink_id``) are
+    converted into list-valued epoch-level metadata. Lists contain one entry per
+    detected blink within the epoch. Additional convenience columns such as
+    ``blink_onset`` and ``blink_duration`` in seconds as well as numeric summary
+    statistics are also added.
+
     Parameters
     ----------
     epochs : mne.Epochs
@@ -81,12 +87,12 @@ def attach_blink_metadata(epochs: mne.Epochs, blink_df: pd.DataFrame) -> pd.Data
         values = series.dropna().tolist()
         return values if values else float("nan")
 
-    epoch_meta["blink_onset"] = group["blink_onset"].apply(_list_or_nan).reindex(
-        epoch_meta.index
-    )
-    epoch_meta["blink_duration"] = group["blink_duration"].apply(_list_or_nan).reindex(
-        epoch_meta.index
-    )
+    cols_to_attach = [
+        c for c in df.columns if c not in {"seg_id", "blink_id", "epoch_index"}
+    ]
+    for col in cols_to_attach:
+        epoch_meta[col] = group[col].apply(_list_or_nan).reindex(epoch_meta.index)
+
     epoch_meta["blink_first_onset_s"] = group["blink_onset"].min().reindex(
         epoch_meta.index
     )
@@ -94,13 +100,23 @@ def attach_blink_metadata(epochs: mne.Epochs, blink_df: pd.DataFrame) -> pd.Data
         epoch_meta.index
     )
 
-    exclude = {
+    exclude_summary = {
         "seg_id",
         "blink_id",
         "start_blink",
+        "max_blink",
         "end_blink",
         "outer_start",
         "outer_end",
+        "left_zero",
+        "right_zero",
+        "max_blink_alternative",
+        "max_pos_vel_frame",
+        "max_neg_vel_frame",
+        "left_base",
+        "right_base",
+        "peak_max_blink",
+        "peak_time_blink",
         "epoch_index",
         "blink_onset",
         "blink_duration",
@@ -108,7 +124,7 @@ def attach_blink_metadata(epochs: mne.Epochs, blink_df: pd.DataFrame) -> pd.Data
     numeric_cols = [
         c
         for c in df.select_dtypes(include=[np.number]).columns
-        if c not in exclude
+        if c not in exclude_summary
     ]
     if numeric_cols:
         summary = group[numeric_cols].agg(["max", "mean"])
