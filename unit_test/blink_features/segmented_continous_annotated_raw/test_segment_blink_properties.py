@@ -42,6 +42,52 @@ class TestSegmentBlinkProperties(unittest.TestCase):
             / "blink_properties_with_fit.pkl"
         )
 
+    def _report_mismatches(
+        self,
+        result: pd.DataFrame,
+        reference: pd.DataFrame,
+        key_cols: list[str],
+        compare_cols: list[str],
+    ) -> None:
+        """Log detailed mismatches between result and reference frames.
+
+        Parameters
+        ----------
+        result, reference:
+            DataFrames sorted by ``key_cols``.
+        key_cols:
+            Columns identifying each blink uniquely.
+        compare_cols:
+            All columns to be compared.
+        """
+
+        merged = pd.merge(
+            reference,
+            result,
+            on=key_cols,
+            how="outer",
+            suffixes=("_ref", "_res"),
+            indicator=True,
+        )
+
+        missing = merged[merged["_merge"] == "left_only"][key_cols]
+        extra = merged[merged["_merge"] == "right_only"][key_cols]
+        if not missing.empty:
+            logger.error("Missing rows in result:\n%s", missing)
+        if not extra.empty:
+            logger.error("Unexpected rows in result:\n%s", extra)
+
+        both = merged[merged["_merge"] == "both"]
+        ref_vals = both[[f"{c}_ref" for c in compare_cols]].rename(
+            columns=lambda c: c[:-4]
+        )
+        res_vals = both[[f"{c}_res" for c in compare_cols]].rename(
+            columns=lambda c: c[:-4]
+        )
+        diff = res_vals.compare(ref_vals, keep_equal=False)
+        if not diff.empty:
+            logger.error("Value mismatches:\n%s", diff)
+
     def test_properties_match_reference(self) -> None:
         """Computed properties match the stored reference table."""
         blink_epochs = compute_segment_blink_properties(
@@ -107,13 +153,23 @@ class TestSegmentBlinkProperties(unittest.TestCase):
         if strict:
             df_sorted = df_proc.sort_values(key_cols).reset_index(drop=True)
             ref_sorted = ref_proc.sort_values(key_cols).reset_index(drop=True)
-            pd.testing.assert_frame_equal(
-                df_sorted,
-                ref_sorted,
-                check_dtype=False,
-                rtol=1e-5,
-                atol=atol,
-            )
+            try:
+                pd.testing.assert_frame_equal(
+                    df_sorted,
+                    ref_sorted,
+                    check_dtype=False,
+                    rtol=1e-5,
+                    atol=atol,
+                )
+            except AssertionError:
+                if compare_ids:
+                    self._report_mismatches(
+                        df_sorted,
+                        ref_sorted,
+                        key_cols,
+                        other_id_cols + value_cols,
+                    )
+                raise
         else:
             merged = pd.merge(
                 ref_proc,
