@@ -1,10 +1,10 @@
-"""Validate blink extraction on a full ``mne.Raw`` recording.
+"""Validate blink extraction on a full ``mne.Raw`` recording with fitting.
 
-This module contains integration tests that reproduce the legacy workflow in
-which ``ear_eog_raw.fif`` is processed without slicing the recording into 30 second
-epochs.  Blink events are detected for the entire file and per-blink properties
-are computed directly on the continuous data.  The expected blink count is
-loaded from a CSV produced by the epoch-based pipeline for comparison.
+This module mirrors :mod:`test_long_continous_raw` but enables the
+``run_fit`` flag when computing blink properties.  The fitting stage may drop
+blinks with insufficient data, so the resulting table can contain fewer rows
+than the event table.  The test ensures that tent-based features (e.g.
+``duration_tent``) are present for the remaining blinks.
 """
 import logging
 import unittest
@@ -24,14 +24,15 @@ logger = logging.getLogger(__name__)
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
-class TestLongContinuousRaw(unittest.TestCase):
-    """Integration tests for a long continuous raw signal.
+class TestLongContinuousRawWithFit(unittest.TestCase):
+    """Integration tests for a long continuous raw signal with fitting.
 
     The legacy MATLAB version of the project processes the entire
     ``ear_eog_raw.fif`` file as a single segment.  This test suite reproduces that
-    workflow to ensure compatibility with the Python implementation.  Blink
-    events are detected over the continuous recording and the total blink count
-    as well as extracted blink properties are validated against expectations.
+    workflow to ensure compatibility with the Python implementation and to
+    validate the optional blink-fitting step.  Blink events are detected over
+    the continuous recording and the total blink count, as well as extracted
+    blink properties, are validated against expectations.
     """
 
     def setUp(self) -> None:
@@ -83,28 +84,29 @@ class TestLongContinuousRaw(unittest.TestCase):
                 self.assertTrue(pd.api.types.is_integer_dtype(self.blink_df[col]))
 
     def test_blink_properties_extraction(self) -> None:
-        """Compute blink properties without segmenting the raw file.
+        """Compute blink properties with fitting enabled for the raw file.
 
         Blink properties are extracted for the entire recording using
-        :func:`compute_segment_blink_properties`.  The resulting DataFrame
-        should contain one ``seg_id`` (``0``) and the same number of rows as the
-        blink event table.  The purpose of this test is to confirm that the
-        feature extraction works on a continuous signal just as it does on a
-        collection of epochs.
+        :func:`compute_segment_blink_properties` with ``run_fit=True``.  Because
+        the fitting stage may drop some blinks, the resulting DataFrame can be
+        smaller than the blink event table.  The test verifies that fitting
+        produced tent-based columns.
         """
         props = compute_segment_blink_properties(
             self.segments,
             self.params,
             blink_df=self.blink_df,
             channel="EEG-E8",
-            run_fit=False,
+            run_fit=True,
             progress_bar=False,
         )
         logger.debug("Blink properties head:\n%s", props.head())
         self.assertIsInstance(props, pd.DataFrame)
         self.assertFalse(props.empty)
         self.assertEqual(set(props["seg_id"].unique()), {0})
-        self.assertEqual(len(props), self.total_expected)
+        self.assertLessEqual(len(props), self.total_expected)
+        self.assertIn("duration_tent", props.columns)
+        self.assertTrue(props["duration_tent"].notna().any())
 
 
 if __name__ == "__main__":  # pragma: no cover - manual execution

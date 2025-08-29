@@ -82,8 +82,8 @@ class TestSegmentRawFeaturePipeline(unittest.TestCase):
             with self.assertWarns(RuntimeWarning):
                 blink_props = compute_segment_blink_properties(
                     self.segments,
-                    self.blink_df,
                     self.params,
+                    blink_df=self.blink_df,
                     channel="EEG-E8",
                     run_fit=run_fit,
                     progress_bar=False,
@@ -91,8 +91,8 @@ class TestSegmentRawFeaturePipeline(unittest.TestCase):
         else:
             blink_props = compute_segment_blink_properties(
                 self.segments,
-                self.blink_df,
                 self.params,
+                blink_df=self.blink_df,
                 channel="EEG-E8",
                 run_fit=run_fit,
                 progress_bar=False,
