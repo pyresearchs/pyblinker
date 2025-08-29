@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 
 from .features import _compute_wavelet_energies
-from ..energy.helpers import _extract_blink_windows, _segment_to_samples
+from ..energy.helpers import extract_blink_windows, segment_to_samples
 
 logger = logging.getLogger(__name__)
 
@@ -89,10 +89,10 @@ class FrequencyDomainBlinkFeatureExtractor:
                 if isinstance(self.epochs.metadata, pd.DataFrame)
                 else pd.Series(dtype=float)
             )
-            windows = _extract_blink_windows(metadata_row, ch_names[0], ei)
+            windows = extract_blink_windows(metadata_row, ch_names[0], ei)
             level_vals: Dict[int, List[float]] = {i: [] for i in range(1, 5)}
             for onset_s, duration_s in windows:
-                sl = _segment_to_samples(onset_s, duration_s, sfreq, n_times)
+                sl = segment_to_samples(onset_s, duration_s, sfreq, n_times)
                 segment = data[ei, sl]
                 energies = _compute_wavelet_energies(segment, sfreq)
                 for lvl, val in enumerate(energies, start=1):

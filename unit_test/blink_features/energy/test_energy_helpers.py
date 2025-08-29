@@ -7,8 +7,8 @@ import numpy as np
 import pandas as pd
 
 from pyblinker.blink_features.energy.helpers import (
-    _extract_blink_windows,
-    _segment_to_samples,
+    extract_blink_windows,
+    segment_to_samples,
     _safe_stats,
     _tkeo,
 )
@@ -25,17 +25,17 @@ class TestEnergyHelpers(unittest.TestCase):
                 "blink_duration": [0.2, 0.1],
             }
         )
-        windows = _extract_blink_windows(row, "EEG-E8", 0)
+        windows = extract_blink_windows(row, "EEG-E8", 0)
         self.assertEqual(windows, [(0.1, 0.2), (0.5, 0.1)])
         row2 = pd.Series({"blink_onset": 0.3, "blink_duration": 0.2})
-        self.assertEqual(_extract_blink_windows(row2, "EEG-E8", 0), [(0.3, 0.2)])
+        self.assertEqual(extract_blink_windows(row2, "EEG-E8", 0), [(0.3, 0.2)])
 
     def test_segment_to_samples_clamps(self) -> None:
         """Sample slices are clamped to the epoch boundaries."""
-        sl = _segment_to_samples(-0.1, 0.5, 100.0, 1000)
+        sl = segment_to_samples(-0.1, 0.5, 100.0, 1000)
         self.assertEqual(sl.start, 0)
         self.assertEqual(sl.stop, 40)  # only 0.4 s fall within the epoch
-        sl2 = _segment_to_samples(9.9, 5.0, 100.0, 1000)
+        sl2 = segment_to_samples(9.9, 5.0, 100.0, 1000)
         self.assertEqual(sl2.stop, 1000)
 
     def test_safe_stats_empty(self) -> None:

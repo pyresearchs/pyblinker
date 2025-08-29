@@ -6,6 +6,11 @@ from typing import Any, Dict, List
 import mne
 import pandas as pd
 
+from ..blink_features.energy.helpers import (
+    extract_blink_windows,
+    segment_to_samples,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -110,3 +115,24 @@ def attach_blink_metadata(epochs: mne.Epochs, blink_df: pd.DataFrame) -> pd.Data
 
     logger.info("Exiting attach_blink_metadata")
     return df.drop(columns=["epoch_index"])
+
+
+def _sample_windows_from_metadata(
+    metadata: pd.Series | Dict[str, Any],
+    channel: str,
+    sfreq: float,
+    n_times: int,
+    epoch_index: int,
+) -> List[slice]:
+    """Convert blink onset/duration metadata to sample windows."""
+
+    logger.info("Entering _sample_windows_from_metadata")
+    windows = extract_blink_windows(metadata, channel, epoch_index)
+    sample_windows: List[slice] = []
+    for onset_s, duration_s in windows:
+        sl = segment_to_samples(onset_s, duration_s, sfreq, n_times)
+        if sl.stop - sl.start > 1:
+            sample_windows.append(sl)
+    logger.debug("Found %d sample windows", len(sample_windows))
+    logger.info("Exiting _sample_windows_from_metadata")
+    return sample_windows

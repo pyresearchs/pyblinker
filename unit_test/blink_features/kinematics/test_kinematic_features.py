@@ -10,8 +10,8 @@ import mne
 from pyblinker.blink_features.kinematics import compute_kinematic_features
 from pyblinker.blink_features.kinematics.per_blink import compute_segment_kinematics
 from pyblinker.blink_features.energy.helpers import (
-    _extract_blink_windows,
-    _segment_to_samples,
+    extract_blink_windows,
+    segment_to_samples,
     _safe_stats,
 )
 from refine_annotation.util import slice_raw_into_mne_epochs_refine_annot
@@ -67,7 +67,7 @@ class TestKinematicFeatures(unittest.TestCase):
         sfreq = float(self.epochs.info["sfreq"])
         data = self.epochs.get_data(picks=[ch])
         meta = self.epochs.metadata.iloc[0]
-        windows = _extract_blink_windows(meta, ch, 0)
+        windows = extract_blink_windows(meta, ch, 0)
         per_metric = {m: [] for m in (
             "peak_amp",
             "t2p",
@@ -82,7 +82,7 @@ class TestKinematicFeatures(unittest.TestCase):
         )}
         n_times = data.shape[-1]
         for onset, dur in windows:
-            sl = _segment_to_samples(onset, dur, sfreq, n_times)
+            sl = segment_to_samples(onset, dur, sfreq, n_times)
             seg = data[0, 0, sl]
             metrics = compute_segment_kinematics(seg, sfreq)
             for m in per_metric:

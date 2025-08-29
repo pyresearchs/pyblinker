@@ -1,6 +1,7 @@
 """
 test_blink_properties.py
-This module tests the `BlinkProperties` class from `pyblinker.extract_blink_properties`.
+This module tests the `BlinkProperties` class from
+`pyblinker.blink_features.waveform_features.extract_blink_properties`.
 
 Overview:
   The `BlinkProperties` class extracts rich, physiologically meaningful blink
@@ -67,7 +68,7 @@ Dependencies:
   - numpy
   - pandas
   - pytest
-  - pyblinker.extract_blink_properties.BlinkProperties
+  - pyblinker.blink_features.waveform_features.extract_blink_properties.BlinkProperties
 """
 
 from pathlib import Path
@@ -75,7 +76,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from pyblinker.blinker.extract_blink_properties import BlinkProperties
+from pyblinker.blink_features.waveform_features.extract_blink_properties import (
+    BlinkProperties,
+)
 
 
 @pytest.fixture(scope="module")

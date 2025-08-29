@@ -12,7 +12,7 @@ import mne
 import numpy as np
 import pandas as pd
 
-from .helpers import _extract_blink_windows, _segment_to_samples, _safe_stats, _tkeo
+from .helpers import extract_blink_windows, segment_to_samples, _safe_stats, _tkeo
 
 logger = logging.getLogger(__name__)
 
@@ -101,13 +101,13 @@ def compute_energy_features(
         )
         record: Dict[str, float] = {}
         for ci, ch in enumerate(ch_names):
-            windows = _extract_blink_windows(metadata_row, ch, ei)
+            windows = extract_blink_windows(metadata_row, ch, ei)
             energies: List[float] = []
             tkeo_vals: List[float] = []
             lengths: List[float] = []
             vel_ints: List[float] = []
             for onset_s, duration_s in windows:
-                sl = _segment_to_samples(onset_s, duration_s, sfreq, n_times)
+                sl = segment_to_samples(onset_s, duration_s, sfreq, n_times)
                 segment = data[ei, ci, sl]
                 if segment.size == 0:
                     continue
