@@ -1,6 +1,6 @@
 """Epoching utilities for time-series data."""
 
-from typing import List, Tuple, Optional, Dict,Any
+from typing import List, Tuple, Optional, Dict, Any
 
 
 import mne
@@ -118,14 +118,20 @@ def _init_metadata(
         md["blink_onset_eeg"] = [np.nan] * n_epochs
         md["blink_duration_eeg"] = [np.nan] * n_epochs
         md["blink_onset_extremum_eeg"] = [np.nan] * n_epochs
+        md["blink_outer_start_eeg"] = [np.nan] * n_epochs
+        md["blink_outer_end_eeg"] = [np.nan] * n_epochs
     if have_eog:
         md["blink_onset_eog"] = [np.nan] * n_epochs
         md["blink_duration_eog"] = [np.nan] * n_epochs
         md["blink_onset_extremum_eog"] = [np.nan] * n_epochs
+        md["blink_outer_start_eog"] = [np.nan] * n_epochs
+        md["blink_outer_end_eog"] = [np.nan] * n_epochs
     if have_ear:
         md["blink_onset_ear"] = [np.nan] * n_epochs
         md["blink_duration_ear"] = [np.nan] * n_epochs
         md["blink_onset_extremum_ear"] = [np.nan] * n_epochs
+        md["blink_outer_start_ear"] = [np.nan] * n_epochs
+        md["blink_outer_end_ear"] = [np.nan] * n_epochs
     return md
 
 
@@ -262,6 +268,10 @@ def slice_raw_into_mne_epochs_refine_annot(
 
     """
 
+    from pyblinker.blink_features.blink_events.blink_dataframe import (
+        compute_outer_bounds,
+    )
+
     # --- epoching ---
     events = mne.make_fixed_length_events(raw, duration=epoch_len)
     sfreq = float(raw.info["sfreq"])
@@ -346,31 +356,63 @@ def slice_raw_into_mne_epochs_refine_annot(
 
         # --- EAR refinement (trough) ---
         if have_ear:
-            # average EAR channels (common for derived metrics)
             seg = data_ear[ei].mean(axis=0)  # (n_samples,)
+            peaks: List[int] = []
             for sr, er in zip(blink_starts, blink_ends):
                 rs, trough, re = refine_ear_extrema_and_threshold_stub(seg, sr, er, peak_rel_cvat=None)
+                peaks.append(int(trough))
                 md["blink_onset_ear"][ei] = _ensure_list_append(md["blink_onset_ear"][ei], rs / sfreq)
                 md["blink_duration_ear"][ei] = _ensure_list_append(md["blink_duration_ear"][ei], max(0.0, (re - rs) / sfreq))
                 md["blink_onset_extremum_ear"][ei] = _ensure_list_append(md["blink_onset_extremum_ear"][ei], trough / sfreq)
+            if peaks:
+                bounds = compute_outer_bounds(peaks, n_samp_epoch)
+                for outer_start, outer_end in bounds:
+                    md["blink_outer_start_ear"][ei] = _ensure_list_append(
+                        md["blink_outer_start_ear"][ei], outer_start
+                    )
+                    md["blink_outer_end_ear"][ei] = _ensure_list_append(
+                        md["blink_outer_end_ear"][ei], outer_end
+                    )
 
         # --- EEG refinement (peak) ---
         if have_eeg:
             seg = data_eeg[ei].mean(axis=0)  # simple robust default; swap to frontal pick if desired
+            peaks: List[int] = []
             for sr, er in zip(blink_starts, blink_ends):
                 rs, peak, re = refine_local_maximum_stub(seg, sr, er, peak_rel_cvat=None)
+                peaks.append(int(peak))
                 md["blink_onset_eeg"][ei] = _ensure_list_append(md["blink_onset_eeg"][ei], rs / sfreq)
                 md["blink_duration_eeg"][ei] = _ensure_list_append(md["blink_duration_eeg"][ei], max(0.0, (re - rs) / sfreq))
                 md["blink_onset_extremum_eeg"][ei] = _ensure_list_append(md["blink_onset_extremum_eeg"][ei], peak / sfreq)
+            if peaks:
+                bounds = compute_outer_bounds(peaks, n_samp_epoch)
+                for outer_start, outer_end in bounds:
+                    md["blink_outer_start_eeg"][ei] = _ensure_list_append(
+                        md["blink_outer_start_eeg"][ei], outer_start
+                    )
+                    md["blink_outer_end_eeg"][ei] = _ensure_list_append(
+                        md["blink_outer_end_eeg"][ei], outer_end
+                    )
 
         # --- EOG refinement (peak) ---
         if have_eog:
             seg = data_eog[ei].mean(axis=0)
+            peaks: List[int] = []
             for sr, er in zip(blink_starts, blink_ends):
                 rs, peak, re = refine_local_maximum_stub(seg, sr, er, peak_rel_cvat=None)
+                peaks.append(int(peak))
                 md["blink_onset_eog"][ei] = _ensure_list_append(md["blink_onset_eog"][ei], rs / sfreq)
                 md["blink_duration_eog"][ei] = _ensure_list_append(md["blink_duration_eog"][ei], max(0.0, (re - rs) / sfreq))
                 md["blink_onset_extremum_eog"][ei] = _ensure_list_append(md["blink_onset_extremum_eog"][ei], peak / sfreq)
+            if peaks:
+                bounds = compute_outer_bounds(peaks, n_samp_epoch)
+                for outer_start, outer_end in bounds:
+                    md["blink_outer_start_eog"][ei] = _ensure_list_append(
+                        md["blink_outer_start_eog"][ei], outer_start
+                    )
+                    md["blink_outer_end_eog"][ei] = _ensure_list_append(
+                        md["blink_outer_end_eog"][ei], outer_end
+                    )
 
     # Convert dict to DataFrame
     metadata = pd.DataFrame(md)

@@ -7,6 +7,7 @@ NumPy arrays representing eyelid aperture signals.
 from __future__ import annotations
 
 from typing import Dict, List, Sequence, Tuple
+import ast
 import logging
 
 import numpy as np
@@ -28,7 +29,8 @@ def _extract_blink_windows(
     Parameters
     ----------
     metadata_row : pandas.Series
-        A single row from ``epochs.metadata``.
+        A single row from ``epochs.metadata``. Entries may be scalars, lists or
+        string representations thereof.
     channel : str
         Channel name used to infer the modality.
     epoch_index : int
@@ -88,10 +90,19 @@ def _extract_blink_windows(
     if _is_missing(onsets) or _is_missing(durations):
         return []
 
-    if not isinstance(onsets, (list, tuple, np.ndarray, pd.Series)):
-        onsets = [onsets]
-    if not isinstance(durations, (list, tuple, np.ndarray, pd.Series)):
-        durations = [durations]
+    def _ensure_list(val: object) -> List[object]:
+        """Coerce scalar or string representations into a list."""
+        if isinstance(val, str):
+            try:
+                val = ast.literal_eval(val)
+            except (SyntaxError, ValueError):
+                pass
+        if isinstance(val, (list, tuple, np.ndarray, pd.Series)):
+            return list(val)
+        return [val]
+
+    onsets = _ensure_list(onsets)
+    durations = _ensure_list(durations)
 
     windows: List[Tuple[float, float]] = []
     for onset, duration in zip(onsets, durations):
