@@ -6,7 +6,7 @@ In this example, we are using the ear_eog_raw.fif, which being manually annotate
 
 
 This tutorial mirrors the logic in
-``unit_test/utils/test_slice_raw_into_mne_epochs.py``. It demonstrates how to
+``test/utils/test_slice_raw_into_mne_epochs.py``. It demonstrates how to
 slice a continuous recording into fixed-length epochs, integrate blink
 annotations into each epoch's metadata, and validate the resulting per-epoch
 blink counts against a ground truth file.
@@ -44,10 +44,10 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 def main() -> None:
     """Run the epoch segmentation and blink verification demo."""
 
-    raw_path = PROJECT_ROOT / "unit_test" / "test_files" / "ear_eog_raw.fif"
+    raw_path = PROJECT_ROOT / "test" / "test_files" / "ear_eog_raw.fif"
     gt_path = (
         PROJECT_ROOT
-        / "unit_test"
+        / "test"
         / "test_files"
         / "ear_eog_blink_count_epoch.csv"
     )
