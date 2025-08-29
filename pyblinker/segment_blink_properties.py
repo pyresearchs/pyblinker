@@ -1,9 +1,10 @@
 """Segment-level blink property extraction utilities.
 
-This module exposes :func:`compute_segment_blink_properties`, which operates on
-refined :class:`mne.Epochs` produced by
-``slice_raw_into_mne_epochs_refine_annot``. The epoch metadata provides the
-blink windows that drive the computation.
+This module exposes :func:`compute_segment_blink_properties`, a convenience
+function capable of operating on either refined :class:`mne.Epochs` objects or a
+sequence of :class:`mne.io.BaseRaw` segments accompanied by a blink event
+``DataFrame``.  The epoch metadata or blink event table provides the windows
+that drive the computation.
 
 Refactor goals achieved in this version:
 - Decomposed into small, focused functions (single responsibility).
@@ -22,12 +23,14 @@ import pandas as pd
 import mne
 from tqdm import tqdm
 
-from .utils.blink_metadata import attach_blink_metadata
+from .utils.blink_metadata import (
+    attach_blink_metadata,
+    _sample_windows_from_metadata,
+)
 
 from .blinker.fit_blink import FitBlinks
-from .blinker.extract_blink_properties import BlinkProperties
+from .blink_features.waveform_features.extract_blink_properties import BlinkProperties
 from .blink_features.blink_events.blink_dataframe import left_right_zero_crossing
-from .blink_features.waveform_features.aggregate import _sample_windows_from_metadata
 
 logger = logging.getLogger(__name__)
 
@@ -35,47 +38,71 @@ logger = logging.getLogger(__name__)
 
 
 def compute_segment_blink_properties(
-    epochs: mne.Epochs,
+    data: mne.Epochs | Sequence[mne.io.BaseRaw],
     params: Dict[str, Any],
     *,
+    blink_df: pd.DataFrame | None = None,
     channel: str | Sequence[str] = "EEG-E8",
+    run_fit: bool = False,
     progress_bar: bool = True,
     long_format: bool = False,
 ) -> mne.Epochs | pd.DataFrame:
-    """Calculate blink properties from refined epochs.
+    """Calculate blink properties for epochs or raw segments.
 
     Parameters
     ----------
-    epochs
-        ``mne.Epochs`` instance produced by
-        :func:`slice_raw_into_mne_epochs_refine_annot`.
+    data
+        Refined :class:`mne.Epochs` or a sequence of raw segments.
     params
         Parameter dictionary forwarded to :class:`BlinkProperties`.
+    blink_df
+        Blink event table required when ``data`` is a sequence of raw segments.
+        Ignored for ``mne.Epochs`` input.
     channel
         Channel name(s) used for property extraction. Defaults to ``"EEG-E8"``.
+    run_fit
+        If ``True`` execute the fitting stage via :class:`FitBlinks`.
     progress_bar
         Whether to display a progress bar during processing.
     long_format
-        If ``True``, return a long-format :class:`pandas.DataFrame` of per-blink
-        properties. Otherwise, merge blink lists into ``epochs.metadata`` and
-        return ``epochs``.
+        When processing epochs, return a long-format :class:`pandas.DataFrame`
+        of per-blink properties instead of modifying ``epochs.metadata``.
 
     Returns
     -------
     mne.Epochs or pandas.DataFrame
-        Updated ``epochs`` with blink metadata or a long-format blink table
-        depending on ``long_format``.
+        Updated ``epochs`` with blink metadata or a blink property table.
+
+    Raises
+    ------
+    ValueError
+        If ``data`` is a sequence of raw segments and ``blink_df`` is ``None``.
     """
-    logger.info("Running refined-epoch blink property computation")
-    blink_epochs = compute_from_refined_epochs(
-        epochs=epochs,
+    if isinstance(data, mne.Epochs):
+        logger.info("Running refined-epoch blink property computation")
+        blink_epochs = compute_from_refined_epochs(
+            epochs=data,
+            params=params,
+            channel=channel,
+            progress_bar=progress_bar,
+            run_fit=run_fit,
+        )
+        blink_table = blink_epochs.metadata.copy()
+        filtered_df = attach_blink_metadata(data, blink_table)
+        return filtered_df if long_format else data
+
+    if blink_df is None:
+        raise ValueError("blink_df must be provided when processing raw segments")
+
+    logger.info("Running raw-segment blink property computation")
+    return compute_from_raw_segments(
+        segments=data,
+        blink_df=blink_df,
         params=params,
         channel=channel,
+        run_fit=run_fit,
         progress_bar=progress_bar,
     )
-    blink_df = blink_epochs.metadata.copy()
-    filtered_df = attach_blink_metadata(epochs, blink_df)
-    return filtered_df if long_format else epochs
 
 
 # ------------------------------ Refined epochs path ---------------------------
@@ -86,6 +113,7 @@ def compute_from_refined_epochs(
     params: Dict[str, Any],
     channel: str | Sequence[str],
     progress_bar: bool,
+    run_fit: bool,
 ) -> mne.Epochs:
     """Compute blink properties when given refined :class:`mne.Epochs`."""
     ch_names = resolve_channels(epochs.ch_names, channel)
@@ -131,7 +159,7 @@ def compute_from_refined_epochs(
             continue
 
         rows = attach_zero_crossings(signal, rows)
-        props = fit_and_extract_properties(signal, rows, sfreq, params, run_fit=False)
+        props = fit_and_extract_properties(signal, rows, sfreq, params, run_fit=run_fit)
         if props is None or props.empty:
             continue
 
@@ -148,6 +176,73 @@ def compute_from_refined_epochs(
     info = mne.create_info(ch_names, sfreq)
     dummy = np.zeros((len(result), len(ch_names), 1), dtype=float)
     return mne.EpochsArray(dummy, info, metadata=result)
+
+
+# ------------------------------ Raw segments path -----------------------------
+
+
+def compute_from_raw_segments(
+    segments: Sequence[mne.io.BaseRaw],
+    blink_df: pd.DataFrame,
+    params: Dict[str, Any],
+    channel: str | Sequence[str],
+    run_fit: bool,
+    progress_bar: bool,
+) -> pd.DataFrame:
+    """Compute blink properties for continuous raw segments.
+
+    Parameters
+    ----------
+    segments
+        Iterable of raw objects representing contiguous recordings.
+    blink_df
+        DataFrame describing blink windows with ``seg_id`` column.
+    params
+        Parameter dictionary forwarded to :class:`BlinkProperties`.
+    channel
+        Channel name(s) used for property extraction.
+    run_fit
+        Whether to execute the fitting stage.
+    progress_bar
+        Display a progress bar during processing.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Blink properties for all segments and channels.
+    """
+    if not segments:
+        return pd.DataFrame()
+
+    ch_names = resolve_channels(segments[0].ch_names, channel)
+    for raw in segments:
+        validate_channels_exist(raw.ch_names, ch_names)
+
+    sfreq = float(segments[0].info["sfreq"])
+    records: List[pd.DataFrame] = []
+
+    iterator = tqdm(
+        enumerate(segments), desc="Segments", total=len(segments), disable=not progress_bar
+    )
+    for seg_id, raw in iterator:
+        seg_rows = blink_df[blink_df["seg_id"] == seg_id]
+        if seg_rows.empty:
+            continue
+        for ch in ch_names:
+            signal = raw.get_data(picks=ch)[0]
+            rows = seg_rows.copy()
+            rows["channel"] = ch
+            rows["modality"] = infer_modality_from_channel(ch)
+            props = fit_and_extract_properties(signal, rows, sfreq, params, run_fit)
+            if props is None or props.empty:
+                continue
+            if "seg_id" not in props.columns:
+                props["seg_id"] = seg_id
+            if "blink_id" not in props.columns:
+                props["blink_id"] = range(len(props))
+            records.append(props)
+
+    return pd.concat(records, ignore_index=True) if records else pd.DataFrame()
 
 
 def resolve_channels(available: Sequence[str], channel: str | Sequence[str]) -> List[str]:

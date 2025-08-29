@@ -8,7 +8,7 @@ import mne
 import pandas as pd
 
 from .per_blink import WAVEFORM_METRICS, compute_blink_waveform_metrics
-from ..energy.helpers import _extract_blink_windows, _segment_to_samples, _safe_stats
+from ..energy.helpers import extract_blink_windows, segment_to_samples, _safe_stats
 
 logger = logging.getLogger(__name__)
 
@@ -90,10 +90,10 @@ def compute_epoch_morphology_features(
         meta_row = epochs.metadata.iloc[ei]
         record: Dict[str, float] = {}
         for ch_idx, ch_name in enumerate(ch_names):
-            windows = _extract_blink_windows(meta_row, ch_name, ei)
+            windows = extract_blink_windows(meta_row, ch_name, ei)
             per_metric: Dict[str, List[float]] = {m: [] for m in _METRICS}
             for onset_s, duration_s in windows:
-                sl = _segment_to_samples(onset_s, duration_s, sfreq, n_times)
+                sl = segment_to_samples(onset_s, duration_s, sfreq, n_times)
                 segment = data[ei, ch_idx, sl]
                 metrics = compute_blink_waveform_metrics(segment, sfreq)
                 if metrics is None:
