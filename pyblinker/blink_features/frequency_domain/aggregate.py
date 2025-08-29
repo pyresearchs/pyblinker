@@ -89,7 +89,7 @@ class FrequencyDomainBlinkFeatureExtractor:
                 if isinstance(self.epochs.metadata, pd.DataFrame)
                 else pd.Series(dtype=float)
             )
-            windows = _extract_blink_windows(metadata_row)
+            windows = _extract_blink_windows(metadata_row, ch_names[0], ei)
             level_vals: Dict[int, List[float]] = {i: [] for i in range(1, 5)}
             for onset_s, duration_s in windows:
                 sl = _segment_to_samples(onset_s, duration_s, sfreq, n_times)

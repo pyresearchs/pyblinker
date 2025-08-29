@@ -91,9 +91,9 @@ def compute_kinematic_features(
             if isinstance(epochs.metadata, pd.DataFrame)
             else pd.Series(dtype=float)
         )
-        windows = _extract_blink_windows(metadata_row)
         record: Dict[str, float] = {}
         for ci, ch in enumerate(ch_names):
+            windows = _extract_blink_windows(metadata_row, ch, ei)
             per_metric: Dict[str, List[float]] = {m: [] for m in _METRICS}
             for onset_s, duration_s in windows:
                 sl = _segment_to_samples(onset_s, duration_s, sfreq, n_times)

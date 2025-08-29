@@ -6,7 +6,6 @@ from typing import Iterable, Sequence
 import logging
 
 import mne
-import numpy as np
 import pandas as pd
 
 from .blink_count import blink_count

@@ -19,6 +19,7 @@ def manual_epoch_energy_features(
     metadata_row: pd.Series,
     sfreq: float,
     ch: str,
+    epoch_index: int,
 ) -> Dict[str, float]:
     """Compute manual energy metrics for a single epoch.
 
@@ -32,6 +33,8 @@ def manual_epoch_energy_features(
         Sampling frequency of the signal.
     ch : str
         Channel name appended to column suffixes.
+    epoch_index : int
+        Index of the epoch within the original ``Epochs`` object.
 
     Returns
     -------
@@ -39,7 +42,7 @@ def manual_epoch_energy_features(
         Mapping of ``f"{metric}_{stat}_{ch}"`` to computed values.
     """
     n_times = epoch_data.size
-    windows = _extract_blink_windows(metadata_row)
+    windows = _extract_blink_windows(metadata_row, ch, epoch_index)
     energies: list[float] = []
     tkeo_vals: list[float] = []
     lengths: list[float] = []

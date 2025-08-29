@@ -7,6 +7,7 @@ NumPy arrays representing eyelid aperture signals.
 from __future__ import annotations
 
 from typing import Dict, List, Sequence, Tuple
+import ast
 import logging
 
 import numpy as np
@@ -14,45 +15,98 @@ import pandas as pd
 
 logger = logging.getLogger(__name__)
 
-
-def _extract_blink_windows(metadata_row: pd.Series) -> List[Tuple[float, float]]:
+def _extract_blink_windows(
+    metadata_row: pd.Series, channel: str, epoch_index: int
+) -> List[Tuple[float, float]]:
     """Extract blink onset and duration pairs from an epoch's metadata.
+
+    The modality (``eeg``, ``eog`` or ``ear``) is inferred from ``channel``
+    and used to select modality-specific metadata columns. If those columns
+    are missing or empty, the generic ``blink_onset``/``blink_duration``
+    entries are used instead. When neither modality-specific nor generic
+    keys are present, a :class:`ValueError` is raised.
 
     Parameters
     ----------
     metadata_row : pandas.Series
-        A single row from ``epochs.metadata`` expected to contain
-        ``blink_onset`` and ``blink_duration`` entries. Values may be
-        scalars or sequences. ``None``/``NaN`` entries are ignored.
+        A single row from ``epochs.metadata``. Entries may be scalars, lists or
+        string representations thereof.
+    channel : str
+        Channel name used to infer the modality.
+    epoch_index : int
+        Index of the epoch within ``epochs``. Included in error messages.
 
     Returns
     -------
     list of tuple of float
-        List of ``(onset_seconds, duration_seconds)`` pairs. An empty
-        list is returned when no blinks are present.
+        List of ``(onset_seconds, duration_seconds)`` pairs. An empty list
+        is returned when no blinks are present.
+
+    Raises
+    ------
+    ValueError
+        If neither modality-specific nor generic onset/duration metadata
+        exist for the provided epoch.
     """
-    onsets = metadata_row.get("blink_onset")
-    durations = metadata_row.get("blink_duration")
+
+    ch_lower = channel.lower()
+    if "ear" in ch_lower:
+        mod = "ear"
+    elif "eog" in ch_lower:
+        mod = "eog"
+    else:
+        mod = "eeg"
+
+    mod_onset_key = f"blink_onset_{mod}"
+    mod_duration_key = f"blink_duration_{mod}"
+
+    def _is_missing(val: object) -> bool:
+        return val is None or (isinstance(val, float) and np.isnan(val))
+
+    has_mod_keys = mod_onset_key in metadata_row and mod_duration_key in metadata_row
+    if has_mod_keys:
+        onsets = metadata_row.get(mod_onset_key)
+        durations = metadata_row.get(mod_duration_key)
+        if _is_missing(onsets) or _is_missing(durations):
+            # fall back to generic keys if available
+            onsets = metadata_row.get("blink_onset")
+            durations = metadata_row.get("blink_duration")
+    else:
+        onsets = metadata_row.get("blink_onset")
+        durations = metadata_row.get("blink_duration")
 
     if onsets is None or durations is None:
-        return []
-    if isinstance(onsets, float) and np.isnan(onsets):
-        return []
-    if isinstance(durations, float) and np.isnan(durations):
+        if not has_mod_keys and (
+            "blink_onset" not in metadata_row or "blink_duration" not in metadata_row
+        ):
+            raise ValueError(
+                "Missing blink onset/duration metadata ('{0}', '{1}') and "
+                "'blink_onset', 'blink_duration' for epoch {2}".format(
+                    mod_onset_key, mod_duration_key, epoch_index
+                )
+            )
         return []
 
-    if not isinstance(onsets, (list, tuple, np.ndarray, pd.Series)):
-        onsets = [onsets]
-    if not isinstance(durations, (list, tuple, np.ndarray, pd.Series)):
-        durations = [durations]
+    if _is_missing(onsets) or _is_missing(durations):
+        return []
+
+    def _ensure_list(val: object) -> List[object]:
+        """Coerce scalar or string representations into a list."""
+        if isinstance(val, str):
+            try:
+                val = ast.literal_eval(val)
+            except (SyntaxError, ValueError):
+                pass
+        if isinstance(val, (list, tuple, np.ndarray, pd.Series)):
+            return list(val)
+        return [val]
+
+    onsets = _ensure_list(onsets)
+    durations = _ensure_list(durations)
 
     windows: List[Tuple[float, float]] = []
     for onset, duration in zip(onsets, durations):
-        if onset is None or duration is None:
-            continue
-        if isinstance(onset, float) and np.isnan(onset):
-            continue
-        if isinstance(duration, float) and np.isnan(duration):
+        if _is_missing(onset) or _is_missing(duration):
             continue
         windows.append((float(onset), float(duration)))
     logger.debug("Extracted %d blink windows", len(windows))

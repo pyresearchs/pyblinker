@@ -12,7 +12,7 @@ import mne
 import pandas as pd
 
 from pyblinker.blink_features.energy.energy_features import compute_energy_features
-from pyblinker.utils import slice_raw_into_mne_epochs
+from refine_annotation.util import slice_raw_into_mne_epochs_refine_annot
 from unit_test.blink_features.utils.energy_manual import manual_epoch_energy_features
 from ..utils.helpers import assert_df_has_columns, assert_numeric_or_nan
 
@@ -30,7 +30,7 @@ class TestEnergyAggregation(unittest.TestCase):
             / "ear_eog_raw.fif"
         )
         raw = mne.io.read_raw_fif(raw_path, preload=True, verbose=False)
-        self.epochs = slice_raw_into_mne_epochs(
+        self.epochs = slice_raw_into_mne_epochs_refine_annot(
             raw, epoch_len=30.0, blink_label=None, progress_bar=False
         )
 
@@ -69,7 +69,7 @@ class TestEnergyAggregation(unittest.TestCase):
         data = self.epochs.get_data(picks=[ch])
         records = [
             manual_epoch_energy_features(
-                data[ei, 0], self.epochs.metadata.iloc[ei], sfreq, ch
+                data[ei, 0], self.epochs.metadata.iloc[ei], sfreq, ch, ei
             )
             for ei in range(len(self.epochs))
         ]
