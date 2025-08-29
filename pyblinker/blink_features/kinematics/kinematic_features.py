@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 
 from .per_blink import compute_segment_kinematics
-from ..energy.helpers import _extract_blink_windows, _segment_to_samples, _safe_stats
+from ..energy.helpers import extract_blink_windows, segment_to_samples, _safe_stats
 
 logger = logging.getLogger(__name__)
 
@@ -93,10 +93,10 @@ def compute_kinematic_features(
         )
         record: Dict[str, float] = {}
         for ci, ch in enumerate(ch_names):
-            windows = _extract_blink_windows(metadata_row, ch, ei)
+            windows = extract_blink_windows(metadata_row, ch, ei)
             per_metric: Dict[str, List[float]] = {m: [] for m in _METRICS}
             for onset_s, duration_s in windows:
-                sl = _segment_to_samples(onset_s, duration_s, sfreq, n_times)
+                sl = segment_to_samples(onset_s, duration_s, sfreq, n_times)
                 segment = data[ei, ci, sl]
                 if segment.size == 0:
                     continue

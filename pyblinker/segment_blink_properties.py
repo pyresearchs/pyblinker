@@ -23,12 +23,14 @@ import pandas as pd
 import mne
 from tqdm import tqdm
 
-from .utils.blink_metadata import attach_blink_metadata
+from .utils.blink_metadata import (
+    attach_blink_metadata,
+    _sample_windows_from_metadata,
+)
 
 from .blinker.fit_blink import FitBlinks
-from .blinker.extract_blink_properties import BlinkProperties
+from .blink_features.waveform_features.extract_blink_properties import BlinkProperties
 from .blink_features.blink_events.blink_dataframe import left_right_zero_crossing
-from .blink_features.waveform_features.aggregate import _sample_windows_from_metadata
 
 logger = logging.getLogger(__name__)
 

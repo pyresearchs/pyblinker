@@ -4,7 +4,9 @@ import numpy as np
 import logging
 from pathlib import Path
 from pyblinker.blinker import default_setting
-from pyblinker.blinker.extract_blink_properties import BlinkProperties
+from pyblinker.blink_features.waveform_features.extract_blink_properties import (
+    BlinkProperties,
+)
 from pyblinker.utils.blink_statistics import (
     get_good_blink_mask,
     get_blink_statistic,

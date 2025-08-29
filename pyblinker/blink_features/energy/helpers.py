@@ -15,7 +15,8 @@ import pandas as pd
 
 logger = logging.getLogger(__name__)
 
-def _extract_blink_windows(
+
+def extract_blink_windows(
     metadata_row: pd.Series, channel: str, epoch_index: int
 ) -> List[Tuple[float, float]]:
     """Extract blink onset and duration pairs from an epoch's metadata.
@@ -48,6 +49,8 @@ def _extract_blink_windows(
         If neither modality-specific nor generic onset/duration metadata
         exist for the provided epoch.
     """
+
+    logger.info("Entering extract_blink_windows")
 
     ch_lower = channel.lower()
     if "ear" in ch_lower:
@@ -110,10 +113,11 @@ def _extract_blink_windows(
             continue
         windows.append((float(onset), float(duration)))
     logger.debug("Extracted %d blink windows", len(windows))
+    logger.info("Exiting extract_blink_windows")
     return windows
 
 
-def _segment_to_samples(onset_s: float, duration_s: float, sfreq: float, n_times: int) -> slice:
+def segment_to_samples(onset_s: float, duration_s: float, sfreq: float, n_times: int) -> slice:
     """Convert blink onset and duration in seconds to a sample slice.
 
     Parameters
@@ -133,11 +137,13 @@ def _segment_to_samples(onset_s: float, duration_s: float, sfreq: float, n_times
         Slice object representing the samples belonging to the blink. The
         slice is clamped to the valid range ``[0, n_times)``.
     """
+    logger.info("Entering segment_to_samples")
     start = int(round(onset_s * sfreq))
     stop = start + int(round(duration_s * sfreq))
     start = max(start, 0)
     stop = min(stop, n_times)
     logger.debug("Blink window samples: start=%d stop=%d", start, stop)
+    logger.info("Exiting segment_to_samples")
     return slice(start, stop)
 
 

@@ -7,8 +7,8 @@ import numpy as np
 import pandas as pd
 
 from pyblinker.blink_features.energy.helpers import (
-    _extract_blink_windows,
-    _segment_to_samples,
+    extract_blink_windows,
+    segment_to_samples,
     _safe_stats,
     _tkeo,
 )
@@ -42,13 +42,13 @@ def manual_epoch_energy_features(
         Mapping of ``f"{metric}_{stat}_{ch}"`` to computed values.
     """
     n_times = epoch_data.size
-    windows = _extract_blink_windows(metadata_row, ch, epoch_index)
+    windows = extract_blink_windows(metadata_row, ch, epoch_index)
     energies: list[float] = []
     tkeo_vals: list[float] = []
     lengths: list[float] = []
     vel_ints: list[float] = []
     for onset_s, duration_s in windows:
-        sl = _segment_to_samples(onset_s, duration_s, sfreq, n_times)
+        sl = segment_to_samples(onset_s, duration_s, sfreq, n_times)
         segment = epoch_data[sl]
         if segment.size == 0:
             continue
