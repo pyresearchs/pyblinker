@@ -13,6 +13,7 @@ from .refinement import (
     refine_blinks_from_epochs,
     plot_refined_blinks,
 )
+from .refine_util import slice_raw_into_mne_epochs_refine_annot
 from .raw_preprocessing import prepare_refined_segments
 from .misc import create_annotation
 from .blink_metadata import onset_entry_to_blinks
@@ -29,6 +30,7 @@ __all__ = [
     "refine_local_maximum_stub",
     "refine_blinks_from_epochs",
     "plot_refined_blinks",
+    "slice_raw_into_mne_epochs_refine_annot",
     "prepare_refined_segments",
     "create_annotation",
     "onset_entry_to_blinks",

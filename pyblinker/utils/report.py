@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import mne
 import numpy as np
 from tqdm import tqdm
-from refine_annotation.util import slice_raw_into_mne_epochs_refine_annot
+from pyblinker.utils.refine_util import slice_raw_into_mne_epochs_refine_annot
 
 logger = logging.getLogger(__name__)
 
@@ -239,7 +239,7 @@ def main() -> None:
     """Build a blink validation report for the demo raw file."""
     raw_path = (
         Path(__file__).resolve().parents[2]
-        / "unit_test"
+        / "test"
         / "test_files"
         / "ear_eog_raw.fif"
     )

@@ -7,7 +7,7 @@ from pathlib import Path
 import mne
 import pandas as pd
 import numpy as np
-from refine_annotation.util import slice_raw_into_mne_epochs_refine_annot
+from pyblinker.utils.refine_util import slice_raw_into_mne_epochs_refine_annot
 from pyblinker.utils.report import add_blink_plots_to_report
 
 logger = logging.getLogger(__name__)
@@ -17,7 +17,7 @@ def main() -> None:
     """Build epochs, validate blink counts, and create an HTML report."""
     raw_path = (
         Path(__file__).resolve().parents[1]
-        / "unit_test"
+        / "test"
         / "test_files"
         / "ear_eog_raw.fif"
     )
@@ -31,7 +31,7 @@ def main() -> None:
     # Cross-check blink counts with the provided CSV file.
     csv_path = (
         Path(__file__).resolve().parents[1]
-        / "unit_test"
+        / "test"
         / "test_files"
         / "ear_eog_blink_count_epoch.csv"
     )
