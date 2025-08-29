@@ -48,8 +48,8 @@ def main():
     # Run blink property extraction with fitting enabled
     df = compute_segment_blink_properties(
         segments,
-        blink_df,
         params,
+        blink_df=blink_df,
         channel="EEG-E8",
         run_fit=True,
         progress_bar=False,

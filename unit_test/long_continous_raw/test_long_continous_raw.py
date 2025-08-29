@@ -94,8 +94,8 @@ class TestLongContinuousRaw(unittest.TestCase):
         """
         props = compute_segment_blink_properties(
             self.segments,
-            self.blink_df,
             self.params,
+            blink_df=self.blink_df,
             channel="EEG-E8",
             run_fit=False,
             progress_bar=False,
