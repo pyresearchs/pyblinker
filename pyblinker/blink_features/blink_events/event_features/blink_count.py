@@ -107,16 +107,22 @@ def blink_count(
 
     picks_list = normalize_picks(picks) if picks is not None else []
     if picks_list:
-        modality = _infer_modality(picks_list[0])
-        onset_col = f"blink_onset_{modality}"
-        duration_col = f"blink_duration_{modality}"
-        logger.debug(
-            "Using columns '%s' and '%s' for modality '%s'", onset_col, duration_col, modality
-        )
-        if onset_col not in metadata or duration_col not in metadata:
+        for ch in picks_list:
+            modality = _infer_modality(ch)
+            onset_candidate = f"blink_onset_{modality}"
+            duration_candidate = f"blink_duration_{modality}"
+            if onset_candidate in metadata and duration_candidate in metadata:
+                onset_col = onset_candidate
+                duration_col = duration_candidate
+                logger.debug(
+                    "Using columns '%s' and '%s' for channel %s",
+                    onset_col,
+                    duration_col,
+                    ch,
+                )
+                break
+        else:
             logger.debug("Falling back to generic blink columns")
-            onset_col = "blink_onset"
-            duration_col = "blink_duration"
     else:
         for col in metadata.columns:
             if col.startswith("blink_onset_"):
@@ -130,7 +136,9 @@ def blink_count(
                     )
                     break
         else:
-            logger.debug("Using generic blink columns '%s' and '%s'", onset_col, duration_col)
+            logger.debug(
+                "Using generic blink columns '%s' and '%s'", onset_col, duration_col
+            )
 
     if onset_col not in metadata or duration_col not in metadata:
         missing = [col for col in [onset_col, duration_col] if col not in metadata]

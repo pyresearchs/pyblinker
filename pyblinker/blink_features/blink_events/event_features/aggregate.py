@@ -32,10 +32,12 @@ def aggregate_blink_event_features(
     picks : str or iterable of str
         Channel name(s) used when computing inter-blink interval (IBI)
         statistics and to determine which blink metadata columns are
-        consulted for ``blink_total`` and ``blink_rate``. The first channel's
-        modality selects the blink onset/duration columns. The same IBI values
-        are used for all channels because blink timing is not channel-specific
-        in the metadata yet.
+        consulted for ``blink_total`` and ``blink_rate``. The blink onset and
+        duration columns are chosen by scanning the provided channels for
+        modality-specific metadata, falling back to the generic
+        ``blink_onset``/``blink_duration`` pair if none are found. The same
+        IBI values are used for all channels because blink timing is not
+        channel-specific in the metadata yet.
     features : sequence of str or None, optional
         Subset of feature groups to compute. Valid keys are
         ``"blink_total"``, ``"blink_rate"`` and ``"ibi"``. Passing ``None``
@@ -69,7 +71,7 @@ def aggregate_blink_event_features(
     pieces: list[pd.DataFrame] = []
 
     if selected & {"blink_total", "blink_rate"}:
-        counts_df = blink_count(epochs, picks_list[0]).rename(
+        counts_df = blink_count(epochs, picks_list).rename(
             columns={"blink_count": "blink_total"}
         )
         pieces.append(counts_df)

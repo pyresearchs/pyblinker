@@ -142,6 +142,21 @@ class TestAggregateBlinkFeatures(unittest.TestCase):
         )
         self.assertListEqual(df_g["blink_total"].tolist(), [1.0, 2.0])
 
+    def test_multi_pick_modality_lookup(self) -> None:
+        """Blink totals use modality-specific columns from any selected channel."""
+        epochs = self.epochs[:2].copy()
+        epochs.metadata["blink_onset"] = pd.Series([[0.1], [0.2, 0.4]])
+        epochs.metadata["blink_duration"] = pd.Series([[0.1], [0.1, 0.1]])
+        epochs.metadata["blink_onset_eog"] = pd.Series([[0.1, 0.3], [0.2]])
+        epochs.metadata["blink_duration_eog"] = pd.Series([[0.1, 0.1], [0.1]])
+        epochs.metadata = epochs.metadata.drop(
+            columns=["blink_onset_eeg", "blink_duration_eeg"], errors="ignore"
+        )
+        picks = ["EEG-E8", "EOG-EEG-eog_vert_left"]
+        df = aggregate_blink_event_features(epochs, picks=picks, features=["blink_total"])
+        assert_df_has_columns(self, df, ["blink_total"])
+        self.assertListEqual(df["blink_total"].tolist(), [2.0, 1.0])
+
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
