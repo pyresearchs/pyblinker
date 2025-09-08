@@ -49,7 +49,7 @@ class TestSegmentBlinkProperties(unittest.TestCase):
         self.epochs = slice_raw_into_mne_epochs_refine_annot(
             raw, epoch_len=30.0, blink_label=None, progress_bar=False
         )
-        self.params = {
+        self.params = {         # The parameters is as what used in the legacy Matlab code.This might be not suitable for EAR type channel
             "base_fraction": 0.5,
             "shut_amp_fraction": 0.9,
             "p_avr_threshold": 3,
@@ -71,6 +71,7 @@ class TestSegmentBlinkProperties(unittest.TestCase):
             channel="EEG-E8",
             progress_bar=False,
             long_format=False,
+            run_fit=True # We should test with run_fit=True since this is an EEG channel.But for EAR or EOG channels, run_fit can be False.
         )
         df = metadata_to_long(self.epochs)
 

@@ -145,7 +145,7 @@ def compute_from_refined_epochs(
             metadata_row, ch, sfreq, n_times, ei
         )
         if not sample_windows:
-            logger.debug("No sample windows for epoch %d channel %s", ei, ch)
+            logger.debug("No blink available for epoch %d channel %s", ei, ch)
             continue
 
         rows = build_candidate_rows_for_epoch_channel(
@@ -389,8 +389,8 @@ def zero_crossing_for_row(signal: np.ndarray, row: pd.Series) -> Tuple[float, fl
             int(row["outer_start"]),
             int(row["outer_end"]),
         )
-        right_val = np.nan if right is None else float(right)
-        return float(left), right_val
+        right_val = np.nan if right is None else int(right)
+        return int(left), right_val
     except Exception:
         return np.nan, np.nan
 

@@ -71,29 +71,12 @@ def extract_blink_windows(
         onsets = metadata_row.get(mod_onset_key)
         durations = metadata_row.get(mod_duration_key)
         if _is_missing(onsets) or _is_missing(durations):
-            raise ValueError (
-                "Requesting base on mod, but the associate onset/duration metadata is missing. ")
-            # # fall back to generic keys if available
-            # onsets = metadata_row.get("blink_onset")
-            # durations = metadata_row.get("blink_duration")
+            return []
     else:
         onsets = metadata_row.get("blink_onset")
         durations = metadata_row.get("blink_duration")
 
-    if onsets is None or durations is None:
-        if not has_mod_keys and (
-            "blink_onset" not in metadata_row or "blink_duration" not in metadata_row
-        ):
-            raise ValueError(
-                "Missing blink onset/duration metadata ('{0}', '{1}') and "
-                "'blink_onset', 'blink_duration' for epoch {2}".format(
-                    mod_onset_key, mod_duration_key, epoch_index
-                )
-            )
-        return []
 
-    if _is_missing(onsets) or _is_missing(durations):
-        return []
 
     def _ensure_list(val: object) -> List[object]:
         """Coerce scalar or string representations into a list."""

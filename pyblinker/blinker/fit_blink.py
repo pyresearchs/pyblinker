@@ -94,6 +94,8 @@ class FitBlinks:
         :meth:`dprocess`, mirroring the original Matlab implementation where
         only blink start and end samples were provided.
 
+        But if those columns are present, which is the case in upgrade versions, where
+        those columns are already computed, then this can skip self.dprocess().
         Parameters
         ----------
         run_fit : bool, optional
@@ -106,17 +108,24 @@ class FitBlinks:
         required_cols = {"outer_start", "outer_end", "left_zero", "right_zero"}
         if not required_cols.issubset(self.df.columns):
             self.dprocess(run_fit=run_fit)
-            return
+            # return
 
         # Compute the maximum value within each blink interval
-        self.df[["max_value", "max_blink_alternative"]] = self.df.apply(
-            lambda row: self.get_max_blink(row["start_blink"], row["end_blink"]),
-            axis=1,
-            result_type="expand",
-        )
+        # self.df[["max_value", "max_blink"]] = self.df.apply(
+        #     lambda row: self.get_max_blink(row["start_blink"], row["end_blink"]),
+        #     axis=1,
+        #     result_type="expand",
+        # )
+        if not {"max_value", "max_blink"}.issubset(self.df.columns):
+            # Compute the maximum value within each blink interval
+            self.df[["max_value", "max_blink"]] = self.df.apply(
+                lambda row: self.get_max_blink(row["start_blink"], row["end_blink"]),
+                axis=1,
+                result_type="expand",
+            )
 
         # Compute baseline information required by downstream features
-        self.frame_blinks = create_left_right_base(self.candidate_signal, self.df)
+        # self.frame_blinks = create_left_right_base(self.candidate_signal, self.df)
 
         if run_fit:
             msg = "Running fit() may drop blinks due to NaNs in fit range"
