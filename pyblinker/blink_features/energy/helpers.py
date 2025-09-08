@@ -71,9 +71,11 @@ def extract_blink_windows(
         onsets = metadata_row.get(mod_onset_key)
         durations = metadata_row.get(mod_duration_key)
         if _is_missing(onsets) or _is_missing(durations):
-            # fall back to generic keys if available
-            onsets = metadata_row.get("blink_onset")
-            durations = metadata_row.get("blink_duration")
+            raise ValueError (
+                "Requesting base on mod, but the associate onset/duration metadata is missing. ")
+            # # fall back to generic keys if available
+            # onsets = metadata_row.get("blink_onset")
+            # durations = metadata_row.get("blink_duration")
     else:
         onsets = metadata_row.get("blink_onset")
         durations = metadata_row.get("blink_duration")
