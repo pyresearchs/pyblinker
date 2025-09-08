@@ -70,7 +70,15 @@ class TestAggregateBlinkFeatures(unittest.TestCase):
         """Compare aggregated features to CSV, ignoring rows 31 and 55."""
         picks = ["EEG-E8", "EOG-EEG-eog_vert_left", "EAR-avg_ear"]
         df = aggregate_blink_event_features(self.epochs, picks=picks)
-        expected_cols = ["ep", "blink_total", "blink_rate"] + [f"ibi_{p}" for p in picks]
+        expected_cols = [
+            "ep",
+            "blink_total_eeg",
+            "blink_rate_eeg",
+            "blink_total_eog",
+            "blink_rate_eog",
+            "blink_total_ear",
+            "blink_rate_ear",
+        ] + [f"ibi_{p}" for p in picks]
         assert_df_has_columns(self, df, expected_cols)
         self.assertEqual(len(df), len(self.epochs))
         pd.testing.assert_series_equal(
@@ -81,7 +89,7 @@ class TestAggregateBlinkFeatures(unittest.TestCase):
         expected = self.expected_counts.drop(
             self.allowed_exception_rows, errors="ignore"
         )
-        computed = df["blink_total"].drop(
+        computed = df["blink_total_eeg"].drop(
             self.allowed_exception_rows, errors="ignore"
         )
         self.assertEqual(
@@ -99,7 +107,7 @@ class TestAggregateBlinkFeatures(unittest.TestCase):
 
         for idx in range(4):
             expected_rate = self.expected_counts.iloc[idx] / self.epoch_len * 60.0
-            self.assertAlmostEqual(df.loc[idx, "blink_rate"], expected_rate)
+            self.assertAlmostEqual(df.loc[idx, "blink_rate_eeg"], expected_rate)
 
         for col in expected_cols:
             self.assertTrue(np.issubdtype(df[col].dtype, np.number))
@@ -143,7 +151,7 @@ class TestAggregateBlinkFeatures(unittest.TestCase):
         self.assertListEqual(df_g["blink_total"].tolist(), [1.0, 2.0])
 
     def test_multi_pick_modality_lookup(self) -> None:
-        """Blink totals use modality-specific columns from any selected channel."""
+        """Blink totals reported separately for each modality."""
         epochs = self.epochs[:2].copy()
         epochs.metadata["blink_onset"] = pd.Series([[0.1], [0.2, 0.4]])
         epochs.metadata["blink_duration"] = pd.Series([[0.1], [0.1, 0.1]])
@@ -154,8 +162,9 @@ class TestAggregateBlinkFeatures(unittest.TestCase):
         )
         picks = ["EEG-E8", "EOG-EEG-eog_vert_left"]
         df = aggregate_blink_event_features(epochs, picks=picks, features=["blink_total"])
-        assert_df_has_columns(self, df, ["blink_total"])
-        self.assertListEqual(df["blink_total"].tolist(), [2.0, 1.0])
+        assert_df_has_columns(self, df, ["blink_total_eeg", "blink_total_eog"])
+        self.assertListEqual(df["blink_total_eeg"].tolist(), [1.0, 2.0])
+        self.assertListEqual(df["blink_total_eog"].tolist(), [2.0, 1.0])
 
 
 if __name__ == "__main__":

@@ -124,7 +124,7 @@ class TestBlinkCount(unittest.TestCase):
         pd.testing.assert_series_equal(computed, expected, check_names=False)
 
     def test_multi_pick_modality_lookup(self) -> None:
-        """Select modality-specific columns from any provided pick."""
+        """Return separate blink counts for each modality when multiple picks."""
         epochs = self.epochs[:2].copy()
         epochs.metadata["blink_onset"] = pd.Series([[0.1], [0.2, 0.4]])
         epochs.metadata["blink_duration"] = pd.Series([[0.1], [0.1, 0.1]])
@@ -134,8 +134,9 @@ class TestBlinkCount(unittest.TestCase):
             columns=["blink_onset_eeg", "blink_duration_eeg"], errors="ignore"
         )
         df = blink_count(epochs, picks=["EEG-E8", "EOG-EEG-eog_vert_left"])
-        assert_df_has_columns(self, df, ["ep", "blink_count"])
-        self.assertListEqual(df["blink_count"].tolist(), [2.0, 1.0])
+        assert_df_has_columns(self, df, ["ep", "blink_count_eeg", "blink_count_eog"])
+        self.assertListEqual(df["blink_count_eeg"].tolist(), [1.0, 2.0])
+        self.assertListEqual(df["blink_count_eog"].tolist(), [2.0, 1.0])
 
 
 if __name__ == "__main__":
