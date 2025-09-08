@@ -80,10 +80,16 @@ class TestInterBlinkInterval(unittest.TestCase):
     def test_generic_columns_fallback(self) -> None:
         """IBI computation falls back to generic blink columns."""
         epochs = self.epochs.copy()
-        epochs.metadata = epochs.metadata[["blink_onset", "blink_duration"]].copy()
-        df = inter_blink_interval_epochs(epochs, picks="EEG-E8")
-        assert_df_has_columns(self, df, ["ep", "ibi_EEG-E8"])
+        df = inter_blink_interval_epochs(epochs)
+        assert_df_has_columns(self, df, ["ep", "ibi"])
         self.assertEqual(len(df), len(epochs))
+        counts = blink_count(epochs)["blink_count"]
+        for idx in range(len(epochs)):
+            val = df.loc[idx, "ibi"]
+            if counts.loc[idx] >= 2:
+                self.assertTrue(np.isfinite(val))
+            else:
+                self.assertTrue(np.isnan(val))
 
 
 if __name__ == "__main__":
