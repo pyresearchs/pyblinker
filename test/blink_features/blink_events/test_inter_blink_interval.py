@@ -43,16 +43,11 @@ class TestInterBlinkInterval(unittest.TestCase):
     def test_channel_ibi(self) -> None:
         picks = ["EEG-E8", "EOG-EEG-eog_vert_left", "EAR-avg_ear"]
         df = inter_blink_interval_epochs(self.epochs, picks=picks)
-        expected_cols = ["blink_onset", "blink_duration"] + [f"ibi_{p}" for p in picks]
+        expected_cols = ["ep"] + [f"ibi_{p}" for p in picks]
         assert_df_has_columns(self, df, expected_cols)
         self.assertEqual(len(df), len(self.epochs))
-
-        # metadata passthrough
         pd.testing.assert_series_equal(
-            df["blink_onset"], self.epochs.metadata["blink_onset"], check_names=False
-        )
-        pd.testing.assert_series_equal(
-            df["blink_duration"], self.epochs.metadata["blink_duration"], check_names=False
+            df["ep"], pd.Series(self.epochs.metadata.index, name="ep"), check_names=False
         )
 
         # epoch-wise checks across all epochs using blink counts
@@ -79,8 +74,22 @@ class TestInterBlinkInterval(unittest.TestCase):
     def test_empty_epochs(self) -> None:
         empty = self.epochs[:0]
         df = inter_blink_interval_epochs(empty, picks="EEG-E8")
-        assert_df_has_columns(self, df, ["blink_onset", "blink_duration", "ibi_EEG-E8"])
+        assert_df_has_columns(self, df, ["ep", "ibi_EEG-E8"])
         self.assertEqual(len(df), 0)
+
+    def test_generic_columns_fallback(self) -> None:
+        """IBI computation falls back to generic blink columns."""
+        epochs = self.epochs.copy()
+        df = inter_blink_interval_epochs(epochs)
+        assert_df_has_columns(self, df, ["ep", "ibi"])
+        self.assertEqual(len(df), len(epochs))
+        counts = blink_count(epochs)["blink_count"]
+        for idx in range(len(epochs)):
+            val = df.loc[idx, "ibi"]
+            if counts.loc[idx] >= 2:
+                self.assertTrue(np.isfinite(val))
+            else:
+                self.assertTrue(np.isnan(val))
 
 
 if __name__ == "__main__":

@@ -25,12 +25,20 @@ def aggregate_blink_event_features(
     Parameters
     ----------
     epochs : mne.Epochs
-        Epoch object with metadata containing ``blink_onset`` and
-        ``blink_duration`` columns.
+        Epoch object with metadata containing blink onset and duration
+        information. If modality-specific columns such as ``blink_onset_eeg``
+        exist they are used; otherwise the generic ``blink_onset`` and
+        ``blink_duration`` columns are expected.
     picks : str or iterable of str
         Channel name(s) used when computing inter-blink interval (IBI)
-        statistics. The same IBI values are used for all channels because
-        blink timing is not channel-specific in the metadata yet.
+        statistics and to determine which blink metadata columns are
+        consulted for ``blink_total`` and ``blink_rate``. When multiple
+        modalities are provided, blink counts and rates are reported for each
+        modality separately. The blink onset and duration columns are chosen by
+        scanning the provided channels for modality-specific metadata, falling
+        back to the generic ``blink_onset``/``blink_duration`` pair if none are
+        found. The same IBI values are used for all channels because blink
+        timing is not channel-specific in the metadata yet.
     features : sequence of str or None, optional
         Subset of feature groups to compute. Valid keys are
         ``"blink_total"``, ``"blink_rate"`` and ``"ibi"``. Passing ``None``
@@ -40,7 +48,8 @@ def aggregate_blink_event_features(
     -------
     pandas.DataFrame
         DataFrame indexed like ``epochs`` containing one row per epoch with the
-        requested features. Columns may include ``blink_total``, ``blink_rate``
+        requested features. Columns may include ``ep``, ``blink_total`` or
+        ``blink_total_<modality>``, ``blink_rate`` or ``blink_rate_<modality>``
         and ``ibi_<channel>`` depending on ``features``.
 
     Raises
@@ -58,20 +67,28 @@ def aggregate_blink_event_features(
     if invalid:
         raise ValueError(f"Unknown feature keys: {sorted(invalid)}")
 
+    picks_list = normalize_picks(picks)
+    require_channels(epochs, picks_list)
+
     pieces: list[pd.DataFrame] = []
 
     if selected & {"blink_total", "blink_rate"}:
-        counts_df = blink_count(epochs)[["blink_count"]].rename(
-            columns={"blink_count": "blink_total"}
-        )
+        counts_df = blink_count(epochs, picks_list)
+        rename_map: dict[str, str] = {}
+        for col in counts_df.columns:
+            if col == "ep":
+                continue
+            if col == "blink_count":
+                rename_map[col] = "blink_total"
+            elif col.startswith("blink_count_"):
+                rename_map[col] = col.replace("blink_count_", "blink_total_")
+        counts_df = counts_df.rename(columns=rename_map)
         pieces.append(counts_df)
 
     if "ibi" in selected:
-        picks_list = normalize_picks(picks)
-        require_channels(epochs, picks_list)
-        ibis_df = inter_blink_interval_epochs(epochs, picks_list).drop(
-            columns=["blink_onset", "blink_duration"], errors="ignore"
-        )
+        ibis_df = inter_blink_interval_epochs(epochs, picks_list)
+        if pieces:
+            ibis_df = ibis_df.drop(columns=["ep"])
         pieces.append(ibis_df)
     elif not selected:
         # If no features selected we still need an empty index-aligned frame
@@ -79,17 +96,23 @@ def aggregate_blink_event_features(
 
     df = pd.concat(pieces, axis=1) if pieces else pd.DataFrame(index=range(len(epochs)))
 
+    if "ep" in df.columns:
+        df = df[["ep"] + [c for c in df.columns if c != "ep"]]
+
     if "blink_rate" in selected:
         epoch_len = epochs.tmax - epochs.tmin + 1.0 / epochs.info["sfreq"]
-        df["blink_rate"] = df["blink_total"] / epoch_len * 60.0
+        for col in df.columns:
+            if col.startswith("blink_total"):
+                rate_col = col.replace("blink_total", "blink_rate")
+                df[rate_col] = df[col] / epoch_len * 60.0
 
     # Reduce to requested columns if a subset was specified
     if features is not None:
         cols: list[str] = []
         if "blink_total" in selected:
-            cols.append("blink_total")
+            cols.extend(df.columns[df.columns.str.startswith("blink_total")])
         if "blink_rate" in selected:
-            cols.append("blink_rate")
+            cols.extend(df.columns[df.columns.str.startswith("blink_rate")])
         if "ibi" in selected:
             cols.extend(df.columns[df.columns.str.startswith("ibi_")].tolist())
         df = df[cols]
