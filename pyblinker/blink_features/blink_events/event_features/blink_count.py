@@ -78,18 +78,20 @@ def blink_count(
         information.
     picks : str or iterable of str, optional
         Channel name(s) whose modality determines which blink onset and
-        duration columns are used. When more than one channel is supplied,
-        a separate column is returned for each unique modality. If omitted,
-        the generic ``blink_onset`` and ``blink_duration`` columns are used.
+        duration columns are used. When channel names are provided the
+        resulting column is named ``blink_count_<modality>`` for each unique
+        modality encountered. If omitted, the generic ``blink_onset`` and
+        ``blink_duration`` columns are used and the output column is simply
+        ``blink_count``.
 
     Returns
     -------
     pandas.DataFrame
-        DataFrame indexed like ``epochs`` with a leading ``ep`` column. If a
-        single channel (or none) is provided, a ``blink_count`` column contains
-        the per-epoch counts. When multiple channels representing different
-        modalities are selected, columns named ``blink_count_<modality>`` are
-        returned instead, one for each modality.
+        DataFrame indexed like ``epochs`` with a leading ``ep`` column. If no
+        channel selections are supplied, a single ``blink_count`` column holds
+        the per-epoch counts derived from the generic blink metadata. When one
+        or more channels are supplied, columns named ``blink_count_<modality>``
+        are returned, one for each modality present among the selections.
 
     Raises
     ------
@@ -122,36 +124,17 @@ def blink_count(
             return 0
         return 1
 
-    if not modalities or len(picks_list) == 1:
-        # Single pick or no picks: produce a single ``blink_count`` column.
+    if not picks_list:
         onset_col = "blink_onset"
         duration_col = "blink_duration"
-        if modalities:
-            modality = modalities[0]
-            onset_candidate = f"blink_onset_{modality}"
-            duration_candidate = f"blink_duration_{modality}"
-            if onset_candidate in metadata and duration_candidate in metadata:
-                onset_col = onset_candidate
-                duration_col = duration_candidate
-                logger.debug(
-                    "Using columns '%s' and '%s' for modality '%s'",
-                    onset_col,
-                    duration_col,
-                    modality,
-                )
-            else:
-                logger.debug("Falling back to generic blink columns")
-
         if onset_col not in metadata or duration_col not in metadata:
             missing = [col for col in [onset_col, duration_col] if col not in metadata]
             raise ValueError(
                 "Epochs.metadata missing required blink columns: " + ", ".join(sorted(missing))
             )
-
         df["blink_count"] = metadata[onset_col].apply(_count).astype(float)
         logger.debug("Blink counts per epoch: %s", df["blink_count"].tolist())
     else:
-        # Multiple channel selections: return counts for each modality.
         for modality in modalities:
             onset_col = f"blink_onset_{modality}"
             duration_col = f"blink_duration_{modality}"

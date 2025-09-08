@@ -74,17 +74,16 @@ class TestBlinkCount(unittest.TestCase):
     def test_counts(self) -> None:
         """Verify blink counts against CSV, ignoring rows 31 and 55."""
         df = blink_count(self.epochs, picks="EEG-E8")
-        assert_df_has_columns(self, df, ["ep", "blink_count"])
+        assert_df_has_columns(self, df, ["ep", "blink_count_eeg"])
         self.assertEqual(len(df), len(self.epochs))
         pd.testing.assert_series_equal(
             df["ep"], pd.Series(self.epochs.metadata.index, name="ep"), check_names=False
         )
 
-        # Align and drop known mismatched rows
         expected = self.expected_counts.drop(
             self.allowed_exception_rows, errors="ignore"
         )
-        computed = df["blink_count"].drop(
+        computed = df["blink_count_eeg"].drop(
             self.allowed_exception_rows, errors="ignore"
         )
         self.assertEqual(
@@ -99,12 +98,12 @@ class TestBlinkCount(unittest.TestCase):
             "tutorial/epoching_and_blink_validation_report.py.",
         )
         pd.testing.assert_series_equal(computed, expected, check_names=False)
-        self.assertTrue(np.issubdtype(df["blink_count"].dtype, np.number))
+        self.assertTrue(np.issubdtype(df["blink_count_eeg"].dtype, np.number))
         for idx, expected_val in self.expected_counts.items():
             if idx in self.allowed_exception_rows:
                 continue
-            self.assertEqual(df.loc[idx, "blink_count"], expected_val)
-            self.assertTrue(np.isfinite(df.loc[idx, "blink_count"]))
+            self.assertEqual(df.loc[idx, "blink_count_eeg"], expected_val)
+            self.assertTrue(np.isfinite(df.loc[idx, "blink_count_eeg"]))
 
     def test_modality_specific_columns(self) -> None:
         """Blink counting with modality-specific metadata columns."""
@@ -115,10 +114,18 @@ class TestBlinkCount(unittest.TestCase):
             columns={"blink_onset": "blink_onset_eeg", "blink_duration": "blink_duration_eeg"}
         )
         df = blink_count(epochs, picks="EEG-E8")
-        assert_df_has_columns(self, df, ["ep", "blink_count"])
+        assert_df_has_columns(self, df, ["ep", "blink_count_eeg"])
         pd.testing.assert_series_equal(
             df["ep"], pd.Series(epochs.metadata.index, name="ep"), check_names=False
         )
+        expected = self.expected_counts.drop(self.allowed_exception_rows, errors="ignore")
+        computed = df["blink_count_eeg"].drop(self.allowed_exception_rows, errors="ignore")
+        pd.testing.assert_series_equal(computed, expected, check_names=False)
+
+    def test_generic_columns_without_picks(self) -> None:
+        """Use generic blink metadata when no channel picks are provided."""
+        df = blink_count(self.epochs)
+        assert_df_has_columns(self, df, ["ep", "blink_count"])
         expected = self.expected_counts.drop(self.allowed_exception_rows, errors="ignore")
         computed = df["blink_count"].drop(self.allowed_exception_rows, errors="ignore")
         pd.testing.assert_series_equal(computed, expected, check_names=False)

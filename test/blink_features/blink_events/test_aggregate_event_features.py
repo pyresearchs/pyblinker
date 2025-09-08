@@ -123,8 +123,8 @@ class TestAggregateBlinkFeatures(unittest.TestCase):
         df = aggregate_blink_event_features(
             self.epochs, picks=["EEG-E8"], features=["blink_total"]
         )
-        assert_df_has_columns(self, df, ["blink_total"])
-        self.assertEqual(list(df.columns), ["blink_total"])
+        assert_df_has_columns(self, df, ["blink_total_eeg"])
+        self.assertEqual(list(df.columns), ["blink_total_eeg"])
         self.assertEqual(len(df), len(self.epochs))
 
     def test_modality_specific_precedence(self) -> None:
@@ -138,8 +138,8 @@ class TestAggregateBlinkFeatures(unittest.TestCase):
         df = aggregate_blink_event_features(
             epochs, picks=["EEG-E8"], features=["blink_total"]
         )
-        assert_df_has_columns(self, df, ["blink_total"])
-        self.assertListEqual(df["blink_total"].tolist(), [2.0, 1.0])
+        assert_df_has_columns(self, df, ["blink_total_eeg"])
+        self.assertListEqual(df["blink_total_eeg"].tolist(), [2.0, 1.0])
 
         epochs_g = epochs.copy()
         epochs_g.metadata = epochs_g.metadata.drop(
@@ -148,7 +148,7 @@ class TestAggregateBlinkFeatures(unittest.TestCase):
         df_g = aggregate_blink_event_features(
             epochs_g, picks=["EEG-E8"], features=["blink_total"]
         )
-        self.assertListEqual(df_g["blink_total"].tolist(), [1.0, 2.0])
+        self.assertListEqual(df_g["blink_total_eeg"].tolist(), [1.0, 2.0])
 
     def test_multi_pick_modality_lookup(self) -> None:
         """Blink totals reported separately for each modality."""
