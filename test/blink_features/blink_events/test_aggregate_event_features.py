@@ -121,20 +121,14 @@ class TestAggregateBlinkFeatures(unittest.TestCase):
 
     def test_modality_specific_precedence(self) -> None:
         """Modality-specific blink columns override generic ones."""
-        info = mne.create_info(["EEG"], sfreq=30, ch_types=["eeg"])
-        data = np.zeros((2, 1, 30))
-        epochs = mne.EpochsArray(data, info, tmin=0.0)
-        epochs.metadata = pd.DataFrame(
-            {
-                "blink_onset": [[0.1], [0.2, 0.4]],
-                "blink_duration": [[0.1], [0.1, 0.1]],
-                "blink_onset_eeg": [[0.1, 0.3], [0.2]],
-                "blink_duration_eeg": [[0.1, 0.1], [0.1]],
-            }
-        )
+        epochs = self.epochs[:2].copy()
+        epochs.metadata["blink_onset"] = pd.Series([[0.1], [0.2, 0.4]])
+        epochs.metadata["blink_duration"] = pd.Series([[0.1], [0.1, 0.1]])
+        epochs.metadata["blink_onset_eeg"] = pd.Series([[0.1, 0.3], [0.2]])
+        epochs.metadata["blink_duration_eeg"] = pd.Series([[0.1, 0.1], [0.1]])
 
         df = aggregate_blink_event_features(
-            epochs, picks=["EEG"], features=["blink_total"]
+            epochs, picks=["EEG-E8"], features=["blink_total"]
         )
         assert_df_has_columns(self, df, ["blink_total"])
         self.assertListEqual(df["blink_total"].tolist(), [2.0, 1.0])
@@ -144,7 +138,7 @@ class TestAggregateBlinkFeatures(unittest.TestCase):
             columns=["blink_onset_eeg", "blink_duration_eeg"]
         )
         df_g = aggregate_blink_event_features(
-            epochs_g, picks=["EEG"], features=["blink_total"]
+            epochs_g, picks=["EEG-E8"], features=["blink_total"]
         )
         self.assertListEqual(df_g["blink_total"].tolist(), [1.0, 2.0])
 

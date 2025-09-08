@@ -73,7 +73,7 @@ class TestBlinkCount(unittest.TestCase):
 
     def test_counts(self) -> None:
         """Verify blink counts against CSV, ignoring rows 31 and 55."""
-        df = blink_count(self.epochs)
+        df = blink_count(self.epochs, picks="EEG-E8")
         assert_df_has_columns(self, df, ["ep", "blink_count"])
         self.assertEqual(len(df), len(self.epochs))
         pd.testing.assert_series_equal(
@@ -114,7 +114,7 @@ class TestBlinkCount(unittest.TestCase):
         ).rename(
             columns={"blink_onset": "blink_onset_eeg", "blink_duration": "blink_duration_eeg"}
         )
-        df = blink_count(epochs)
+        df = blink_count(epochs, picks="EEG-E8")
         assert_df_has_columns(self, df, ["ep", "blink_count"])
         pd.testing.assert_series_equal(
             df["ep"], pd.Series(epochs.metadata.index, name="ep"), check_names=False

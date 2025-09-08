@@ -1,10 +1,12 @@
 """Blink count feature utilities."""
 
-from typing import Dict, List, Optional, Union
+from typing import Dict, Iterable, List, Optional, Union
 import logging
 import numpy as np
 import pandas as pd
 import mne
+
+from .utils import normalize_picks
 
 
 logger = logging.getLogger(__name__)
@@ -59,16 +61,25 @@ def blink_count_epoch(
         raise TypeError(f"Unsupported input type: {type(blinks)}")
 
 
-def blink_count(epochs: mne.Epochs) -> pd.DataFrame:
+def _infer_modality(channel: str) -> str:
+    """Infer modality label (e.g., ``"eeg"``) from a channel name."""
+    return channel.split("-", 1)[0].lower()
+
+
+def blink_count(
+    epochs: mne.Epochs, picks: str | Iterable[str] | None = None
+) -> pd.DataFrame:
     """Count blinks for each epoch using metadata.
 
     Parameters
     ----------
     epochs : mne.Epochs
         Epoch object whose metadata contains blink onset and duration
-        information. If modality-specific columns such as ``blink_onset_eeg``
-        exist they are used; otherwise the generic ``blink_onset`` and
-        ``blink_duration`` columns are expected.
+        information.
+    picks : str or iterable of str, optional
+        Channel name(s) whose modality determines which blink onset and
+        duration columns are used. If omitted, the generic ``blink_onset`` and
+        ``blink_duration`` columns are used.
 
     Returns
     -------
@@ -93,19 +104,33 @@ def blink_count(epochs: mne.Epochs) -> pd.DataFrame:
 
     onset_col = "blink_onset"
     duration_col = "blink_duration"
-    for col in metadata.columns:
-        if col.startswith("blink_onset_"):
-            suffix = col[len("blink_onset_"):]
-            dur_col = f"blink_duration_{suffix}"
-            if dur_col in metadata.columns:
-                onset_col = col
-                duration_col = dur_col
-                logger.debug(
-                    "Using modality-specific blink columns '%s' and '%s'", onset_col, duration_col
-                )
-                break
+
+    picks_list = normalize_picks(picks) if picks is not None else []
+    if picks_list:
+        modality = _infer_modality(picks_list[0])
+        onset_col = f"blink_onset_{modality}"
+        duration_col = f"blink_duration_{modality}"
+        logger.debug(
+            "Using columns '%s' and '%s' for modality '%s'", onset_col, duration_col, modality
+        )
+        if onset_col not in metadata or duration_col not in metadata:
+            logger.debug("Falling back to generic blink columns")
+            onset_col = "blink_onset"
+            duration_col = "blink_duration"
     else:
-        logger.debug("Using generic blink columns '%s' and '%s'", onset_col, duration_col)
+        for col in metadata.columns:
+            if col.startswith("blink_onset_"):
+                suffix = col[len("blink_onset_"):]
+                dur_col = f"blink_duration_{suffix}"
+                if dur_col in metadata.columns:
+                    onset_col = col
+                    duration_col = dur_col
+                    logger.debug(
+                        "Using modality-specific blink columns '%s' and '%s'", onset_col, duration_col
+                    )
+                    break
+        else:
+            logger.debug("Using generic blink columns '%s' and '%s'", onset_col, duration_col)
 
     if onset_col not in metadata or duration_col not in metadata:
         missing = [col for col in [onset_col, duration_col] if col not in metadata]
