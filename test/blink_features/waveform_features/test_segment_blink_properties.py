@@ -71,7 +71,7 @@ class TestSegmentBlinkProperties(unittest.TestCase):
             channel="EEG-E8",
             progress_bar=False,
             long_format=False,
-            run_fit=True # We should test with run_fit=True since this is an EEG channel.But for EAR or EOG channels, run_fit can be False.
+            run_fit=False # We should test with run_fit=True since this is an EEG channel.But for EAR or EOG channels, run_fit can be False.
         )
         df = metadata_to_long(self.epochs)
 

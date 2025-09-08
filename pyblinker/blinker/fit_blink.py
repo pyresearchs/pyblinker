@@ -124,8 +124,7 @@ class FitBlinks:
                 result_type="expand",
             )
 
-        # Compute baseline information required by downstream features
-        # self.frame_blinks = create_left_right_base(self.candidate_signal, self.df)
+
 
         if run_fit:
             msg = "Running fit() may drop blinks due to NaNs in fit range"
@@ -133,6 +132,9 @@ class FitBlinks:
             if logger.isEnabledFor(logging.DEBUG):
                 warnings.warn(msg, RuntimeWarning)
             self.fit()
+        else:
+            # Compute baseline information required by downstream features
+            self.frame_blinks = create_left_right_base(self.candidate_signal, self.df)
 
     def dprocess(self, *, run_fit: bool = True) -> None:
         """Compute blink boundaries and optional fits.
