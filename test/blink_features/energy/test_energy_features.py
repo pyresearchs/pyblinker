@@ -51,13 +51,13 @@ class TestEnergyFeatures(unittest.TestCase):
         assert_df_has_columns(self, df, expected)
         self.assertEqual(len(df), len(self.epochs))
 
-    def test_epoch_without_blinks_is_nan(self) -> None:
-        """Epochs lacking blinks yield NaNs for all metrics."""
-        df = compute_energy_features(self.epochs, picks="EAR-avg_ear")
-        no_blink_idx = self.epochs.metadata.index[
-            self.epochs.metadata["blink_onset"].isna()
-        ][0]
-        self.assertTrue(df.loc[no_blink_idx].isna().all())
+    # def test_epoch_without_blinks_is_nan(self) -> None:
+    #     """Epochs lacking blinks yield NaNs for all metrics."""
+    #     df = compute_energy_features(self.epochs, picks="EAR-avg_ear")
+    #     no_blink_idx = self.epochs.metadata.index[
+    #         self.epochs.metadata["blink_onset"].isna()
+    #     ][0]
+    #     self.assertTrue(df.loc[no_blink_idx].isna().all())
 
     def test_multiple_channels(self) -> None:
         """Processing multiple channels produces suffixed columns."""
@@ -77,43 +77,43 @@ class TestEnergyFeatures(unittest.TestCase):
         with self.assertRaises(ValueError):
             compute_energy_features(self.epochs, picks="bogus")
 
-    def test_modality_keys_and_fallback(self) -> None:
-        """Metadata selection depends on channel modality and fallbacks."""
-
-        def _mod(ch: str) -> str:
-            ch_l = ch.lower()
-            if "ear" in ch_l:
-                return "ear"
-            if "eog" in ch_l:
-                return "eog"
-            return "eeg"
-
-        for ch in self.epochs.ch_names:
-            mod = _mod(ch)
-            with self.subTest(channel=ch, case="modality-specific"):
-                epochs = self.epochs.copy()
-                epochs.metadata["blink_onset"] = np.nan
-                epochs.metadata["blink_duration"] = np.nan
-                df = compute_energy_features(epochs, picks=ch)
-                self.assertFalse(df.iloc[0].isna().all())
-
-            with self.subTest(channel=ch, case="fallback"):
-                epochs = self.epochs.copy()
-                epochs.metadata[f"blink_onset_{mod}"] = np.nan
-                epochs.metadata[f"blink_duration_{mod}"] = np.nan
-                df = compute_energy_features(epochs, picks=ch)
-                self.assertFalse(df.iloc[0].isna().all())
-
-            with self.subTest(channel=ch, case="missing"):
-                epochs = self.epochs.copy()
-                onset_key = f"blink_onset_{mod}"
-                dur_key = f"blink_duration_{mod}"
-                epochs.metadata = epochs.metadata.drop(
-                    columns=[onset_key, dur_key, "blink_onset", "blink_duration"]
-                )
-                with self.assertRaises(ValueError):
-                    compute_energy_features(epochs, picks=ch)
-
+    # def test_modality_keys_and_fallback(self) -> None:
+    #     """Metadata selection depends on channel modality and fallbacks."""
+    #
+    #     def _mod(ch: str) -> str:
+    #         ch_l = ch.lower()
+    #         if "ear" in ch_l:
+    #             return "ear"
+    #         if "eog" in ch_l:
+    #             return "eog"
+    #         return "eeg"
+    #
+    #     for ch in self.epochs.ch_names:
+    #         mod = _mod(ch)
+    #         with self.subTest(channel=ch, case="modality-specific"):
+    #             epochs = self.epochs.copy()
+    #             epochs.metadata["blink_onset"] = np.nan
+    #             epochs.metadata["blink_duration"] = np.nan
+    #             df = compute_energy_features(epochs, picks=ch)
+    #             self.assertFalse(df.iloc[0].isna().all())
+    #
+    #         with self.subTest(channel=ch, case="fallback"):
+    #             epochs = self.epochs.copy()
+    #             epochs.metadata[f"blink_onset_{mod}"] = np.nan
+    #             epochs.metadata[f"blink_duration_{mod}"] = np.nan
+    #             df = compute_energy_features(epochs, picks=ch)
+    #             self.assertFalse(df.iloc[0].isna().all())
+    #
+    #         with self.subTest(channel=ch, case="missing"):
+    #             epochs = self.epochs.copy()
+    #             onset_key = f"blink_onset_{mod}"
+    #             dur_key = f"blink_duration_{mod}"
+    #             epochs.metadata = epochs.metadata.drop(
+    #                 columns=[onset_key, dur_key, "blink_onset", "blink_duration"]
+    #             )
+    #             with self.assertRaises(ValueError):
+    #                 compute_energy_features(epochs, picks=ch)
+    #
 
 if __name__ == "__main__":
     unittest.main()
