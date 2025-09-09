@@ -128,14 +128,17 @@ class BlinkProperties:
             idx_extreme = temp_df.groupby("row_idx")["velocity"].idxmin()
 
         df_extreme = temp_df.loc[idx_extreme].sort_values("row_idx")
+
+
         ratio_vals = (
-            100
-            * abs(
-                self.candidate_signal[self.df["max_blink"].to_numpy()]
-                / df_extreme["velocity"].to_numpy()
-            )
-            / self.srate
+                100
+                * abs(
+            self.candidate_signal[self.df["max_blink"].to_numpy().astype(int)]
+            / df_extreme["velocity"].to_numpy()
         )
+                / self.srate
+        )
+
 
         self.df[ratio_key] = ratio_vals
         if idx_col:
