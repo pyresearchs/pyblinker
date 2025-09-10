@@ -100,13 +100,12 @@ class TestLongContinuousRaw(unittest.TestCase):
             run_fit=False,
             progress_bar=False,
         )
-#         logger.debug("Blink properties head:\n%s", props.head())
-#         self.assertIsInstance(props, pd.DataFrame)
-#         self.assertFalse(props.empty)
-#         self.assertEqual(set(props["seg_id"].unique()), {0})
-#         self.assertEqual(len(props), self.total_expected)
-#
-#
-# if __name__ == "__main__":  # pragma: no cover - manual execution
-#     logging.basicConfig(level=logging.INFO)
-#     unittest.main()
+        logger.debug("Blink properties head:\n%s", props.head())
+        self.assertIsInstance(props, pd.DataFrame)
+        self.assertFalse(props.empty)
+        self.assertEqual(set(props["seg_id"].unique()), {0})
+        self.assertEqual(len(props), self.total_expected)
+
+if __name__ == "__main__":  # pragma: no cover - manual execution
+    logging.basicConfig(level=logging.INFO)
+    unittest.main()

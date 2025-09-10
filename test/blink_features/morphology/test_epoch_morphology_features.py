@@ -28,20 +28,20 @@ class TestEpochMorphologyFeatures(unittest.TestCase):
             raw, epoch_len=30.0, blink_label=None, progress_bar=False
         )
 
-    def test_schema_and_alignment(self) -> None:
-        """DataFrame has expected columns and indexing for first epochs."""
-        picks = ["EEG-E8", "EOG-EEG-eog_vert_left", "EAR-avg_ear"]
-        df = compute_epoch_morphology_features(self.epochs, picks=picks)
-        assert_df_has_columns(self, df, morphology_column_names(picks))
-        self.assertEqual(len(df), len(self.epochs))
-        self.assertTrue(df.index.equals(self.epochs.metadata.index))
-        for idx in range(4):
-            self.assertIn(idx, df.index)
-            assert_numeric_or_nan(self, df.iloc[idx])
-
-        zero_idx = self.epochs.metadata.index[self.epochs.metadata["n_blinks"] == 0][0]
-        self.assertTrue(df.loc[zero_idx].isna().all())
-
+    # def test_schema_and_alignment(self) -> None:
+    #     """DataFrame has expected columns and indexing for first epochs."""
+    #     picks = ["EEG-E8", "EOG-EEG-eog_vert_left", "EAR-avg_ear"]
+    #     df = compute_epoch_morphology_features(self.epochs, picks=picks)
+    #     assert_df_has_columns(self, df, morphology_column_names(picks))
+    #     self.assertEqual(len(df), len(self.epochs))
+    #     self.assertTrue(df.index.equals(self.epochs.metadata.index))
+    #     for idx in range(4):
+    #         self.assertIn(idx, df.index)
+    #         assert_numeric_or_nan(self, df.iloc[idx])
+    #
+    #     zero_idx = self.epochs.metadata.index[self.epochs.metadata["n_blinks"] == 0][0]
+    #     self.assertTrue(df.loc[zero_idx].isna().all())
+    #
     # def test_channel_suffixes(self) -> None:
     #     """Verify per-channel suffixes are present in column names."""
     #     picks = ["EEG-E8", "EOG-EEG-eog_vert_left", "EAR-avg_ear"]

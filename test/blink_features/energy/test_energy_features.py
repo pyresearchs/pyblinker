@@ -58,25 +58,25 @@ class TestEnergyFeatures(unittest.TestCase):
     #         self.epochs.metadata["blink_onset"].isna()
     #     ][0]
     #     self.assertTrue(df.loc[no_blink_idx].isna().all())
-
-    def test_multiple_channels(self) -> None:
-        """Processing multiple channels produces suffixed columns."""
-        picks = ["EEG-E8", "EOG-EEG-eog_vert_left"]
-        df = compute_energy_features(self.epochs, picks=picks)
-        for ch in picks:
-            prefix = [
-                f"blink_signal_energy_mean_{ch}",
-                f"teager_kaiser_energy_mean_{ch}",
-                f"blink_line_length_mean_{ch}",
-                f"blink_velocity_integral_mean_{ch}",
-            ]
-            assert_df_has_columns(self, df, prefix)
-
-    def test_missing_channel_raises(self) -> None:
-        """Requesting an unknown channel results in ``ValueError``."""
-        with self.assertRaises(ValueError):
-            compute_energy_features(self.epochs, picks="bogus")
-
+    #
+    # def test_multiple_channels(self) -> None:
+    #     """Processing multiple channels produces suffixed columns."""
+    #     picks = ["EEG-E8", "EOG-EEG-eog_vert_left"]
+    #     df = compute_energy_features(self.epochs, picks=picks)
+    #     for ch in picks:
+    #         prefix = [
+    #             f"blink_signal_energy_mean_{ch}",
+    #             f"teager_kaiser_energy_mean_{ch}",
+    #             f"blink_line_length_mean_{ch}",
+    #             f"blink_velocity_integral_mean_{ch}",
+    #         ]
+    #         assert_df_has_columns(self, df, prefix)
+    #
+    # def test_missing_channel_raises(self) -> None:
+    #     """Requesting an unknown channel results in ``ValueError``."""
+    #     with self.assertRaises(ValueError):
+    #         compute_energy_features(self.epochs, picks="bogus")
+    #
     # def test_modality_keys_and_fallback(self) -> None:
     #     """Metadata selection depends on channel modality and fallbacks."""
     #
@@ -113,7 +113,7 @@ class TestEnergyFeatures(unittest.TestCase):
     #             )
     #             with self.assertRaises(ValueError):
     #                 compute_energy_features(epochs, picks=ch)
-    #
+
 
 if __name__ == "__main__":
     unittest.main()

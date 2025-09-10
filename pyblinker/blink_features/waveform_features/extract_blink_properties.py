@@ -208,21 +208,23 @@ class BlinkProperties:
         :return:
         """
         self.df["neg_amp_vel_ratio_tent"] = (
-            100
-            * abs(
-                self.candidate_signal[self.df["max_blink"]]
-                / self.df["aver_right_velocity"]
-            )
-            / self.srate
+                100
+                * abs(
+            self.candidate_signal[self.df["max_blink"].to_numpy().astype(int)]
+            / self.df["aver_right_velocity"]
         )
+                / self.srate
+        )
+
         self.df["pos_amp_vel_ratio_tent"] = (
-            100
-            * abs(
-                self.candidate_signal[self.df["max_blink"]]
-                / self.df["aver_left_velocity"]
-            )
-            / self.srate
+                100
+                * abs(
+            self.candidate_signal[self.df["max_blink"].to_numpy().astype(int)]
+            / self.df["aver_left_velocity"]
         )
+                / self.srate
+        )
+
 
     @staticmethod
     def compute_time_shut(

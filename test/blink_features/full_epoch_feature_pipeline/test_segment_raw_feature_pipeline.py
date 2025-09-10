@@ -1,57 +1,57 @@
-# """Integration test for full segment-level feature pipeline.
-#
-# This test combines frequency-domain metrics, time-domain energy features,
-# and averaged blink properties into a single DataFrame for each raw segment.
-# It exercises the pipeline with ``run_fit`` disabled and enabled to ensure both
-# paths complete successfully.
-# """
-# import logging
-# import unittest
-# from pathlib import Path
-#
-# import mne
-# import numpy as np
-# import pandas as pd
-#
-# from pyblinker.utils.epochs import slice_raw_into_epochs
-# from pyblinker.blink_features.blink_events import generate_blink_dataframe
-# from pyblinker.blink_features.frequency_domain.segment_features import compute_frequency_domain_features
-# from pyblinker.blink_features.energy.segment_features import compute_time_domain_features
-# from pyblinker.segment_blink_properties import compute_segment_blink_properties
-#
-# logger = logging.getLogger(__name__)
-#
-# PROJECT_ROOT = Path(__file__).resolve().parents[3]
-#
-#
-# class TestSegmentRawFeaturePipeline(unittest.TestCase):
-#     """Validate feature aggregation across processing stages."""
-#
-#     def setUp(self) -> None:
-#         """Load raw data and prepare blink annotations.
-#
-#         Parameters
-#         ----------
-#         None
-#         """
-#         raw_path = PROJECT_ROOT / "test" / "test_files" / "ear_eog_raw.fif"
-#         raw = mne.io.read_raw_fif(raw_path, preload=False, verbose=False)
-#         self.segments, _, _, _ = slice_raw_into_epochs(
-#             raw, epoch_len=30.0, blink_label=None
-#         , progress_bar=False)
-#         self.sfreq = raw.info["sfreq"]
-#         self.blink_df = generate_blink_dataframe(
-#             self.segments, channel="EEG-E8", blink_label=None, progress_bar=False
-#         )
-#         self.params = {
-#             "base_fraction": 0.5,
-#             "shut_amp_fraction": 0.9,
-#             "p_avr_threshold": 3,
-#             "z_thresholds": np.array([[0.9, 0.98], [2.0, 5.0]]),
-#         }
-#         csv_path = PROJECT_ROOT / "test" / "test_files" / "ear_eog_blink_count_epoch.csv"
-#         self.expected_counts = pd.read_csv(csv_path)["blink_count"].tolist()
-#
+"""Integration test for full segment-level feature pipeline.
+
+This test combines frequency-domain metrics, time-domain energy features,
+and averaged blink properties into a single DataFrame for each raw segment.
+It exercises the pipeline with ``run_fit`` disabled and enabled to ensure both
+paths complete successfully.
+"""
+import logging
+import unittest
+from pathlib import Path
+
+import mne
+import numpy as np
+import pandas as pd
+
+from pyblinker.utils.epochs import slice_raw_into_epochs
+from pyblinker.blink_features.blink_events import generate_blink_dataframe
+from pyblinker.blink_features.frequency_domain.segment_features import compute_frequency_domain_features
+from pyblinker.blink_features.energy.segment_features import compute_time_domain_features
+from pyblinker.segment_blink_properties import compute_segment_blink_properties
+
+logger = logging.getLogger(__name__)
+
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+
+
+class TestSegmentRawFeaturePipeline(unittest.TestCase):
+    """Validate feature aggregation across processing stages."""
+
+    def setUp(self) -> None:
+        """Load raw data and prepare blink annotations.
+
+        Parameters
+        ----------
+        None
+        """
+        raw_path = PROJECT_ROOT / "test" / "test_files" / "ear_eog_raw.fif"
+        raw = mne.io.read_raw_fif(raw_path, preload=False, verbose=False)
+        self.segments, _, _, _ = slice_raw_into_epochs(
+            raw, epoch_len=30.0, blink_label=None
+        , progress_bar=False)
+        self.sfreq = raw.info["sfreq"]
+        self.blink_df = generate_blink_dataframe(
+            self.segments, channel="EEG-E8", blink_label=None, progress_bar=False
+        )
+        self.params = {
+            "base_fraction": 0.5,
+            "shut_amp_fraction": 0.9,
+            "p_avr_threshold": 3,
+            "z_thresholds": np.array([[0.9, 0.98], [2.0, 5.0]]),
+        }
+        csv_path = PROJECT_ROOT / "test" / "test_files" / "ear_eog_blink_count_epoch.csv"
+        self.expected_counts = pd.read_csv(csv_path)["blink_count"].tolist()
+
 #     def _build_dataframe(self, *, run_fit: bool) -> pd.DataFrame:
 #         """Construct a combined feature table.
 #
