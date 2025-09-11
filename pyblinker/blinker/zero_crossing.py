@@ -1,7 +1,11 @@
+import logging
 import warnings
+from typing import Optional, Tuple
 
-from typing import Tuple, Optional
 import numpy as np
+
+
+logger = logging.getLogger(__name__)
 
 
 def get_line_intersection_slope(
@@ -168,7 +172,12 @@ def get_left_base(blink_velocity, left_outer, max_pos_vel_frame):
     return left_base
 
 
-def get_right_base(candidate_signal, blink_velocity, right_outer, max_neg_vel_frame):
+def get_right_base(
+    candidate_signal: np.ndarray,
+    blink_velocity: np.ndarray,
+    right_outer: int,
+    max_neg_vel_frame: float | int,
+) -> int | float | None:
     """Compute the right base frame index.
 
     Parameters
@@ -179,14 +188,15 @@ def get_right_base(candidate_signal, blink_velocity, right_outer, max_neg_vel_fr
         First derivative of ``candidate_signal`` used to locate zero crossings.
     right_outer : int
         Right boundary frame of the blink segment.
-    max_neg_vel_frame : float | int | numpy.nan
+    max_neg_vel_frame : float | int
         Frame index corresponding to the most negative blink velocity.
 
     Returns
     -------
-    int | float
-        The frame index of the right base, or ``numpy.nan`` when
-        ``max_neg_vel_frame`` is ``NaN``.
+    int | float | None
+        The frame index of the right base. Returns ``numpy.nan`` when
+        ``max_neg_vel_frame`` is ``NaN`` and ``None`` when a valid range cannot
+        be determined.
     """
     r_outer = int(right_outer)
 
@@ -213,8 +223,12 @@ def get_right_base(candidate_signal, blink_velocity, right_outer, max_neg_vel_fr
     if right_range[-1] >= blink_velocity.size:
         right_range = right_range[:-1]
         if right_range.size == 0 or right_range[-1] >= blink_velocity.size:
-            # TODO: Handle this case more gracefully
-            raise ValueError("Please strategies how to address this")
+            logger.warning(
+                "Unable to compute right base: right_range %s exceeds blink_velocity length %d",
+                right_range,
+                blink_velocity.size,
+            )
+            return None
 
     right_base_velocity = blink_velocity[right_range]
     right_base_index = np.argmax(right_base_velocity >= 0)
