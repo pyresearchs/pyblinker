@@ -7,18 +7,24 @@ transform (DWT) energies of blink segments. The public API is exposed via
 
 from __future__ import annotations
 
-from typing import List
 import logging
 
 import numpy as np
-import pywt
+
+try:
+    import pywt
+except ModuleNotFoundError as error:  # pragma: no cover - import-time guard
+    raise ModuleNotFoundError(
+        "PyWavelets is required for frequency-domain blink features. "
+        "Install it with `pip install PyWavelets`."
+    ) from error
 
 logger = logging.getLogger(__name__)
 
 
 def _compute_wavelet_energies(
     segment: np.ndarray, sfreq: float, max_level: int = 4
-) -> List[float]:
+) -> list[float]:
     """Compute DWT energies for a single blink segment.
 
     Parameters
@@ -37,15 +43,17 @@ def _compute_wavelet_energies(
         cannot be computed due to segment length or Nyquist constraints the
         corresponding entry is ``NaN``.
     """
-    logger.debug("Computing wavelet energies: len=%d sfreq=%.2f", segment.size, sfreq)
+    logger.info("Computing wavelet energies for segment of length %d", segment.size)
+    logger.debug("Sampling frequency: %.2f Hz", sfreq)
 
     if segment.size == 0:
+        logger.info("Segment empty; returning NaNs")
         return [float("nan")] * max_level
 
     max_level_available = min(pywt.dwt_max_level(segment.size, "db4"), max_level)
     coeffs = pywt.wavedec(segment, "db4", level=max_level_available)
 
-    energies: List[float] = []
+    energies: list[float] = []
     nyquist = sfreq / 2.0
     for level in range(1, max_level + 1):
         upper_edge = sfreq / (2**level)
@@ -60,5 +68,6 @@ def _compute_wavelet_energies(
         coeff = coeffs[level]
         energies.append(float(np.sum(coeff**2)))
 
+    logger.info("Computed %d wavelet energy values", len(energies))
     return energies
 
