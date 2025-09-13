@@ -7,10 +7,24 @@ from typing import Dict, List, Sequence
 import mne
 import pandas as pd
 
-from .per_blink import WAVEFORM_METRICS, compute_blink_waveform_metrics
+from .per_blink import compute_blink_waveform_metrics
 from ..energy.helpers import extract_blink_windows, segment_to_samples, _safe_stats
 
 logger = get_logger(__name__)
+
+# Ordered names of per-blink morphology metrics. Enumerated explicitly to
+# avoid calling ``compute_blink_waveform_metrics`` during import.
+WAVEFORM_METRICS: tuple[str, ...] = (
+    "peak_amplitude",
+    "trough_amplitude",
+    "peak_to_peak",
+    "area_abs",
+    "rise_time",
+    "fall_time",
+    "half_width",
+    "slope_rise",
+    "slope_fall",
+)
 
 # Derive metric and statistic names instead of hardcoding
 _METRICS = WAVEFORM_METRICS + ("duration",)
