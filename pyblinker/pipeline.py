@@ -1,26 +1,38 @@
 """Main pipeline entry for feature extraction."""
 
 import logging
-from typing import Iterable, Dict, Sequence, Optional
+from functools import partial
+from typing import Callable, Dict, Iterable, Optional, Sequence
 
-import pandas as pd
 import mne
+import pandas as pd
 
-from .blink_features.blink_events.event_features import (
-    aggregate_blink_event_features
+from .blink_features.blink_events.classification import (
+    aggregate_classification_features,
 )
-
-from .blink_features.kinematics import aggregate_kinematic_features
-from .blink_features.energy import aggregate_energy_features
-from .blink_features.open_eye import aggregate_open_eye_features
+from .blink_features.blink_events.event_features import (
+    aggregate_blink_event_features,
+)
 from .blink_features.ear_metrics import aggregate_ear_features
-from .blink_features.waveform_features import aggregate_waveform_features
+from .blink_features.energy import aggregate_energy_features
 from .blink_features.frequency_domain import aggregate_frequency_domain_features
-from .blink_features.blink_events.classification import aggregate_classification_features
+from .blink_features.kinematics import aggregate_kinematic_features
+from .blink_features.open_eye import aggregate_open_eye_features
+from .blink_features.waveform_features import aggregate_waveform_features
 
 # Configure root logger
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+FEATURE_AGGREGATORS: Dict[str, Callable[..., pd.DataFrame]] = {
+    "ear": aggregate_ear_features,
+    "classification": aggregate_classification_features,
+    "kinematics": aggregate_kinematic_features,
+    "energy": aggregate_energy_features,
+    "open_eye": aggregate_open_eye_features,
+    "frequency": aggregate_frequency_domain_features,
+    "waveform": aggregate_waveform_features,
+}
 
 
 def extract_features(
@@ -65,44 +77,22 @@ def extract_features(
     """
     logger.info("Starting feature extraction")
 
-    df_events = aggregate_blink_event_features(
-        blinks, sfreq, epoch_len, n_epochs, features
+    df_features = [
+        aggregate_blink_event_features(blinks, sfreq, epoch_len, n_epochs, features)
+    ]
+
+    feature_aggregators = FEATURE_AGGREGATORS.copy()
+    feature_aggregators["classification"] = partial(
+        aggregate_classification_features, epoch_len=epoch_len
     )
 
+    features_to_run = features or feature_aggregators.keys()
+    for feature_name in features_to_run:
+        agg_func = feature_aggregators.get(feature_name)
+        if agg_func is not None:
+            df_features.append(agg_func(blinks, sfreq, n_epochs))
 
-    if features is None or "ear" in features:
-        df_ear = aggregate_ear_features(blinks, sfreq, n_epochs)
-        df_events = pd.concat([df_events, df_ear], axis=1)
-
-    if features is None or "classification" in features:
-        df_cls = aggregate_classification_features(
-            blinks, sfreq, epoch_len, n_epochs
-        )
-        df_events = pd.concat([df_events, df_cls], axis=1)
-
-    if features is None or "kinematics" in features:
-        df_kin = aggregate_kinematic_features(blinks, sfreq, n_epochs)
-        df_events = pd.concat([df_events, df_kin], axis=1)
-
-    if features is None or "energy" in features:
-        df_energy = aggregate_energy_features(blinks, sfreq, n_epochs)
-        df_events = pd.concat([df_events, df_energy], axis=1)
-
-    if features is None or "open_eye" in features:
-        df_open = aggregate_open_eye_features(blinks, sfreq, n_epochs)
-        df_events = pd.concat([df_events, df_open], axis=1)
-
-    if features is None or "frequency" in features:
-        df_freq = aggregate_frequency_domain_features(blinks, sfreq, n_epochs)
-        df_events = pd.concat([df_events, df_freq], axis=1)
-
-    if features is None or "waveform" in features:
-        df_wave = aggregate_waveform_features(blinks, sfreq, n_epochs)
-        df = pd.concat([df_events, df_wave], axis=1)
-
-
-    else:
-        df = df_events
+    df = pd.concat(df_features, axis=1)
 
     logger.info("Finished feature extraction")
     return df
