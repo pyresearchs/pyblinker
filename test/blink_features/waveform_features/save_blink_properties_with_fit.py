@@ -5,7 +5,7 @@ import mne
 import numpy as np
 
 from pyblinker.utils.epochs import slice_raw_into_epochs
-from pyblinker.blink_features.blink_events import generate_blink_dataframe
+from pyblinker.blink_features.blink_events import extract_blink_events_dataframe
 from pyblinker.segment_blink_properties import compute_segment_blink_properties
 
 logger = logging.getLogger(__name__)
@@ -29,7 +29,7 @@ def main():
     )
 
     # Blink dataframe
-    blink_df = generate_blink_dataframe(
+    blink_df = extract_blink_events_dataframe(
         segments,
         channel="EEG-E8",
         blink_label=None,

@@ -4,7 +4,7 @@ This test illustrates how to compute both time-domain energy and
 frequency-domain metrics for 30-second raw segments. It processes the
 bundled ``ear_eog_raw.fif`` file and extracts features for all channels whose
 names start with ``EAR``, ``EOG`` or ``EEG``. The number of blinks in each
-segment is obtained via ``generate_blink_dataframe`` and included in the
+segment is obtained via ``extract_blink_events_dataframe`` and included in the
 result. Metrics from all segments are aggregated into a ``pandas.DataFrame``
 per channel just like the original script.
 """
@@ -18,7 +18,7 @@ import pandas as pd
 from pyblinker.utils.epochs import slice_raw_into_epochs
 from pyblinker.blink_features.energy.segment_features import compute_time_domain_features
 from pyblinker.blink_features.frequency_domain.segment_features import compute_frequency_domain_features
-from pyblinker.blink_features.blink_events import generate_blink_dataframe
+from pyblinker.blink_features.blink_events import extract_blink_events_dataframe
 
 logger = logging.getLogger(__name__)
 
@@ -39,8 +39,11 @@ class TestSegmentFeaturesScript(unittest.TestCase):
         self.channels = [
             ch for ch in raw.ch_names if ch.startswith(("EAR", "EOG", "EEG"))
         ]
-        blink_channel = next((ch for ch in raw.ch_names if ch.startswith("EEG")), raw.ch_names[0])
-        blink_df = generate_blink_dataframe(
+        blink_channel = next(
+            (ch for ch in raw.ch_names if ch.startswith("EEG")),
+            raw.ch_names[0],
+        )
+        blink_df = extract_blink_events_dataframe(
             self.segments, channel=blink_channel, blink_label=None, progress_bar=False
         )
         self.blink_counts = blink_df.groupby("seg_id").size().to_dict()

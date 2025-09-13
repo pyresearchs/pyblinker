@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 
 from pyblinker.utils.epochs import slice_raw_into_epochs
-from pyblinker.blink_features.blink_events import generate_blink_dataframe
+from pyblinker.blink_features.blink_events import extract_blink_events_dataframe
 from pyblinker.blink_features.frequency_domain.segment_features import compute_frequency_domain_features
 from pyblinker.blink_features.energy.segment_features import compute_time_domain_features
 from pyblinker.segment_blink_properties import compute_segment_blink_properties
@@ -40,7 +40,7 @@ class TestSegmentRawFeaturePipeline(unittest.TestCase):
             raw, epoch_len=30.0, blink_label=None
         , progress_bar=False)
         self.sfreq = raw.info["sfreq"]
-        self.blink_df = generate_blink_dataframe(
+        self.blink_df = extract_blink_events_dataframe(
             self.segments, channel="EEG-E8", blink_label=None, progress_bar=False
         )
         self.params = {
