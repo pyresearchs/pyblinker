@@ -1,10 +1,8 @@
-"""Centralized logging utilities for pyblinker.
+"""Logging utilities."""
 
-This module provides a minimal logging configuration inspired by MNE's
-logging helpers. It exposes a :func:`get_logger` function for obtaining
-module specific loggers, and helpers for adjusting global log level,
-redirecting logs to a file and temporarily overriding the verbosity.
-"""
+# Authors: The PyBlinker contributors.
+# License: BSD-3-Clause
+# Copyright: The PyBlinker contributors.
 from __future__ import annotations
 
 import contextlib
