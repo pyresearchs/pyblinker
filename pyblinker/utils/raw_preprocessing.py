@@ -1,7 +1,7 @@
 """Utilities for preparing MNE Raw data with refined blink annotations."""
-import logging
 from pathlib import Path
 from typing import Sequence, Union, List, Dict, Any
+from pyblinker.logging import get_logger
 
 import mne
 from mne.io import BaseRaw
@@ -10,7 +10,7 @@ from tqdm import tqdm
 from .epochs import slice_raw_into_epochs
 from .refinement import refine_blinks_from_epochs
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 

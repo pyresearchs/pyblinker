@@ -5,15 +5,15 @@ calculations. They operate on :class:`pandas.Series` metadata rows and
 NumPy arrays representing eyelid aperture signals.
 """
 from __future__ import annotations
+from pyblinker.logging import get_logger
 
 from typing import Dict, List, Sequence, Tuple
 import ast
-import logging
 
 import numpy as np
 import pandas as pd
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def extract_blink_windows(

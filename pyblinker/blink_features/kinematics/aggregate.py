@@ -1,17 +1,17 @@
 """Aggregate blink kinematic features across epochs."""
 
 from __future__ import annotations
+from pyblinker.logging import get_logger
 
 from typing import Any, Dict, Iterable, List
 
-import logging
 import numpy as np
 import pandas as pd
 
 from .per_blink import compute_segment_kinematics
 from ..energy.helpers import _safe_stats
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 _METRICS = (
     "peak_amp",
@@ -79,4 +79,3 @@ def aggregate_kinematic_features(
     df = pd.DataFrame.from_records(records, index=pd.RangeIndex(n_epochs))
     logger.debug("Aggregated kinematic DataFrame shape: %s", df.shape)
     return df
-

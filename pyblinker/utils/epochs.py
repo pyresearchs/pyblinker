@@ -1,7 +1,7 @@
 """Epoching utilities for time-series data."""
-import logging
 from pathlib import Path
 from typing import List, Tuple, Optional, Sequence
+from pyblinker.logging import get_logger
 
 import matplotlib.pyplot as plt
 import mne
@@ -12,7 +12,7 @@ from tqdm import tqdm
 # -----------------------------------------------------------------------------
 # Logger
 # -----------------------------------------------------------------------------
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # -----------------------------------------------------------------------------
 # Core utility functions

@@ -1,8 +1,8 @@
 """Aggregate blink morphology features from :class:`mne.Epochs`."""
 from __future__ import annotations
+from pyblinker.logging import get_logger
 
 from typing import Dict, List, Sequence
-import logging
 
 import mne
 import pandas as pd
@@ -10,7 +10,7 @@ import pandas as pd
 from .per_blink import WAVEFORM_METRICS, compute_blink_waveform_metrics
 from ..energy.helpers import extract_blink_windows, segment_to_samples, _safe_stats
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Derive metric and statistic names instead of hardcoding
 _METRICS = WAVEFORM_METRICS + ("duration",)

@@ -1,13 +1,13 @@
 """Utility functions replicating select MATLAB helpers in Python."""
 from __future__ import annotations
+from pyblinker.logging import get_logger
 
-import logging
 
 import numpy as np
 from scipy.linalg import qr, solve_triangular
 from scipy.stats import pearsonr, spearmanr, kendalltau
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def mad(arr: np.ndarray, axis: int | None = None, keepdims: bool = True) -> np.ndarray:

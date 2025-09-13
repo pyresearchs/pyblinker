@@ -4,9 +4,9 @@ Features are computed **per channel**, and column names are suffixed with
 ``_<channel>`` to clearly indicate the source channel.
 """
 from __future__ import annotations
+from pyblinker.logging import get_logger
 
 from typing import Dict, List, Sequence
-import logging
 
 import mne
 import numpy as np
@@ -14,7 +14,7 @@ import pandas as pd
 
 from .helpers import extract_blink_windows, segment_to_samples, _safe_stats, _tkeo
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 _METRICS = (
     "blink_signal_energy",

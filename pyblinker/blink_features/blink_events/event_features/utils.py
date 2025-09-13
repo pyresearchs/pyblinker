@@ -1,12 +1,12 @@
 """Utility helpers for blink event features."""
 from __future__ import annotations
+from pyblinker.logging import get_logger
 
-import logging
 from typing import Iterable, Sequence, List
 
 import mne
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def normalize_picks(picks: str | Iterable[str]) -> List[str]:

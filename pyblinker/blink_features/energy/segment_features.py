@@ -1,9 +1,9 @@
 """Time-domain energy features for 30-second segments."""
 from typing import Dict
-import logging
 import numpy as np
+from pyblinker.logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def compute_time_domain_features(signal: np.ndarray, sfreq: float) -> Dict[str, float]:
@@ -43,4 +43,3 @@ def compute_time_domain_features(signal: np.ndarray, sfreq: float) -> Dict[str, 
     }
     logger.debug("Time-domain feature values: %s", features)
     return features
-

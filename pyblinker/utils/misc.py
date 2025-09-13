@@ -1,13 +1,13 @@
 """Miscellaneous helper utilities."""
 
 from __future__ import annotations
+from pyblinker.logging import get_logger
 
-import logging
 
 import mne
 import pandas as pd
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def create_annotation(
@@ -74,4 +74,3 @@ def create_annotation(
 
 
 __all__ = ["create_annotation"]
-

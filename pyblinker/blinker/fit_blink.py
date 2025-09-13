@@ -1,5 +1,6 @@
 import logging
 import warnings
+from pyblinker.logging import get_logger
 
 import numpy as np
 import pandas as pd
@@ -13,7 +14,7 @@ from .base_left_right import create_left_right_base
 from ..fitutils.line_intersection import lines_intersection
 
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class FitBlinks:
