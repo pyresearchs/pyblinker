@@ -359,7 +359,3 @@ def extract_blink_events_dataframe(
     logger.info("Extracted %d blink events", len(df))
     logger.debug("Blink events preview:\n%s", df.head())
     return df
-
-
-# Backwards compatibility
-generate_blink_dataframe = extract_blink_events_dataframe

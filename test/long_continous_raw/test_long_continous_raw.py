@@ -14,7 +14,7 @@ import mne
 import numpy as np
 import pandas as pd
 
-from pyblinker.blink_features.blink_events import generate_blink_dataframe
+from pyblinker.blink_features.blink_events import extract_blink_events_dataframe
 from pyblinker.segment_blink_properties import (
     compute_segment_blink_properties,
 )
@@ -39,7 +39,7 @@ class TestLongContinuousRaw(unittest.TestCase):
 
         The method reads ``ear_eog_raw.fif`` from the ``test.test_files`` directory and
         stores it as a one-element list in ``self.segments``.  Blink events are
-        extracted by :func:`pyblinker.features.blink_events.generate_blink_dataframe` and the
+        extracted by :func:`pyblinker.features.blink_events.extract_blink_events_dataframe` and the
         expected total blink count is loaded from
         ``ear_eog_blink_count_epoch.csv`` which represents the epoch-based
         workflow.  A parameter dictionary for
@@ -49,7 +49,7 @@ class TestLongContinuousRaw(unittest.TestCase):
         raw_path = PROJECT_ROOT / "test" / "test_files" / "ear_eog_raw.fif"
         self.raw = mne.io.read_raw_fif(raw_path, preload=False, verbose=False)
         self.segments = [self.raw]
-        self.blink_df = generate_blink_dataframe(
+        self.blink_df = extract_blink_events_dataframe(
             self.segments, channel="EEG-E8", blink_label=None, progress_bar=False
         )
         csv_path = PROJECT_ROOT / "test" / "test_files" / "ear_eog_blink_count_epoch.csv"
