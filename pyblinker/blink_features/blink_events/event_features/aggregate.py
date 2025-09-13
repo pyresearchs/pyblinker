@@ -1,9 +1,9 @@
 """Aggregate blink event features using :class:`mne.Epochs` metadata."""
 from __future__ import annotations
+from pyblinker.logging import get_logger
 
 from typing import Iterable, Sequence
 
-import logging
 
 import mne
 import pandas as pd
@@ -12,7 +12,7 @@ from .blink_count import blink_count
 from .inter_blink_interval import inter_blink_interval_epochs
 from .utils import normalize_picks, require_channels
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def aggregate_blink_event_features(
@@ -122,4 +122,3 @@ def aggregate_blink_event_features(
 
 
 __all__ = ["aggregate_blink_event_features"]
-

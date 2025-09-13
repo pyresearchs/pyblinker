@@ -1,11 +1,12 @@
 """Main pipeline entry for feature extraction."""
 
-import logging
 from functools import partial
 from typing import Callable, Dict, Iterable, Optional, Sequence
 
 import mne
 import pandas as pd
+
+from pyblinker.logging import get_logger
 
 from .blink_features.blink_events.classification import (
     aggregate_classification_features,
@@ -20,9 +21,7 @@ from .blink_features.kinematics import aggregate_kinematic_features
 from .blink_features.open_eye import aggregate_open_eye_features
 from .blink_features.waveform_features import aggregate_waveform_features
 
-# Configure root logger
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 FEATURE_AGGREGATORS: Dict[str, Callable[..., pd.DataFrame]] = {
     "ear": aggregate_ear_features,

@@ -1,15 +1,15 @@
 """Blink count feature utilities."""
 
 from typing import Dict, Iterable, List, Optional, Union
-import logging
 import numpy as np
 import pandas as pd
 import mne
+from pyblinker.logging import get_logger
 
 from .utils import normalize_picks
 
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def blink_count_epoch(

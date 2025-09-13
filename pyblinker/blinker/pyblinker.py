@@ -1,4 +1,4 @@
-from ..utils._logging import logger
+from pyblinker.logging import get_logger
 
 from . import default_setting
 from ..utils.misc import create_annotation
@@ -10,6 +10,9 @@ from ..pipeline_steps import (
     get_representative_blink_data as core_get_representative_blink_data,
     get_blink as core_get_blink,
 )
+
+
+logger = get_logger(__name__)
 
 
 class BlinkDetector:

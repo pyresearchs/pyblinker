@@ -2,6 +2,7 @@ import math
 import logging
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
+from pyblinker.logging import get_logger, set_log_level
 
 import matplotlib.pyplot as plt
 import mne
@@ -9,7 +10,7 @@ import numpy as np
 from tqdm import tqdm
 from pyblinker.utils.refine_util import slice_raw_into_mne_epochs_refine_annot
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def _pick_ear_channels_from_info(info: mne.Info) -> List[int]:
@@ -264,5 +265,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
+    set_log_level(logging.INFO)
     main()

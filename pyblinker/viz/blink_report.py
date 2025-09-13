@@ -4,7 +4,7 @@ import numpy as np
 import mne
 from mne.report import Report
 
-from ..utils._logging import logger
+from pyblinker.logging import get_logger
 
 
 def generate_blink_report(
@@ -30,6 +30,7 @@ def generate_blink_report(
     mne.report.Report
         Report with blink plots grouped by epoch index.
     """
+    logger = get_logger(__name__)
     logger.info("Creating blink report")
     if epochs.metadata is None:
         raise ValueError("epochs.metadata must contain blink information")

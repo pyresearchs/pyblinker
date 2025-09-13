@@ -1,11 +1,11 @@
 """Aggregate partial and complete blink metrics."""
 from typing import Iterable, Dict, Any, List
-import logging
 import pandas as pd
+from pyblinker.logging import get_logger
 
 from .features import classify_blinks_epoch
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def aggregate_classification_features(

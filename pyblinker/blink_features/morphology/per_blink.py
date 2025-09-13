@@ -1,12 +1,12 @@
 """Per-blink morphology feature calculations."""
 from __future__ import annotations
+from pyblinker.logging import get_logger
 
 from typing import Dict, Optional
-import logging
 
 import numpy as np
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def compute_blink_waveform_metrics(segment: np.ndarray, sfreq: float) -> Optional[Dict[str, float]]:
@@ -84,4 +84,3 @@ def compute_blink_waveform_metrics(segment: np.ndarray, sfreq: float) -> Optiona
 
 # Derive metric names for reuse elsewhere without hardcoding
 WAVEFORM_METRICS = tuple(compute_blink_waveform_metrics(np.zeros(3), 1.0).keys())
-

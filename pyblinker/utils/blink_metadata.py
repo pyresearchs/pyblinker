@@ -1,7 +1,7 @@
 """Helpers for working with blink metadata."""
 
-import logging
 from typing import Any, Dict, List
+from pyblinker.logging import get_logger
 
 import mne
 import pandas as pd
@@ -11,7 +11,7 @@ from ..blink_features.energy.helpers import (
     segment_to_samples,
 )
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def onset_entry_to_blinks(onset: Any) -> List[Dict[str, float]]:

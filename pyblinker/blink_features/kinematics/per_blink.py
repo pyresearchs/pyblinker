@@ -1,13 +1,13 @@
 """Per-blink kinematic metrics based on metadata windows."""
 
 from __future__ import annotations
+from pyblinker.logging import get_logger
 
 from typing import Dict
 
-import logging
 import numpy as np
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def compute_segment_kinematics(segment: np.ndarray, sfreq: float) -> Dict[str, float]:
@@ -124,4 +124,3 @@ def compute_segment_kinematics(segment: np.ndarray, sfreq: float) -> Dict[str, f
 
     logger.debug("Per-blink kinematics: %s", metrics)
     return metrics
-

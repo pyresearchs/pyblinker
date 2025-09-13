@@ -1,11 +1,11 @@
-import logging
 import warnings
 from typing import Optional, Tuple
+from pyblinker.logging import get_logger
 
 import numpy as np
 
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def get_line_intersection_slope(

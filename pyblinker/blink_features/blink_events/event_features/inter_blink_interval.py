@@ -1,14 +1,14 @@
 """Inter-blink interval based features."""
 from typing import Dict, List, Sequence, Iterable
+from pyblinker.logging import get_logger
 
-import logging
 import numpy as np
 import pandas as pd
 import mne
 
 from .utils import normalize_picks, require_channels
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def _permutation_entropy(series: Sequence[float], *, order: int = 3, delay: int = 1) -> float:

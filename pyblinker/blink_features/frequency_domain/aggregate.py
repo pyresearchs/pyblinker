@@ -1,9 +1,9 @@
 """Aggregate wavelet blink features across epochs."""
 
 from __future__ import annotations
+from pyblinker.logging import get_logger
 
 from typing import Dict, List, Sequence
-import logging
 import warnings
 
 import mne
@@ -14,7 +14,7 @@ from tqdm import tqdm
 from .features import _compute_wavelet_energies
 from ..energy.helpers import extract_blink_windows, segment_to_samples
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class FrequencyDomainBlinkFeatureExtractor:
@@ -157,4 +157,3 @@ def aggregate_frequency_domain_features(
 
     extractor = FrequencyDomainBlinkFeatureExtractor(epochs=epochs)
     return extractor.compute(picks=picks, progress_bar=progress_bar)
-

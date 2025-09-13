@@ -1,12 +1,12 @@
-import logging
 from typing import List, Optional, Sequence, Tuple, Dict
+from pyblinker.logging import get_logger
 
 import mne
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def left_right_zero_crossing(

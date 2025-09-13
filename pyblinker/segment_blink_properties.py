@@ -13,9 +13,9 @@ Refactor goals achieved in this version:
 """
 
 from __future__ import annotations
+from pyblinker.logging import get_logger
 
 from typing import Sequence, Dict, Any, List, Iterable, Tuple
-import logging
 import itertools
 
 import numpy as np
@@ -32,7 +32,7 @@ from .blinker.fit_blink import FitBlinks
 from .blink_features.waveform_features.extract_blink_properties import BlinkProperties
 from .blink_features.blink_events.blink_dataframe import left_right_zero_crossing
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
  # ------------------------------ Public API ------------------------------------
 
@@ -425,5 +425,4 @@ def fit_and_extract_properties(
         return None
 
     return BlinkProperties(signal, frame_blinks, sfreq, params, fitted=run_fit).df
-
 

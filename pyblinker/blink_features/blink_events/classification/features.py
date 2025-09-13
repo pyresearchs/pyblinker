@@ -8,11 +8,11 @@ fatigue or ocular discomfort.
 """
 
 from typing import Any, Dict, List
-import logging
+from pyblinker.logging import get_logger
 
 from ...morphology.per_blink import compute_single_blink_features
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def classify_blinks_epoch(

@@ -7,10 +7,10 @@ the `Jena Facial Palsy Tool <https://github.com/cvjena/JeFaPaTo>`_.
 """
 
 from typing import Dict
-import logging
 import numpy as np
+from pyblinker.logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def ear_extrema_epoch(epoch_signal: np.ndarray) -> Dict[str, float]:

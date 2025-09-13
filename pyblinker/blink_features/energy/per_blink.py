@@ -2,8 +2,9 @@
 from typing import Any, Dict
 import logging
 import numpy as np
+from pyblinker.logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def compute_blink_energy(blink: Dict[str, Any], sfreq: float) -> Dict[str, float]:

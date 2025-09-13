@@ -6,8 +6,8 @@ transform (DWT) energies of blink segments. The public API is exposed via
 """
 
 from __future__ import annotations
+from pyblinker.logging import get_logger
 
-import logging
 
 import numpy as np
 
@@ -19,7 +19,7 @@ except ModuleNotFoundError as error:  # pragma: no cover - import-time guard
         "Install it with `pip install PyWavelets`."
     ) from error
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def _compute_wavelet_energies(
@@ -70,4 +70,3 @@ def _compute_wavelet_energies(
 
     logger.info("Computed %d wavelet energy values", len(energies))
     return energies
-
