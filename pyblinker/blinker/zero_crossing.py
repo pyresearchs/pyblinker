@@ -1,5 +1,4 @@
 import warnings
-from typing import Optional, Tuple
 from pyblinker.logging import get_logger
 
 import numpy as np
@@ -35,59 +34,80 @@ def left_right_zero_crossing(
     max_blink: float,
     outer_start: float,
     outer_end: float,
-) -> Tuple[int, Optional[int]]:
+    *,
+    signal_type: str | None = None,
+) -> tuple[int | float, int | float]:
+    """Locate zero-crossing indices immediately surrounding a blink peak.
+
+    The search inspects the left side in ``[outer_start, max_blink)`` and the
+    right side in ``(max_blink, outer_end]`` for the last/first negative sample
+    respectively. If no candidate is found, the window is expanded to the signal
+    boundaries. When a crossing still cannot be identified the function returns
+    ``numpy.nan`` for the corresponding side so that downstream code can
+    gracefully drop the blink.
+
+    Parameters
+    ----------
+    candidate_signal
+        One-dimensional array representing the blink signal.
+    max_blink
+        Frame index of the blink peak around which to search for crossings.
+    outer_start, outer_end
+        Search boundaries that delimit the blink window.
+    signal_type
+        Optional hint describing the modality of ``candidate_signal``. The
+        implementation is tuned for EEG traces; other signal types trigger a
+        warning but are still processed.
+
+    Returns
+    -------
+    tuple[int | float, int | float]
+        ``(left_zero, right_zero)`` indices. Either element may be
+        ``numpy.nan`` when no valid crossing is located.
+
+    Raises
+    ------
+    ValueError
+        If the detected crossings violate the expected ordering relative to
+        ``max_blink``.
     """
-    Find the nearest zero-crossing indices to the left and right of a given peak in the signal.
+    if signal_type is not None and signal_type.lower() != "eeg":
+        logger.warning(
+            "left_right_zero_crossing tuned for EEG signals; results may be inaccurate for %s",
+            signal_type,
+        )
 
-    This function searches for the nearest zero-crossings in a 1D signal array around a specified
-    `max_blink`. It looks to the left in the range [outer_start, max_blink) and to the right in the
-    range (max_blink, outer_end].
-
-    Parameters:
-        candidate_signal (np.ndarray): 1D array representing the signal data.
-        max_blink (float): The frame index of the peak (or maximum) to evaluate crossings around.
-        outer_start (float): The lower bound index of the left-side search region.
-        outer_end (float): The upper bound index of the right-side search region.
-
-    Returns:
-        Tuple[int, Optional[int]]: A tuple containing two values:
-            - Left zero-crossing index (int): nearest zero crossing to the left of max_blink.
-            - Right zero-crossing index (Optional[int]): nearest zero crossing to the right of max_blink,
-              or None if not found even after fallback search.
-
-    Raises:
-        ValueError: If input index boundaries are invalid or logic assumptions break.
-    """
     start_idx = int(outer_start)
     m_frame = int(max_blink)
     end_idx = int(outer_end)
 
     # Left side search
-    left_range = np.arange(start_idx, m_frame)
+    left_range = np.arange(start_idx, m_frame, dtype=int)
     left_values = candidate_signal[left_range]
     s_ind_left_zero = np.flatnonzero(left_values < 0)
 
     if s_ind_left_zero.size > 0:
-        left_zero = left_range[s_ind_left_zero[-1]]
+        left_zero: int | float = int(left_range[s_ind_left_zero[-1]])
     else:
         # Fall back if no negative crossing found in left_range
-        full_left_range = np.arange(0, m_frame).astype(int)
+        full_left_range = np.arange(0, m_frame, dtype=int)
         left_neg_idx = np.flatnonzero(candidate_signal[full_left_range] < 0)
-        left_zero = (
-            full_left_range[left_neg_idx[-1]] if left_neg_idx.size > 0 else np.nan
-        )
+        if left_neg_idx.size > 0:
+            left_zero = int(full_left_range[left_neg_idx[-1]])
+        else:
+            left_zero = np.nan
 
     # Right side search
-    right_range = np.arange(m_frame, end_idx)
+    right_range = np.arange(m_frame, end_idx, dtype=int)
     right_values = candidate_signal[right_range]
     s_ind_right_zero = np.flatnonzero(right_values < 0)
 
     if s_ind_right_zero.size > 0:
-        right_zero = right_range[s_ind_right_zero[0]]
+        right_zero: int | float = int(right_range[s_ind_right_zero[0]])
     else:
         # Extreme remedy by extending beyond outer_end to the max signal length
         try:
-            extreme_outer = np.arange(m_frame, candidate_signal.shape[0]).astype(int)
+            extreme_outer = np.arange(m_frame, candidate_signal.shape[0], dtype=int)
         except TypeError:
             print("Error")
             # If this except triggers, raise or handle accordingly
@@ -95,16 +115,16 @@ def left_right_zero_crossing(
 
         s_ind_right_zero_ex = np.flatnonzero(candidate_signal[extreme_outer] < 0)
         if s_ind_right_zero_ex.size > 0:
-            right_zero = extreme_outer[s_ind_right_zero_ex[0]]
+            right_zero = int(extreme_outer[s_ind_right_zero_ex[0]])
         else:
             return left_zero, np.nan
 
-    if left_zero > m_frame:
+    if not np.isnan(left_zero) and left_zero > m_frame:
         raise ValueError(
             "Validation error: left_zero = {left_zero}, max_blink = {max_blink}. Ensure left_zero <= max_blink."
         )
 
-    if m_frame > right_zero:
+    if not np.isnan(right_zero) and m_frame > right_zero:
         raise ValueError(
             "Validation error: max_blink = {max_blink}, right_zero = {right_zero}. Ensure max_blink <= right_zero."
         )

@@ -1,4 +1,4 @@
-from typing import List, Optional, Sequence, Tuple, Dict
+from typing import Dict, List, Sequence, Tuple
 from pyblinker.logging import get_logger
 
 import mne
@@ -6,107 +6,9 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
+from ...blinker.zero_crossing import left_right_zero_crossing
+
 logger = get_logger(__name__)
-
-
-def left_right_zero_crossing(
-    candidate_signal: np.ndarray,
-    max_blink: float,
-    outer_start: float,
-    outer_end: float,
-    *,
-    signal_type: str = "eeg",
-) -> tuple[Optional[int], Optional[int]]:
-    """Find the nearest zero-crossing indices around ``max_blink``.
-
-    The search is performed in the range ``[outer_start, max_blink)`` on the
-    left and ``(max_blink, outer_end]`` on the right. If no negative-valued
-    sample is found in the initial window, the search is expanded toward the
-    closest signal boundary.
-
-    Parameters
-    ----------
-    candidate_signal : np.ndarray
-        One-dimensional array representing the signal.
-    max_blink : float
-        Index of the peak around which zero-crossings are located.
-    outer_start : float
-        Lower bound of the left-side search region.
-    outer_end : float
-        Upper bound of the right-side search region.
-    signal_type : str, optional
-        Signal type. Defaults to ``"eeg"``. Other types are accepted, but this
-        implementation is tuned for EEG signals and may yield inaccurate results
-        otherwise.
-
-    Returns
-    -------
-    tuple[Optional[int], Optional[int]]
-        ``(left_zero, right_zero)`` indices. ``left_zero`` or ``right_zero`` may
-        be ``None`` if no negative sample exists on the respective side even
-        after the fallback search.
-
-    Raises
-    ------
-    ValueError
-        If ``left_zero > max_blink`` or ``max_blink > right_zero`` when both
-        zeros are found.
-    """
-    if signal_type.lower() != "eeg":
-        logger.warning(
-            "left_right_zero_crossing tuned for EEG signals; results may be inaccurate for %s",
-            signal_type,
-        )
-
-    start_idx = int(outer_start)
-    m_frame = int(max_blink)
-    end_idx = int(outer_end)
-
-    left_range = np.arange(start_idx, m_frame)
-    left_values = candidate_signal[left_range]
-    s_ind_left_zero = np.flatnonzero(left_values < 0)
-
-    if s_ind_left_zero.size > 0:
-        left_zero: Optional[int] = int(left_range[s_ind_left_zero[-1]])
-    else:
-        full_left_range = np.arange(0, m_frame).astype(int)
-        left_neg_idx = np.flatnonzero(candidate_signal[full_left_range] < 0)
-        if left_neg_idx.size > 0:
-            left_zero = int(full_left_range[left_neg_idx[-1]])
-        else:
-            left_zero = None
-
-    right_range = np.arange(m_frame, end_idx)
-    right_values = candidate_signal[right_range]
-    s_ind_right_zero = np.flatnonzero(right_values < 0)
-
-    if s_ind_right_zero.size > 0:
-        right_zero: Optional[int] = int(right_range[s_ind_right_zero[0]])
-    else:
-        try:
-            extreme_outer = np.arange(m_frame, candidate_signal.shape[0]).astype(int)
-        except TypeError:
-            return left_zero, None
-
-        s_ind_right_zero_ex = np.flatnonzero(candidate_signal[extreme_outer] < 0)
-        if s_ind_right_zero_ex.size > 0:
-            right_zero = int(extreme_outer[s_ind_right_zero_ex[0]])
-        else:
-            return left_zero, None
-
-    if left_zero is not None and left_zero > m_frame:
-        raise ValueError(
-            "Validation error: left_zero = {left_zero}, max_blink = {max_blink}."
-            " Ensure left_zero <= max_blink."
-        )
-
-    if right_zero is not None and m_frame > right_zero:
-        raise ValueError(
-            "Validation error: max_blink = {max_blink}, right_zero = {right_zero}."
-            " Ensure max_blink <= right_zero."
-        )
-
-    return left_zero, right_zero
 
 
 def compute_outer_bounds(peaks: Sequence[int], n_samples: int) -> List[Tuple[int, int]]:
@@ -137,6 +39,21 @@ def compute_outer_bounds(peaks: Sequence[int], n_samples: int) -> List[Tuple[int
         outer_end = (n_samples - 1) if i == len(peaks) - 1 else peaks[i + 1]
         bounds.append((outer_start, outer_end))
     return bounds
+
+
+def _normalize_zero_crossing(value: int | float | None) -> int | float | None:
+    """Convert raw zero-crossing outputs into canonical scalar values."""
+
+    if value is None:
+        return None
+
+    try:
+        if np.isnan(value):
+            return np.nan
+    except TypeError:
+        pass
+
+    return int(value)
 
 
 def _filter_blink_annotations(
@@ -250,7 +167,7 @@ def _process_segment_blinks(
     channel_type: str | None,
     *,
     progress_bar: bool = True,
-) -> List[Dict[str, int | None]]:
+) -> List[Dict[str, int | float | None]]:
     """Extract blink information from one raw segment.
 
     Parameters
@@ -280,7 +197,7 @@ def _process_segment_blinks(
     peaks = _detect_peaks(signal, starts, ends, ch_type)
     bounds = compute_outer_bounds(peaks, len(signal))
 
-    rows: List[Dict[str, int | None]] = []
+    rows: List[Dict[str, int | float | None]] = []
     for blink_id, (start, end, peak), (outer_start, outer_end) in tqdm(
         zip(range(len(peaks)), zip(starts, ends, peaks), bounds),
         desc=f"Seg {seg_id} blinks",
@@ -294,6 +211,8 @@ def _process_segment_blinks(
             outer_end,
             signal_type=ch_type,
         )
+        left_zero_norm = _normalize_zero_crossing(left_zero)
+        right_zero_norm = _normalize_zero_crossing(right_zero)
         rows.append(
             {
                 "seg_id": seg_id,
@@ -303,8 +222,8 @@ def _process_segment_blinks(
                 "end_blink": int(end),
                 "outer_start": int(outer_start),
                 "outer_end": int(outer_end),
-                "left_zero": int(left_zero),
-                "right_zero": None if right_zero is None else int(right_zero),
+                "left_zero": left_zero_norm,
+                "right_zero": right_zero_norm,
             }
         )
     return rows
