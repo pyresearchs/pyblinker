@@ -8,6 +8,7 @@ from pyblinker.logging import get_logger
 from pyblinker.utils.blink_windows import extract_blink_windows
 
 from pyblinker.utils import normalize_picks
+from pyblinker.utils.modality import infer_modality
 
 
 logger = get_logger(__name__)
@@ -60,11 +61,6 @@ def blink_count_epoch(
     else:
         logger.error("Unsupported type passed to blink_count_epoch: %s", type(blinks))
         raise TypeError(f"Unsupported input type: {type(blinks)}")
-
-
-def _infer_modality(channel: str) -> str:
-    """Infer modality label (e.g., ``"eeg"``) from a channel name."""
-    return channel.split("-", 1)[0].lower()
 
 
 def blink_count(
@@ -127,7 +123,7 @@ def blink_count(
     else:
         mod_to_channel: Dict[str, str] = {}
         for ch in picks_list:
-            mod = _infer_modality(ch)
+            mod = infer_modality(ch)
             if mod not in mod_to_channel:
                 mod_to_channel[mod] = ch
 
