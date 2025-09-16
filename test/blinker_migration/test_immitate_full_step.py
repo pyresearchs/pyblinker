@@ -7,7 +7,7 @@ from pyblinker.blinker import default_setting
 from pyblinker.blink_features.waveform_features.extract_blink_properties import (
     BlinkProperties,
 )
-from pyblinker.utils.blink_statistics import (
+from pyblinker.utils.statistics_utils import (
     get_good_blink_mask,
     get_blink_statistic,
 )

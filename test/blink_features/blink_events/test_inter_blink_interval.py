@@ -18,7 +18,7 @@ from pyblinker.blink_features.blink_events.event_features.inter_blink_interval i
     inter_blink_interval_epochs,
 )
 from pyblinker.blink_features.blink_events.event_features.blink_count import blink_count
-from pyblinker.utils.refine_util import slice_raw_into_mne_epochs_refine_annot
+from pyblinker.utils.refinement_utils import slice_raw_into_mne_epochs_refine_annot
 from test.blink_features.utils.helpers import assert_df_has_columns
 
 logger = logging.getLogger(__name__)

@@ -11,7 +11,7 @@ from pyblinker.blink_features.frequency_domain import (
     FrequencyDomainBlinkFeatureExtractor,
     aggregate_frequency_domain_features,
 )
-from pyblinker.utils.refine_util import slice_raw_into_mne_epochs_refine_annot
+from pyblinker.utils.refinement_utils import slice_raw_into_mne_epochs_refine_annot
 
 from ..utils.helpers import (
     assert_df_has_columns,

@@ -1,38 +1,15 @@
-"""Raw segmentation helpers."""
-from typing import List
-from pyblinker.logging import get_logger
+"""Deprecated shim for :mod:`pyblinker.utils.epoch_utils`."""
 
-import mne
-from tqdm import tqdm
+from __future__ import annotations
 
-logger = get_logger(__name__)
+import warnings
 
+from .epoch_utils import slice_raw_to_segments
 
-def slice_raw_to_segments(
-    raw: mne.io.BaseRaw, epoch_len: float = 30.0, *, progress_bar: bool = True
-) -> List[mne.io.BaseRaw]:
-    """Slice a continuous :class:`mne.io.BaseRaw` into fixed-length segments.
+warnings.warn(
+    "pyblinker.utils.segments is deprecated; import from pyblinker.utils.epoch_utils instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
-    Parameters
-    ----------
-    raw : mne.io.BaseRaw
-        Continuous raw recording with blink annotations.
-    epoch_len : float, optional
-        Length of each segment in seconds, by default ``30.0``.
-
-    Returns
-    -------
-    list of mne.io.BaseRaw
-        List of cropped raw segments containing annotations.
-    """
-    n_segments = int(raw.times[-1] // epoch_len)
-    segments: List[mne.io.BaseRaw] = []
-    for i in tqdm(
-        range(n_segments), desc="Segmenting", unit="segment", disable=not progress_bar
-    ):
-        start = i * epoch_len
-        stop = start + epoch_len
-        seg = raw.copy().crop(tmin=start, tmax=stop, include_tmax=False)
-        segments.append(seg)
-    logger.info("Created %d segments", n_segments)
-    return segments
+__all__ = ["slice_raw_to_segments"]

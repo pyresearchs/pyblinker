@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 import mne
 
-from pyblinker.utils.refine_util import slice_raw_into_mne_epochs_refine_annot
+from pyblinker.utils.refinement_utils import slice_raw_into_mne_epochs_refine_annot
 
 # ---------- config / paths ----------
 

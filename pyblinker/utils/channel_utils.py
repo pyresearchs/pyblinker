@@ -11,6 +11,15 @@ from pyblinker.logging import get_logger
 logger = get_logger(__name__)
 
 
+def _is_ear_channel(name: str) -> bool:
+    lower = name.lower()
+    if "eye_aspect_ratio" in lower:
+        return True
+    if "ear" in lower and "a1" not in lower and "a2" not in lower:
+        return True
+    return False
+
+
 def normalize_picks(picks: str | Iterable[str]) -> list[str]:
     """Normalize channel picks to a list.
 
@@ -55,4 +64,24 @@ def require_channels(
     if missing:
         raise ValueError(f"Channels not found: {', '.join(missing)}")
     logger.debug("All channels present")
+
+
+def pick_ear_channels_from_info(info: mne.Info) -> list[int]:
+    """Return indices of EAR-style channels from an :class:`mne.Info`."""
+
+    return [idx for idx, name in enumerate(info["ch_names"]) if _is_ear_channel(name)]
+
+
+def pick_ear_channels_from_raw(raw: BaseRaw) -> list[int]:
+    """Return indices of EAR-style channels from a :class:`mne.io.BaseRaw`."""
+
+    return [idx for idx, name in enumerate(raw.ch_names) if _is_ear_channel(name)]
+
+
+__all__ = [
+    "normalize_picks",
+    "require_channels",
+    "pick_ear_channels_from_info",
+    "pick_ear_channels_from_raw",
+]
 

@@ -23,9 +23,9 @@ import pandas as pd
 import mne
 from tqdm import tqdm
 
-from .utils.blink_metadata import (
+from .utils.metadata_utils import (
     attach_blink_metadata,
-    _sample_windows_from_metadata,
+    sample_windows_from_metadata,
 )
 
 from .blinker.fit_blink import FitBlinks
@@ -145,7 +145,7 @@ def compute_from_refined_epochs(
         signal = data[ei, ci]
         mod = infer_modality(ch)
 
-        sample_windows = _sample_windows_from_metadata(
+        sample_windows = sample_windows_from_metadata(
             metadata_row, ch, sfreq, n_times, ei
         )
         if not sample_windows:
