@@ -9,6 +9,7 @@ import mne
 from pyblinker.utils.blink_windows import extract_blink_windows
 
 from pyblinker.utils import normalize_picks, require_channels
+from pyblinker.utils.modality import infer_modality
 
 logger = get_logger(__name__)
 
@@ -239,12 +240,13 @@ def inter_blink_interval_epochs(
         df["ibi"] = ibis
     else:
         for ch in picks_list:
+            modality = infer_modality(ch)
             ibis = [
                 _mean_inter_blink_interval(extract_blink_windows(row, ch, epoch_idx))
                 for epoch_idx, row in enumerate(rows)
             ]
             df[f"ibi_{ch}"] = ibis
-            logger.debug("IBI values for channel '%s': %s", ch, ibis)
+            logger.debug("IBI values for channel '%s' (modality '%s'): %s", ch, modality, ibis)
 
     logger.debug("Computed channel-wise IBI DataFrame shape: %s", df.shape)
     logger.info("Finished computing IBI DataFrame")
