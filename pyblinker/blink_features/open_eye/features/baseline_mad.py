@@ -1,6 +1,7 @@
 """Median absolute deviation of open-eye baseline."""
 from typing import List, Dict
 import numpy as np
+from pyblinker.fitutils import mad
 from pyblinker.logging import get_logger
 
 logger = get_logger(__name__)
@@ -14,7 +15,6 @@ def baseline_mad_epoch(epoch_signal: np.ndarray, blinks: List[Dict[str, int]]) -
     open_signal = epoch_signal[mask]
     if open_signal.size == 0:
         return float("nan")
-    median = np.median(open_signal)
-    mad = float(np.median(np.abs(open_signal - median)))
-    logger.debug("Baseline MAD: %s", mad)
-    return mad
+    mad_value = float(mad(open_signal))
+    logger.debug("Baseline MAD: %s", mad_value)
+    return mad_value
