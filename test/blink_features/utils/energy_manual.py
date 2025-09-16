@@ -6,11 +6,11 @@ from typing import Dict
 import numpy as np
 import pandas as pd
 
+from pyblinker.blink_features.energy.common import compute_energy_metrics
 from pyblinker.blink_features.energy.helpers import (
     extract_blink_windows,
     segment_to_samples,
     _safe_stats,
-    _tkeo,
 )
 
 
@@ -52,13 +52,11 @@ def manual_epoch_energy_features(
         segment = epoch_data[sl]
         if segment.size == 0:
             continue
-        energies.append(float(np.sum(segment ** 2)))
-        if segment.size >= 3:
-            psi = _tkeo(segment)
-            tkeo_vals.append(float(np.mean(np.abs(psi[1:-1]))))
-        lengths.append(float(np.sum(np.abs(np.diff(segment)))))
-        velocity = np.diff(segment) * sfreq
-        vel_ints.append(float(np.sum(np.abs(velocity))))
+        metrics = compute_energy_metrics(segment, sfreq)
+        energies.append(float(metrics["signal_energy"]))
+        tkeo_vals.append(float(metrics["teager_kaiser_energy"]))
+        lengths.append(float(metrics["line_length"]))
+        vel_ints.append(float(metrics["velocity_integral"]))
     stats_energy = _safe_stats(energies)
     stats_tkeo = _safe_stats(tkeo_vals)
     stats_len = _safe_stats(lengths)
