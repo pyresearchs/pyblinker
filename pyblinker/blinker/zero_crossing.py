@@ -20,16 +20,6 @@ def get_line_intersection_slope(
     return left_slope, right_slope
 
 
-def get_average_velocity(p_left, p_right, x_left, x_right):
-    """
-    Original logic retained. Computes average velocities.
-    """
-    # Using local references is possible, but it's already short.
-    aver_left_velocity = p_left.coef[1] / np.std(x_left)
-    aver_right_velocity = p_right.coef[1] / np.std(x_right)
-    return aver_left_velocity, aver_right_velocity
-
-
 def left_right_zero_crossing(
     candidate_signal: np.ndarray,
     max_blink: float,
