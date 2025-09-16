@@ -80,7 +80,3 @@ def compute_blink_waveform_metrics(segment: np.ndarray, sfreq: float) -> Optiona
         "slope_rise": slope_rise,
         "slope_fall": slope_fall,
     }
-
-
-# Derive metric names for reuse elsewhere without hardcoding
-WAVEFORM_METRICS = tuple(compute_blink_waveform_metrics(np.zeros(3), 1.0).keys())
