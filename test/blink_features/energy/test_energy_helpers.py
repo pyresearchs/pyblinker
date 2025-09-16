@@ -6,6 +6,7 @@ import unittest
 import numpy as np
 import pandas as pd
 
+from pyblinker.blink_features.energy.common import compute_energy_metrics
 from pyblinker.blink_features.energy.helpers import (
     extract_blink_windows,
     segment_to_samples,
@@ -53,6 +54,15 @@ class TestEnergyHelpers(unittest.TestCase):
         self.assertEqual(psi[0], 0.0)
         self.assertEqual(psi[-1], 0.0)
         self.assertAlmostEqual(psi[1], x[1] ** 2 - x[0] * x[2])
+
+    def test_compute_energy_metrics(self) -> None:
+        """Energy helper returns expected values for a simple segment."""
+        segment = np.array([0.0, 1.0, 0.0])
+        metrics = compute_energy_metrics(segment, sfreq=10.0)
+        self.assertAlmostEqual(metrics["signal_energy"], 0.1)
+        self.assertAlmostEqual(metrics["teager_kaiser_energy"], 0.1)
+        self.assertAlmostEqual(metrics["line_length"], 2.0)
+        self.assertAlmostEqual(metrics["velocity_integral"], 1.0)
 
 
 if __name__ == "__main__":
