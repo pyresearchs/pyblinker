@@ -1,13 +1,13 @@
 """Blink refinement utilities for EEG/EOG signals."""
-import logging
 from typing import Sequence, Dict, Any, Callable, List, Optional
 from typing import Tuple
+from pyblinker.logging import get_logger
 
 import matplotlib.pyplot as plt
 import mne
 import numpy as np
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def refine_ear_extrema_and_threshold_stub(

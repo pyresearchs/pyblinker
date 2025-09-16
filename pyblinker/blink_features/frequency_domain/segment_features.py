@@ -1,15 +1,15 @@
 """Frequency-domain features for arbitrary segments."""
 
 from __future__ import annotations
+from pyblinker.logging import get_logger
 
 from typing import Any, Dict, List
-import logging
 
 import numpy as np
 
 from .features import _compute_wavelet_energies
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def compute_frequency_domain_features(
@@ -40,4 +40,3 @@ def compute_frequency_domain_features(
     )
     energies = _compute_wavelet_energies(np.asarray(segment_signal, dtype=float), sfreq)
     return {f"wavelet_energy_d{i+1}": val for i, val in enumerate(energies)}
-

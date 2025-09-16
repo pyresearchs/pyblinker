@@ -8,10 +8,10 @@ implemented in the `Jena Facial Palsy Tool <https://github.com/cvjena/JeFaPaTo>`
 """
 
 from typing import List, Dict
-import logging
 import numpy as np
+from pyblinker.logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def ear_before_blink_avg_epoch(

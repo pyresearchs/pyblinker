@@ -1,9 +1,9 @@
 """RMS of eyelid aperture during open-eye periods."""
 from typing import List, Dict
-import logging
 import numpy as np
+from pyblinker.logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def eye_opening_rms_epoch(epoch_signal: np.ndarray, blinks: List[Dict[str, int]]) -> float:

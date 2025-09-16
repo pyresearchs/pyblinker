@@ -1,9 +1,13 @@
 """Utility functions replicating select MATLAB helpers in Python."""
 from __future__ import annotations
+from pyblinker.logging import get_logger
+
 
 import numpy as np
 from scipy.linalg import qr, solve_triangular
 from scipy.stats import pearsonr, spearmanr, kendalltau
+
+logger = get_logger(__name__)
 
 
 def mad(arr: np.ndarray, axis: int | None = None, keepdims: bool = True) -> np.ndarray:
@@ -258,9 +262,11 @@ def polyval(p, x, S=None, mu=None):
     delta : ndarray or None
         Prediction error estimates at x.
     """
+    logger.info("Entering polyval")
+
     # Ensure p is a vector or empty
     if not (np.ndim(p) == 1 or len(p) == 0):
-        raise ValueError('Invalid P')
+        raise ValueError("Invalid P")
 
     nc = len(p)
 
@@ -279,15 +285,16 @@ def polyval(p, x, S=None, mu=None):
     if S is not None:
         # Extract parameters from S
         if isinstance(S, dict):
-            R = np.array(S['R'])
-            df = S['df']
-            normr = S['normr']
+            R = np.array(S["R"])
+            df = S["df"]
+            normr = S["normr"]
         else:
-            raise ValueError('S must be a dictionary with keys R, df, normr')
+            raise ValueError("S must be a dictionary with keys R, df, normr")
 
         # Check if R is singular
         if np.linalg.det(R) == 0:
-            print("Warning: Singular matrix R. Skipping delta calculation.")
+            logger.warning("Singular matrix R. Skipping delta calculation.")
+            logger.info("Exiting polyval")
             return y, None
 
         # Construct Vandermonde matrix for x
@@ -302,7 +309,8 @@ def polyval(p, x, S=None, mu=None):
             E_T = solve_triangular(R.T, V.T, lower=True, check_finite=False)
             E = E_T.T
         except np.linalg.LinAlgError as e:
-            print(f"Error solving triangular system: {e}")
+            logger.exception("Error solving triangular system: %s", e)
+            logger.info("Exiting polyval")
             return y, None
 
         e = np.sqrt(1 + np.sum(E ** 2, axis=1))
@@ -314,6 +322,7 @@ def polyval(p, x, S=None, mu=None):
 
         delta = delta.reshape(x.shape)
 
+    logger.info("Exiting polyval")
     return y, delta
 
 

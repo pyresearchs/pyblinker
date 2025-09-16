@@ -59,7 +59,6 @@ class TestAttachBlinkMetadata(unittest.TestCase):
             "left_zero",
             "right_zero",
             "max_value",
-            "max_blink_alternative",
             "max_pos_vel_frame",
             "max_neg_vel_frame",
             "left_base",
@@ -82,7 +81,7 @@ class TestAttachBlinkMetadata(unittest.TestCase):
             "inter_blink_max_vel_zero",
         ]
         self.assertTrue(set(expected_cols).issubset(md.columns))
-
+        #
         for _, row in md.iterrows():
             if row["n_blinks"] == 0:
                 self.assertTrue(pd.isna(row["blink_onset"]))

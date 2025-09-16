@@ -5,10 +5,10 @@ fatigue, representing the fraction of time the eye is mostly
 closed.
 """
 from typing import List, Dict
-import logging
 import numpy as np
+from pyblinker.logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def perclos_epoch(epoch_signal: np.ndarray, blinks: List[Dict[str, int]], threshold_ratio: float = 0.8) -> float:

@@ -1,12 +1,12 @@
 """Per-blink morphology feature calculations."""
 from __future__ import annotations
+from pyblinker.logging import get_logger
 
 from typing import Dict, Optional
-import logging
 
 import numpy as np
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def compute_blink_waveform_metrics(segment: np.ndarray, sfreq: float) -> Optional[Dict[str, float]]:
@@ -44,7 +44,7 @@ def compute_blink_waveform_metrics(segment: np.ndarray, sfreq: float) -> Optiona
     peak = float(segment[peak_idx])
     trough = float(segment[trough_idx])
     peak_to_peak = float(peak - trough)
-    area_abs = float(np.trapz(np.abs(segment), dx=1.0 / sfreq))
+    area_abs = float(np.trapezoid(np.abs(segment), dx=1.0 / sfreq))
 
     rise_time = peak_idx / sfreq
     fall_time = (segment.size - 1 - peak_idx) / sfreq
@@ -80,8 +80,3 @@ def compute_blink_waveform_metrics(segment: np.ndarray, sfreq: float) -> Optiona
         "slope_rise": slope_rise,
         "slope_fall": slope_fall,
     }
-
-
-# Derive metric names for reuse elsewhere without hardcoding
-WAVEFORM_METRICS = tuple(compute_blink_waveform_metrics(np.zeros(3), 1.0).keys())
-

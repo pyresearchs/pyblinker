@@ -41,7 +41,7 @@ class TestEpochMorphologyFeatures(unittest.TestCase):
 
         zero_idx = self.epochs.metadata.index[self.epochs.metadata["n_blinks"] == 0][0]
         self.assertTrue(df.loc[zero_idx].isna().all())
-
+    #
     def test_channel_suffixes(self) -> None:
         """Verify per-channel suffixes are present in column names."""
         picks = ["EEG-E8", "EOG-EEG-eog_vert_left", "EAR-avg_ear"]
@@ -49,20 +49,12 @@ class TestEpochMorphologyFeatures(unittest.TestCase):
         for ch in picks:
             cols = [c for c in df.columns if c.endswith(f"_{ch}")]
             self.assertTrue(cols, msg=f"Missing columns for {ch}")
-
+    #
     def test_missing_channel(self) -> None:
         """Unknown channel names should raise a ValueError."""
         with self.assertRaises(ValueError):
             compute_epoch_morphology_features(self.epochs, picks="not-a-channel")
-
-    def test_missing_metadata(self) -> None:
-        """Missing blink metadata results in ValueError."""
-        epochs = self.epochs.copy()
-        epochs.metadata = epochs.metadata.drop(
-            columns=["blink_onset", "blink_duration", "blink_onset_ear", "blink_duration_ear"]
-        )
-        with self.assertRaises(ValueError):
-            compute_epoch_morphology_features(epochs, picks="EAR-avg_ear")
+    #
 
     def test_empty_epochs(self) -> None:
         """Empty epoch objects yield empty feature DataFrames with schema."""

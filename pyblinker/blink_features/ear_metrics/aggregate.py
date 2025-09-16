@@ -1,12 +1,12 @@
 """Aggregate EAR baseline and extrema features."""
 from typing import Iterable, Dict, Any, List
-import logging
 import pandas as pd
 import numpy as np
+from pyblinker.logging import get_logger
 
 from .features import ear_before_blink_avg_epoch, ear_extrema_epoch
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def aggregate_ear_features(

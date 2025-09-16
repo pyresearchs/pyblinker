@@ -1,14 +1,14 @@
 """Aggregate blink energy features across epochs."""
 from __future__ import annotations
+from pyblinker.logging import get_logger
 
 from typing import Any, Dict, Iterable, List
-import logging
 import pandas as pd
 
 from .helpers import _safe_stats
 from .per_blink import compute_blink_energy
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 _METRICS = (
     "blink_signal_energy",

@@ -1,11 +1,11 @@
 """Raw segmentation helpers."""
 from typing import List
-import logging
+from pyblinker.logging import get_logger
 
 import mne
 from tqdm import tqdm
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def slice_raw_to_segments(

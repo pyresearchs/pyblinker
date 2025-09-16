@@ -1,8 +1,8 @@
 """Aggregate open-eye features across epochs."""
 from typing import Iterable, Dict, List, Any
-import logging
 import pandas as pd
 import numpy as np
+from pyblinker.logging import get_logger
 
 from .features import (
     baseline_mean_epoch,
@@ -15,7 +15,7 @@ from .features import (
     zero_crossing_rate_epoch,
 )
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def aggregate_open_eye_features(

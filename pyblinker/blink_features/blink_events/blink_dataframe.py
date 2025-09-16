@@ -1,12 +1,12 @@
-import logging
 from typing import List, Optional, Sequence, Tuple, Dict
+from pyblinker.logging import get_logger
 
 import mne
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def left_right_zero_crossing(
@@ -16,7 +16,7 @@ def left_right_zero_crossing(
     outer_end: float,
     *,
     signal_type: str = "eeg",
-) -> tuple[int, Optional[int]]:
+) -> tuple[Optional[int], Optional[int]]:
     """Find the nearest zero-crossing indices around ``max_blink``.
 
     The search is performed in the range ``[outer_start, max_blink)`` on the
@@ -41,9 +41,10 @@ def left_right_zero_crossing(
 
     Returns
     -------
-    tuple[int, Optional[int]]
-        ``(left_zero, right_zero)`` indices. ``right_zero`` may be ``None`` if
-        no negative sample exists to the right even after the fallback search.
+    tuple[Optional[int], Optional[int]]
+        ``(left_zero, right_zero)`` indices. ``left_zero`` or ``right_zero`` may
+        be ``None`` if no negative sample exists on the respective side even
+        after the fallback search.
 
     Raises
     ------
@@ -66,18 +67,21 @@ def left_right_zero_crossing(
     s_ind_left_zero = np.flatnonzero(left_values < 0)
 
     if s_ind_left_zero.size > 0:
-        left_zero = int(left_range[s_ind_left_zero[-1]])
+        left_zero: Optional[int] = int(left_range[s_ind_left_zero[-1]])
     else:
         full_left_range = np.arange(0, m_frame).astype(int)
         left_neg_idx = np.flatnonzero(candidate_signal[full_left_range] < 0)
-        left_zero = int(full_left_range[left_neg_idx[-1]])
+        if left_neg_idx.size > 0:
+            left_zero = int(full_left_range[left_neg_idx[-1]])
+        else:
+            left_zero = None
 
     right_range = np.arange(m_frame, end_idx)
     right_values = candidate_signal[right_range]
     s_ind_right_zero = np.flatnonzero(right_values < 0)
 
     if s_ind_right_zero.size > 0:
-        right_zero = int(right_range[s_ind_right_zero[0]])
+        right_zero: Optional[int] = int(right_range[s_ind_right_zero[0]])
     else:
         try:
             extreme_outer = np.arange(m_frame, candidate_signal.shape[0]).astype(int)
@@ -90,13 +94,13 @@ def left_right_zero_crossing(
         else:
             return left_zero, None
 
-    if left_zero > m_frame:
+    if left_zero is not None and left_zero > m_frame:
         raise ValueError(
             "Validation error: left_zero = {left_zero}, max_blink = {max_blink}."
             " Ensure left_zero <= max_blink."
         )
 
-    if m_frame > right_zero:
+    if right_zero is not None and m_frame > right_zero:
         raise ValueError(
             "Validation error: max_blink = {max_blink}, right_zero = {right_zero}."
             " Ensure max_blink <= right_zero."
@@ -355,7 +359,3 @@ def extract_blink_events_dataframe(
     logger.info("Extracted %d blink events", len(df))
     logger.debug("Blink events preview:\n%s", df.head())
     return df
-
-
-# Backwards compatibility
-generate_blink_dataframe = extract_blink_events_dataframe

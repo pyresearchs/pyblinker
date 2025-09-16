@@ -13,9 +13,9 @@ Refactor goals achieved in this version:
 """
 
 from __future__ import annotations
+from pyblinker.logging import get_logger
 
 from typing import Sequence, Dict, Any, List, Iterable, Tuple
-import logging
 import itertools
 
 import numpy as np
@@ -32,7 +32,7 @@ from .blinker.fit_blink import FitBlinks
 from .blink_features.waveform_features.extract_blink_properties import BlinkProperties
 from .blink_features.blink_events.blink_dataframe import left_right_zero_crossing
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
  # ------------------------------ Public API ------------------------------------
 
@@ -145,7 +145,7 @@ def compute_from_refined_epochs(
             metadata_row, ch, sfreq, n_times, ei
         )
         if not sample_windows:
-            logger.debug("No sample windows for epoch %d channel %s", ei, ch)
+            logger.debug("No blink available for epoch %d channel %s", ei, ch)
             continue
 
         rows = build_candidate_rows_for_epoch_channel(
@@ -389,8 +389,8 @@ def zero_crossing_for_row(signal: np.ndarray, row: pd.Series) -> Tuple[float, fl
             int(row["outer_start"]),
             int(row["outer_end"]),
         )
-        right_val = np.nan if right is None else float(right)
-        return float(left), right_val
+        right_val = np.nan if right is None else int(right)
+        return int(left), right_val
     except Exception:
         return np.nan, np.nan
 
@@ -425,5 +425,4 @@ def fit_and_extract_properties(
         return None
 
     return BlinkProperties(signal, frame_blinks, sfreq, params, fitted=run_fit).df
-
 

@@ -5,10 +5,10 @@ remain steady. Increased variability may indicate unstable
 oculomotor control due to fatigue.
 """
 from typing import List, Dict
-import logging
 import numpy as np
+from pyblinker.logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def baseline_std_epoch(epoch_signal: np.ndarray, blinks: List[Dict[str, int]]) -> float:

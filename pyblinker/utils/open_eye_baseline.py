@@ -1,8 +1,8 @@
 """Utilities for computing open-eye baseline features."""
 
 from __future__ import annotations
+from pyblinker.logging import get_logger
 
-import logging
 from typing import Sequence
 
 import mne
@@ -20,7 +20,7 @@ from pyblinker.blink_features.open_eye import (
     zero_crossing_rate_epoch,
 )
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def _blinks_from_metadata(meta: pd.Series, sfreq: float) -> list[dict[str, int]]:

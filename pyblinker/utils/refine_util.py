@@ -1,8 +1,8 @@
 """Epoching utilities for time-series data."""
 
 from typing import Any, Dict, List, Optional
+from pyblinker.logging import get_logger
 
-import logging
 
 import mne
 import numpy as np
@@ -14,7 +14,7 @@ from .refinement import (
     refine_local_maximum_stub,
 )
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 # --------------------------- helpers ---------------------------

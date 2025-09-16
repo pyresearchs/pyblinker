@@ -1,11 +1,11 @@
 """Blink rate feature."""
 from typing import List, Dict
+from pyblinker.logging import get_logger
 
-import logging
 
 from .blink_count import blink_count_epoch
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def blink_rate_epoch(blinks: List[Dict[str, int]], epoch_len: float) -> float:

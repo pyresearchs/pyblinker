@@ -47,8 +47,10 @@ from tqdm import tqdm
 
 from .default_setting import SCALING_FACTOR
 from ..fitutils import mad
-from ..utils._logging import logger
-from ..ear.blink_epoch_mapper import _get_blink_position_epoching_ear
+from pyblinker.logging import get_logger
+# from ..ear.blink_epoch_mapper import _get_blink_position_epoching_ear
+
+logger = get_logger(__name__)
 
 
 def _infer_signal_type(
@@ -308,9 +310,11 @@ def find_blinks_epoch(
 
     signal_type = _infer_signal_type(ch_name, ch_type)
     if signal_type == "EAR":
-        blink_positions = _get_blink_position_epoching_ear(
-            flat_signal, params, ch=ch_name, progress_bar=False
-        )
+        pass
+        # We disable EAR support, but this is where it would go
+        # blink_positions = _get_blink_position_epoching_ear(
+        #     flat_signal, params, ch=ch_name, progress_bar=False
+        # )
     else:
         blink_positions = _get_blink_position_epoching(
             flat_signal,

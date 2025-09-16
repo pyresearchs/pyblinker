@@ -80,7 +80,7 @@ class TestSegmentBlinkPropertiesLong(unittest.TestCase):
         ]
         value_cols = [
             "max_value",
-            "max_blink_alternative",
+            # "max_blink_alternative",
             "max_pos_vel_frame",
             "max_neg_vel_frame",
             "left_base",

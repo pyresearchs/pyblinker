@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 
 from pyblinker.blink_features.energy.helpers import _safe_stats
-from pyblinker.blink_features.morphology.per_blink import WAVEFORM_METRICS
+from pyblinker.blink_features.morphology.epoch_features import WAVEFORM_METRICS
 
 
 def assert_numeric_or_nan(testcase, values: Iterable[float]) -> None:

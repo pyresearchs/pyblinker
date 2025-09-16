@@ -1,7 +1,8 @@
 # Core scientific computing
-numpy
+numpy > 2.0.0
 scipy
 scikit-learn
+PyWavelets
 
 # Visualization
 matplotlib

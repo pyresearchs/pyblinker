@@ -1,10 +1,10 @@
 """Blink kinematic feature calculations based on epoch metadata."""
 
 from __future__ import annotations
+from pyblinker.logging import get_logger
 
 from typing import Dict, List, Sequence
 
-import logging
 
 import mne
 import numpy as np
@@ -13,7 +13,7 @@ import pandas as pd
 from .per_blink import compute_segment_kinematics
 from ..energy.helpers import extract_blink_windows, segment_to_samples, _safe_stats
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Derive metric and statistic names from helper functions to avoid hardcoding
 _METRICS = tuple(compute_segment_kinematics(np.zeros(3), 1.0).keys())
@@ -112,4 +112,3 @@ def compute_kinematic_features(
     df = pd.DataFrame.from_records(records, index=index, columns=columns)
     logger.debug("Kinematic feature DataFrame shape: %s", df.shape)
     return df
-
