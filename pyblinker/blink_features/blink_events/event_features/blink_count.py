@@ -7,7 +7,7 @@ import mne
 from pyblinker.logging import get_logger
 from pyblinker.utils.blink_windows import extract_blink_windows
 
-from .utils import normalize_picks
+from pyblinker.utils import normalize_picks
 
 
 logger = get_logger(__name__)

@@ -18,6 +18,7 @@ from .raw_preprocessing import prepare_refined_segments
 from .misc import create_annotation
 from .blink_metadata import onset_entry_to_blinks
 from .report import add_blink_plots_to_report
+from .channel_utils import normalize_picks, require_channels
 
 __all__ = [
     "slice_raw_to_segments",
@@ -35,4 +36,6 @@ __all__ = [
     "create_annotation",
     "onset_entry_to_blinks",
     "add_blink_plots_to_report",
+    "normalize_picks",
+    "require_channels",
 ]
