@@ -5,8 +5,10 @@ import numpy as np
 import pandas as pd
 import mne
 from pyblinker.logging import get_logger
+from pyblinker.utils.metadata_utils import extract_blink_windows
 
-from .utils import normalize_picks
+from pyblinker.utils import normalize_picks
+from pyblinker.utils.modality import infer_modality
 
 
 logger = get_logger(__name__)
@@ -61,11 +63,6 @@ def blink_count_epoch(
         raise TypeError(f"Unsupported input type: {type(blinks)}")
 
 
-def _infer_modality(channel: str) -> str:
-    """Infer modality label (e.g., ``"eeg"``) from a channel name."""
-    return channel.split("-", 1)[0].lower()
-
-
 def blink_count(
     epochs: mne.Epochs, picks: str | Iterable[str] | None = None
 ) -> pd.DataFrame:
@@ -103,65 +100,44 @@ def blink_count(
     if metadata is None:
         raise ValueError("Epochs.metadata must contain blink information")
 
-    index = metadata.index if isinstance(metadata, pd.DataFrame) else pd.RangeIndex(len(epochs))
+    if isinstance(metadata, pd.DataFrame):
+        metadata_df = metadata
+        index = metadata_df.index
+    else:
+        metadata_df = pd.DataFrame(metadata)
+        index = pd.RangeIndex(len(epochs))
+
     df = pd.DataFrame(index=index)
     df.insert(0, "ep", index.to_numpy())
 
     picks_list = normalize_picks(picks) if picks is not None else []
-    modalities: List[str] = []
-    for ch in picks_list:
-        mod = _infer_modality(ch)
-        if mod not in modalities:
-            modalities.append(mod)
-
-    def _count(entry: object) -> int:
-        if entry is None:
-            return 0
-        if isinstance(entry, (list, np.ndarray, pd.Series)):
-            arr = pd.Series(entry)
-            return int((~pd.isna(arr)).sum())
-        if pd.isna(entry):
-            return 0
-        return 1
+    rows = [row for _, row in metadata_df.iterrows()]
 
     if not picks_list:
-        onset_col = "blink_onset"
-        duration_col = "blink_duration"
-        if onset_col not in metadata or duration_col not in metadata:
-            missing = [col for col in [onset_col, duration_col] if col not in metadata]
-            raise ValueError(
-                "Epochs.metadata missing required blink columns: " + ", ".join(sorted(missing))
-            )
-        df["blink_count"] = metadata[onset_col].apply(_count).astype(float)
-        logger.debug("Blink counts per epoch: %s", df["blink_count"].tolist())
+        counts = [
+            float(len(extract_blink_windows(row, None, epoch_idx)))
+            for epoch_idx, row in enumerate(rows)
+        ]
+        df["blink_count"] = counts
+        logger.debug("Blink counts per epoch: %s", counts)
     else:
-        for modality in modalities:
-            onset_col = f"blink_onset_{modality}"
-            duration_col = f"blink_duration_{modality}"
-            if onset_col not in metadata or duration_col not in metadata:
-                logger.debug(
-                    "Modality '%s' missing specific columns; using generic blink columns",
-                    modality,
-                )
-                onset_col = "blink_onset"
-                duration_col = "blink_duration"
-                if onset_col not in metadata or duration_col not in metadata:
-                    missing = [
-                        col
-                        for col in [onset_col, duration_col]
-                        if col not in metadata
-                    ]
-                    raise ValueError(
-                        "Epochs.metadata missing required blink columns: "
-                        + ", ".join(sorted(missing))
-                    )
+        mod_to_channel: Dict[str, str] = {}
+        for ch in picks_list:
+            mod = infer_modality(ch)
+            if mod not in mod_to_channel:
+                mod_to_channel[mod] = ch
 
+        for modality, channel in mod_to_channel.items():
+            counts = [
+                float(len(extract_blink_windows(row, channel, epoch_idx)))
+                for epoch_idx, row in enumerate(rows)
+            ]
             col_name = f"blink_count_{modality}"
-            df[col_name] = metadata[onset_col].apply(_count).astype(float)
+            df[col_name] = counts
             logger.debug(
                 "Blink counts for modality '%s': %s",
                 modality,
-                df[col_name].tolist(),
+                counts,
             )
 
     logger.info("Finished counting blinks")

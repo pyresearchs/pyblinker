@@ -1,14 +1,21 @@
-"""Blink statistics utilities."""
+"""Blink statistics helper functions."""
+
+from __future__ import annotations
+
+from typing import Tuple
 
 import numpy as np
 import pandas as pd
 
-from pyblinker.fitutils import mad
 from pyblinker.blinker.default_setting import SCALING_FACTOR
+from pyblinker.fitutils import mad
 
 
-def calculate_within_range(all_values: np.ndarray, best_median: float, best_robust_std: float) -> int:
-    """Return the count of values within two robust standard deviations of ``best_median``."""
+def calculate_within_range(
+    all_values: np.ndarray, best_median: float, best_robust_std: float
+) -> int:
+    """Return the count of values within two robust standard deviations."""
+
     lower_bound = best_median - 2 * best_robust_std
     upper_bound = best_median + 2 * best_robust_std
     within_mask = (all_values >= lower_bound) & (all_values <= upper_bound)
@@ -16,23 +23,33 @@ def calculate_within_range(all_values: np.ndarray, best_median: float, best_robu
 
 
 def calculate_good_ratio(
-    all_values: np.ndarray, best_median: float, best_robust_std: float, all_x: int
+    all_values: np.ndarray,
+    best_median: float,
+    best_robust_std: float,
+    all_x: int,
 ) -> float:
-    """Return the fraction of ``all_values`` within two robust standard deviations of ``best_median``."""
+    """Return the fraction of ``all_values`` within the robust range."""
+
     lower_bound = best_median - 2 * best_robust_std
     upper_bound = best_median + 2 * best_robust_std
     within_mask = (all_values >= lower_bound) & (all_values <= upper_bound)
     return float(np.sum(within_mask) / all_x)
 
 
-def get_blink_statistic(df: pd.DataFrame, z_thresholds: np.ndarray, signal: np.ndarray | None = None) -> dict:
+def get_blink_statistic(
+    df: pd.DataFrame, z_thresholds: np.ndarray, signal: np.ndarray | None = None
+) -> dict:
     """Compute blink statistics for a DataFrame of blink fits."""
+
     dfx = df.copy()
     dfx[["left_zero", "right_zero"]] = dfx[["left_zero", "right_zero"]] - 1
 
     indices = np.arange(len(signal))
     blink_mask = np.any(
-        [(indices >= lz) & (indices <= rz) for lz, rz in zip(dfx["left_zero"], dfx["right_zero"])],
+        [
+            (indices >= lz) & (indices <= rz)
+            for lz, rz in zip(dfx["left_zero"], dfx["right_zero"])
+        ],
         axis=0,
     ).astype(bool)
 
@@ -63,9 +80,13 @@ def get_blink_statistic(df: pd.DataFrame, z_thresholds: np.ndarray, signal: np.n
         best_robust_std + worst_robust_std
     )
 
-    all_x = calculate_within_range(df_data["max_value"].to_numpy(), best_median, best_robust_std)
+    all_x = calculate_within_range(
+        df_data["max_value"].to_numpy(), best_median, best_robust_std
+    )
     good_ratio = (
-        np.nan if all_x <= 0 else calculate_good_ratio(good_values, best_median, best_robust_std, all_x)
+        np.nan
+        if all_x <= 0
+        else calculate_good_ratio(good_values, best_median, best_robust_std, all_x)
     )
 
     number_good_blinks = int(np.sum(good_mask_bottom))
@@ -82,9 +103,13 @@ def get_blink_statistic(df: pd.DataFrame, z_thresholds: np.ndarray, signal: np.n
 
 
 def get_good_blink_mask(
-    blink_fits: pd.DataFrame, specified_median: float, specified_std: float, z_thresholds: np.ndarray
-) -> tuple[np.ndarray, pd.DataFrame]:
-    """Return mask of good blinks and subset DataFrame based on correlation and amplitude thresholds."""
+    blink_fits: pd.DataFrame,
+    specified_median: float,
+    specified_std: float,
+    z_thresholds: np.ndarray,
+) -> Tuple[np.ndarray, pd.DataFrame]:
+    """Return mask of good blinks and subset DataFrame based on thresholds."""
+
     blink_fits = blink_fits.dropna(subset=["leftR2", "rightR2", "max_value"])
 
     left_r2 = blink_fits["leftR2"].to_numpy()
@@ -113,3 +138,11 @@ def get_good_blink_mask(
     good_blink_mask = np.any(masks, axis=1)
     selected_rows = blink_fits[good_blink_mask]
     return good_blink_mask, selected_rows
+
+
+__all__ = [
+    "calculate_within_range",
+    "calculate_good_ratio",
+    "get_blink_statistic",
+    "get_good_blink_mask",
+]

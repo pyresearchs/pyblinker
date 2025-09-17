@@ -4,7 +4,7 @@ from pathlib import Path
 import mne
 import numpy as np
 
-from pyblinker.utils.epochs import slice_raw_into_epochs
+from pyblinker.utils.epoch_utils import slice_raw_into_epochs
 from pyblinker.blink_features.blink_events import extract_blink_events_dataframe
 from pyblinker.segment_blink_properties import compute_segment_blink_properties
 

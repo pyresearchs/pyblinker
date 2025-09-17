@@ -1,11 +1,13 @@
-"""Miscellaneous helper utilities."""
+"""Annotation-related helper utilities."""
 
 from __future__ import annotations
-from pyblinker.logging import get_logger
 
+from typing import Iterable
 
 import mne
 import pandas as pd
+
+from pyblinker.logging import get_logger
 
 logger = get_logger(__name__)
 
@@ -19,12 +21,12 @@ def create_annotation(
 
     Parameters
     ----------
-    sblink : pandas.DataFrame
+    sblink
         DataFrame containing ``start_blink`` and ``end_blink`` columns with
         blink sample indices.
-    sfreq : float
+    sfreq
         Sampling frequency of the signal in Hertz. Must be positive.
-    label : str
+    label
         Annotation label applied to each blink.
 
     Returns
@@ -62,12 +64,12 @@ def create_annotation(
     duration = (
         (sblink["end_blink"] - sblink["start_blink"]) / sfreq
     ).to_list()
-    descriptions = [label] * len(onset)
+    descriptions: Iterable[str] = [label] * len(onset)
 
     annot = mne.Annotations(
         onset=onset,
         duration=duration,
-        description=descriptions,
+        description=list(descriptions),
     )
     logger.info("Exiting create_annotation")
     return annot

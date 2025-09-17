@@ -1,12 +1,15 @@
 """Inter-blink interval based features."""
-from typing import Dict, List, Sequence, Iterable
+from typing import Dict, List, Sequence, Iterable, Tuple
 from pyblinker.logging import get_logger
 
 import numpy as np
 import pandas as pd
 import mne
 
-from .utils import normalize_picks, require_channels
+from pyblinker.utils.metadata_utils import extract_blink_windows
+
+from pyblinker.utils import normalize_picks, require_channels
+from pyblinker.utils.modality import infer_modality
 
 logger = get_logger(__name__)
 
@@ -145,9 +148,22 @@ def compute_ibi_features(blinks: List[Dict[str, int]], sfreq: float) -> Dict[str
     }
 
 
-def _infer_modality(channel: str) -> str:
-    """Infer modality label (e.g., ``"eeg"``) from a channel name."""
-    return channel.split("-", 1)[0].lower()
+def _mean_inter_blink_interval(windows: Sequence[Tuple[float, float]]) -> float:
+    """Return the mean interval separating successive blink windows."""
+
+    if len(windows) < 2:
+        return float("nan")
+
+    starts = np.asarray([onset for onset, _ in windows], dtype=float)
+    durations = np.asarray([duration for _, duration in windows], dtype=float)
+    order = np.argsort(starts)
+    starts = starts[order]
+    durations = durations[order]
+    ends = starts + durations
+    intervals = starts[1:] - ends[:-1]
+    if intervals.size == 0:
+        return float("nan")
+    return float(np.mean(intervals))
 
 
 def inter_blink_interval_epochs(
@@ -198,11 +214,17 @@ def inter_blink_interval_epochs(
     if metadata is None:
         raise ValueError("Epochs.metadata must contain blink information")
 
-    index = (
-        metadata.index if isinstance(metadata, pd.DataFrame) else pd.RangeIndex(len(epochs))
-    )
+    if isinstance(metadata, pd.DataFrame):
+        metadata_df = metadata
+        index = metadata_df.index
+    else:
+        metadata_df = pd.DataFrame(metadata)
+        index = pd.RangeIndex(len(epochs))
+
     df = pd.DataFrame(index=index)
     df.insert(0, "ep", index.to_numpy())
+
+    rows = [row for _, row in metadata_df.iterrows()]
 
     logger.info(
         "Computing inter-blink intervals for %d epochs and channels %s",
@@ -211,82 +233,20 @@ def inter_blink_interval_epochs(
     )
 
     if not picks_list:
-        onset_col = "blink_onset"
-        duration_col = "blink_duration"
-        if onset_col not in metadata or duration_col not in metadata:
-            missing = [col for col in [onset_col, duration_col] if col not in metadata]
-            raise ValueError(
-                "Epochs.metadata missing required blink columns: "
-                + ", ".join(sorted(missing))
-            )
-        ibis: List[float] = []
-        for onset, duration in zip(metadata[onset_col], metadata[duration_col]):
-            onsets = (
-                onset
-                if isinstance(onset, list)
-                else ([] if onset is None or pd.isna(onset) else [float(onset)])
-            )
-            durations = (
-                duration
-                if isinstance(duration, list)
-                else ([] if duration is None or pd.isna(duration) else [float(duration)])
-            )
-            if len(onsets) < 2:
-                ibis.append(float("nan"))
-                continue
-            ends = [o + d for o, d in zip(onsets, durations)]
-            intervals = [onsets[i + 1] - ends[i] for i in range(len(onsets) - 1)]
-            ibis.append(float(np.mean(intervals)) if intervals else float("nan"))
+        ibis = [
+            _mean_inter_blink_interval(extract_blink_windows(row, None, epoch_idx))
+            for epoch_idx, row in enumerate(rows)
+        ]
         df["ibi"] = ibis
     else:
         for ch in picks_list:
-            modality = _infer_modality(ch)
-            onset_col = f"blink_onset_{modality}"
-            duration_col = f"blink_duration_{modality}"
-            if onset_col not in metadata or duration_col not in metadata:
-                logger.debug(
-                    "Falling back to generic blink columns for channel %s", ch
-                )
-                onset_col = "blink_onset"
-                duration_col = "blink_duration"
-            else:
-                logger.debug(
-                    "Using modality-specific columns '%s' and '%s' for channel %s",
-                    onset_col,
-                    duration_col,
-                    ch,
-                )
-            if onset_col not in metadata or duration_col not in metadata:
-                missing = [
-                    col
-                    for col in [onset_col, duration_col]
-                    if col not in metadata
-                ]
-                raise ValueError(
-                    "Epochs.metadata missing required blink columns: "
-                    + ", ".join(sorted(missing))
-                )
-
-            ibis: List[float] = []
-            for onset, duration in zip(metadata[onset_col], metadata[duration_col]):
-                onsets = (
-                    onset
-                    if isinstance(onset, list)
-                    else ([] if onset is None or pd.isna(onset) else [float(onset)])
-                )
-                durations = (
-                    duration
-                    if isinstance(duration, list)
-                    else ([] if duration is None or pd.isna(duration) else [float(duration)])
-                )
-                if len(onsets) < 2:
-                    ibis.append(float("nan"))
-                    continue
-                ends = [o + d for o, d in zip(onsets, durations)]
-                intervals = [onsets[i + 1] - ends[i] for i in range(len(onsets) - 1)]
-                ibis.append(float(np.mean(intervals)) if intervals else float("nan"))
-
+            modality = infer_modality(ch)
+            ibis = [
+                _mean_inter_blink_interval(extract_blink_windows(row, ch, epoch_idx))
+                for epoch_idx, row in enumerate(rows)
+            ]
             df[f"ibi_{ch}"] = ibis
+            logger.debug("IBI values for channel '%s' (modality '%s'): %s", ch, modality, ibis)
 
     logger.debug("Computed channel-wise IBI DataFrame shape: %s", df.shape)
     logger.info("Finished computing IBI DataFrame")

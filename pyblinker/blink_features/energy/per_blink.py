@@ -1,8 +1,11 @@
 """Per-blink energy feature calculations."""
 from typing import Any, Dict
-import logging
+
 import numpy as np
+
 from pyblinker.logging import get_logger
+
+from .common import compute_energy_metrics
 
 logger = get_logger(__name__)
 
@@ -34,41 +37,13 @@ def compute_blink_energy(blink: Dict[str, Any], sfreq: float) -> Dict[str, float
     signal = np.asarray(blink["epoch_signal"], dtype=float)
 
     segment = signal[start : end + 1]
-    dt = 1.0 / sfreq
+    metrics = compute_energy_metrics(segment, sfreq)
 
-    if segment.size < 2:
-        logging.warning("Segment too short to compute energy metrics. Returning NaNs.")
-        return {
-            "blink_signal_energy": float("nan"),
-            "teager_kaiser_energy": float("nan"),
-            "blink_line_length": float("nan"),
-            "blink_velocity_integral": float("nan"),
-        }
-
-    energy = float(np.trapezoid(segment ** 2, dx=dt))
-
-    if segment.size > 2:
-        tkeo = segment[1:-1] ** 2 - segment[:-2] * segment[2:]
-        teager = float(np.sum(np.abs(tkeo)) * dt)
-    else:
-        teager = float("nan")
-
-    line_length = float(np.sum(np.abs(np.diff(segment))))
-
-    velocity = np.gradient(segment, dt)
-    vel_integral = float(np.trapezoid(np.abs(velocity), dx=dt))
-
-    logger.debug(
-        "Blink energy: energy=%s, teager=%s, line_length=%s, vel_int=%s",
-        energy,
-        teager,
-        line_length,
-        vel_integral,
-    )
+    logger.debug("Blink metrics: %s", metrics)
 
     return {
-        "blink_signal_energy": energy,
-        "teager_kaiser_energy": teager,
-        "blink_line_length": line_length,
-        "blink_velocity_integral": vel_integral,
+        "blink_signal_energy": float(metrics["signal_energy"]),
+        "teager_kaiser_energy": float(metrics["teager_kaiser_energy"]),
+        "blink_line_length": float(metrics["line_length"]),
+        "blink_velocity_integral": float(metrics["velocity_integral"]),
     }
