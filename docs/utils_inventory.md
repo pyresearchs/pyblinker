@@ -4,7 +4,6 @@
 | Module | Shim | Callable | Type | Scope | Signature | Docstring | Reference count |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | pyblinker/utils/annotation_utils.py | no | create_annotation | function | public | (sblink, sfreq, label) | Convert blink spans into an :class:`mne.Annotations` object. | 17 |
-| pyblinker/utils/blink_refinement_helpers.py | yes | group_refined_by_epoch | function | public | (refined) | Return ``refined`` grouped by ``epoch_index``. | 2 |
 | pyblinker/utils/channel_utils.py | no | _is_ear_channel | function | private | (name) |  | 3 |
 | pyblinker/utils/channel_utils.py | no | normalize_picks | function | public | (picks) | Normalize channel picks to a list. | 12 |
 | pyblinker/utils/channel_utils.py | no | require_channels | function | public | (data, picks) | Validate that all requested channels exist in the provided data. | 11 |
@@ -42,7 +41,6 @@
 | pyblinker/utils/refinement_utils.py | no | refine_local_maximum_stub | function | public | (signal_segment, start_rel, end_rel, peak_rel_cvat=None) | Return a crude refinement for local maxima in a signal segment. | 9 |
 | pyblinker/utils/refinement_utils.py | no | plot_refined_blinks | function | public | (refined_blinks, sfreq, epoch_len) | Plot signal segments with refined blink markers. | 6 |
 | pyblinker/utils/refinement_utils.py | no | refine_blinks_from_epochs | function | public | (segments, channel) | Refine blink annotations within pre-sliced raw segments. | 8 |
-| pyblinker/utils/report.py | yes | main | function | public | () | Build a blink validation report for the demo raw file. | 63 |
 | pyblinker/utils/report_utils.py | no | generate_epoch_report | function | public | (segments, times) | Create a simple report visualizing each segment. | 10 |
 | pyblinker/utils/report_utils.py | no | add_blink_plots_to_report | function | public | (epochs) | Add per-blink plots to an :class:`mne.Report` for manual validation. | 9 |
 | pyblinker/utils/statistics_utils.py | no | calculate_within_range | function | public | (all_values, best_median, best_robust_std) | Return the count of values within two robust standard deviations. | 7 |

@@ -1,6 +1,6 @@
 # pyblinker.utils module migration
 
-The table below maps legacy utility modules to their new canonical homes. Deprecated shims remain for one minor release and emit `DeprecationWarning` when imported.
+The table below maps legacy utility modules to their new canonical homes. Deprecated shims introduced during the consolidation have now been removed, so update any lingering imports to the replacements below.
 
 | Legacy module | Replacement(s) |
 | --- | --- |

@@ -8,7 +8,10 @@
 - Added `docs/utils_migration_mapping.md` documenting legacy-to-new module mappings and deprecation plan.
 
 ### Deprecated
-- Legacy modules in `pyblinker.utils` now re-export from the canonical implementations and emit `DeprecationWarning`. They will be removed after one minor release.
+- None.
+
+### Removed
+- Removed the deprecated `pyblinker.utils` shim modules now that the migration window has elapsed.
 
 ### Migration
-- Update imports to the new modules listed above. Internal code already targets the canonical modules; external consumers should migrate before the next minor release.
+- Update imports to the new modules listed above. Internal code already targets the canonical modules; external consumers must use the canonical modules now that the legacy shims have been removed.
