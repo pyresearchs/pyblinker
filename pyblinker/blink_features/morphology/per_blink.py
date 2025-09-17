@@ -1,82 +1,74 @@
-"""Per-blink morphology feature calculations."""
-from __future__ import annotations
-from pyblinker.logging import get_logger
+"""Per-blink morphology metrics delegated to the shared blink core."""
 
-from typing import Dict, Optional
+from __future__ import annotations
+
+from typing import Dict, Iterable, Mapping
 
 import numpy as np
 
-logger = get_logger(__name__)
+from .._core_blink import METHODS_BY_MODALITY, compute_blink_core
 
 
-def compute_blink_waveform_metrics(segment: np.ndarray, sfreq: float) -> Optional[Dict[str, float]]:
-    """Compute morphology metrics for a single blink waveform.
+def _normalize_methods(modality: str, methods: Iterable[str] | None) -> tuple[str, ...]:
+    modality_key = modality.lower()
+    allowed = METHODS_BY_MODALITY.get(modality_key, ("base",))
+    if methods is None:
+        return (allowed[0],)
+    ordered: list[str] = []
+    for method in methods:
+        if method not in ordered:
+            ordered.append(method)
+    return tuple(ordered) if ordered else (allowed[0],)
 
-    Parameters
-    ----------
-    segment : numpy.ndarray
-        One-dimensional blink waveform. The segment is expected to start and end
-        at the eyelid baseline.
-    sfreq : float
-        Sampling frequency in Hertz.
 
-    Returns
-    -------
-    dict or None
-        Dictionary with morphology metrics or ``None`` if the segment is too
-        short to evaluate.
+def compute_blink_waveform_metrics(
+    segment: np.ndarray | Mapping[str, np.ndarray],
+    sfreq: float,
+    *,
+    methods: Iterable[str] | None = None,
+    modality: str = "eeg",
+    include_second_derivative: bool = True,
+    use_abs_for_thresholds_and_areas: bool = True,
+) -> Dict[str, float]:
+    """Compute morphology-oriented blink metrics for selected methods.
 
-    Notes
-    -----
-    ``rise_time`` measures the latency from segment start to peak amplitude,
-    while ``fall_time`` spans from the peak back to the segment end. The
-    ``half_width`` corresponds to the full width at half of the peak-to-peak
-    amplitude. ``slope_rise`` and ``slope_fall`` capture the extreme positive
-    and negative derivatives of the waveform.
+    The signature mirrors :func:`pyblinker.blink_features.kinematics.per_blink.
+    compute_segment_kinematics` so callers can interchange the two depending on
+    their feature subset needs. The returned key space is identical to the
+    kinematic helper and all signal analytics are delegated to
+    :func:`pyblinker.blink_features._core_blink.compute_blink_core`.
     """
-    segment = np.asarray(segment, dtype=float)
-    if segment.size < 3:
-        logger.debug("Segment too short for morphology metrics: len=%d", segment.size)
-        return None
 
-    peak_idx = int(np.argmax(segment))
-    trough_idx = int(np.argmin(segment))
-    peak = float(segment[peak_idx])
-    trough = float(segment[trough_idx])
-    peak_to_peak = float(peak - trough)
-    area_abs = float(np.trapezoid(np.abs(segment), dx=1.0 / sfreq))
-
-    rise_time = peak_idx / sfreq
-    fall_time = (segment.size - 1 - peak_idx) / sfreq
-
-    half_level = trough + 0.5 * peak_to_peak
-    left = next((i for i in range(peak_idx, -1, -1) if segment[i] <= half_level), None)
-    right = next((i for i in range(peak_idx, segment.size) if segment[i] <= half_level), None)
-    if left is None or right is None or right <= left:
-        half_width = float("nan")
+    if isinstance(segment, Mapping):
+        segments_by_method = {
+            method: np.asarray(data, dtype=float).reshape(-1)
+            for method, data in segment.items()
+        }
+        method_order = tuple(segments_by_method.keys())
     else:
-        half_width = (right - left) / sfreq
+        seg_array = np.asarray(segment, dtype=float).reshape(-1)
+        method_order = _normalize_methods(modality, methods)
+        segments_by_method = {method: seg_array for method in method_order}
 
-    deriv = np.diff(segment) * sfreq
-    if deriv.size == 0:
-        slope_rise = float("nan")
-        slope_fall = float("nan")
-    else:
-        slope_rise = float(np.max(deriv))
-        slope_fall = float(np.min(deriv))
+    if not segments_by_method:
+        method_order = _normalize_methods(modality, None)
+        if isinstance(segment, Mapping):
+            seg_array = np.asarray([], dtype=float)
+        else:
+            seg_array = np.asarray(segment, dtype=float).reshape(-1)
+        segments_by_method = {method_order[0]: seg_array}
 
-    logger.debug(
-        "Blink metrics: peak=%s trough=%s peak_to_peak=%s", peak, trough, peak_to_peak
-    )
-
-    return {
-        "peak_amplitude": peak,
-        "trough_amplitude": trough,
-        "peak_to_peak": peak_to_peak,
-        "area_abs": area_abs,
-        "rise_time": rise_time,
-        "fall_time": fall_time,
-        "half_width": half_width,
-        "slope_rise": slope_rise,
-        "slope_fall": slope_fall,
-    }
+    metrics: Dict[str, float] = {}
+    modality_key = modality.lower()
+    for method in method_order:
+        metrics.update(
+            compute_blink_core(
+                segments_by_method[method],
+                sfreq,
+                start_end_method=method,
+                modality=modality_key,
+                include_second_derivative=include_second_derivative,
+                use_abs_for_thresholds_and_areas=use_abs_for_thresholds_and_areas,
+            )
+        )
+    return metrics

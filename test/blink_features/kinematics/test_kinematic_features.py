@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 
 import mne
+import numpy as np
 
 from pyblinker.blink_features.kinematics import compute_kinematic_features
 from pyblinker.blink_features.kinematics.per_blink import compute_segment_kinematics
@@ -37,20 +38,11 @@ class TestKinematicFeatures(unittest.TestCase):
         ch = "EEG-E8"
         df = compute_kinematic_features(self.epochs, picks=ch)
 
-        metrics = [
-            "peak_amp",
-            "t2p",
-            "vel_mean",
-            "vel_peak",
-            "acc_mean",
-            "acc_peak",
-            "rise_time",
-            "fall_time",
-            "auc",
-            "symmetry",
-        ]
+        metric_keys = tuple(
+            compute_segment_kinematics(np.zeros(3), 1.0, methods=("base",)).keys()
+        )
         expected_cols = [
-            f"{m}_{s}_{ch}" for m in metrics for s in ("mean", "std", "cv")
+            f"{m}_{s}_{ch}" for m in metric_keys for s in ("mean", "std", "cv")
         ]
         assert_df_has_columns(self, df, expected_cols)
         assert_numeric_or_nan(self, df.iloc[0])
@@ -68,24 +60,16 @@ class TestKinematicFeatures(unittest.TestCase):
         data = self.epochs.get_data(picks=[ch])
         meta = self.epochs.metadata.iloc[0]
         windows = extract_blink_windows(meta, ch, 0)
-        per_metric = {m: [] for m in (
-            "peak_amp",
-            "t2p",
-            "vel_mean",
-            "vel_peak",
-            "acc_mean",
-            "acc_peak",
-            "rise_time",
-            "fall_time",
-            "auc",
-            "symmetry",
-        )}
+        metric_keys = tuple(
+            compute_segment_kinematics(np.zeros(3), 1.0, methods=("base",)).keys()
+        )
+        per_metric = {m: [] for m in metric_keys}
         n_times = data.shape[-1]
         for onset, dur in windows:
             sl = segment_to_samples(onset, dur, sfreq, n_times)
             seg = data[0, 0, sl]
-            metrics = compute_segment_kinematics(seg, sfreq)
-            for m in per_metric:
+            metrics = compute_segment_kinematics(seg, sfreq, methods=("base",))
+            for m in metric_keys:
                 per_metric[m].append(metrics[m])
 
         manual = {}
@@ -96,6 +80,28 @@ class TestKinematicFeatures(unittest.TestCase):
 
         for key, val in manual.items():
             self.assertAlmostEqual(df.iloc[0][key], val, places=7)
+
+    def test_method_suffix_and_modality_guard(self) -> None:
+        """Per-blink metrics include method suffixes and respect modality rules."""
+        segment = np.array([0.0, 1.0, 0.2, 0.0])
+        metrics = compute_segment_kinematics(
+            {"base": segment, "half_base": segment},
+            100.0,
+            modality="eeg",
+        )
+        self.assertIn("area_abs_total_trapz_base", metrics)
+        self.assertIn("area_abs_total_trapz_half_base", metrics)
+
+        ear_metrics = compute_segment_kinematics(
+            segment,
+            100.0,
+            methods=("zero",),
+            modality="ear",
+        )
+        self.assertTrue(
+            np.isnan(ear_metrics["area_abs_total_trapz_zero"]),
+            msg="EAR zero-crossing metrics should be NaN",
+        )
 
 
 if __name__ == "__main__":

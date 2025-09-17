@@ -5,29 +5,19 @@ from pyblinker.logging import get_logger
 from typing import Dict, List, Sequence
 
 import mne
+import numpy as np
 import pandas as pd
 
 from .per_blink import compute_blink_waveform_metrics
 from ..energy.helpers import extract_blink_windows, segment_to_samples, _safe_stats
+from ...utils.modality import infer_modality
 
 logger = get_logger(__name__)
 
-# Ordered names of per-blink morphology metrics. Enumerated explicitly to
-# avoid calling ``compute_blink_waveform_metrics`` during import.
-WAVEFORM_METRICS: tuple[str, ...] = (
-    "peak_amplitude",
-    "trough_amplitude",
-    "peak_to_peak",
-    "area_abs",
-    "rise_time",
-    "fall_time",
-    "half_width",
-    "slope_rise",
-    "slope_fall",
-)
+_BASE_METRICS = tuple(compute_blink_waveform_metrics(np.zeros(3), 1.0).keys())
 
 # Derive metric and statistic names instead of hardcoding
-_METRICS = WAVEFORM_METRICS + ("duration",)
+_METRICS = _BASE_METRICS + ("duration",)
 _STATS = tuple(_safe_stats([]).keys())
 
 
@@ -106,14 +96,19 @@ def compute_epoch_morphology_features(
         for ch_idx, ch_name in enumerate(ch_names):
             windows = extract_blink_windows(meta_row, ch_name, ei)
             per_metric: Dict[str, List[float]] = {m: [] for m in _METRICS}
+            channel_modality = infer_modality(ch_name)
+            modality_key = "eeg" if channel_modality == "eog" else channel_modality
             for onset_s, duration_s in windows:
                 sl = segment_to_samples(onset_s, duration_s, sfreq, n_times)
                 segment = data[ei, ch_idx, sl]
-                metrics = compute_blink_waveform_metrics(segment, sfreq)
-                if metrics is None:
-                    continue
-                for m, val in metrics.items():
-                    per_metric[m].append(val)
+                metrics = compute_blink_waveform_metrics(
+                    segment,
+                    sfreq,
+                    methods=("base",),
+                    modality=modality_key,
+                )
+                for metric_name in _BASE_METRICS:
+                    per_metric[metric_name].append(metrics.get(metric_name, float("nan")))
                 per_metric["duration"].append(duration_s)
             for metric in _METRICS:
                 stats = _safe_stats(per_metric[metric])

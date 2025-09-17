@@ -29,10 +29,23 @@ from .utils.metadata_utils import (
 )
 
 from .blinker.fit_blink import FitBlinks
+from .blink_features._core_blink import (
+    ALL_METHODS,
+    CANONICAL_METRIC_STEMS,
+    METHODS_BY_MODALITY,
+    core_nan_dict,
+)
+from .blink_features.kinematics.per_blink import compute_segment_kinematics
+from .blink_features.morphology.per_blink import compute_blink_waveform_metrics
 from .blink_features.waveform_features.extract_blink_properties import BlinkProperties
 from .utils import normalize_picks, require_channels
 from .utils.modality import infer_modality
 from .blinker.zero_crossing import left_right_zero_crossing
+
+_METHOD_METRIC_KEYS = {
+    method: [f"{stem}_{method}" for stem in CANONICAL_METRIC_STEMS]
+    for method in ALL_METHODS
+}
 
 logger = get_logger(__name__)
 
@@ -394,7 +407,14 @@ def fit_and_extract_properties(
     run_fit: bool,
 ) -> pd.DataFrame | None:
     """Run :class:`FitBlinks` and :class:`BlinkProperties` to obtain metrics."""
-    fitter = FitBlinks(candidate_signal=signal, df=rows.copy(), params=params)
+    modality_override = None
+    if "modality" in rows.columns and not rows.empty:
+        modality_override = rows.iloc[0]["modality"]
+    params_local = dict(params)
+    if modality_override is not None:
+        params_local["modality"] = modality_override
+
+    fitter = FitBlinks(candidate_signal=signal, df=rows.copy(), params=params_local)
     try:
         fitter.dprocess_segment_raw(run_fit=run_fit)
     except Exception:
@@ -404,5 +424,56 @@ def fit_and_extract_properties(
     if frame_blinks is None or frame_blinks.empty:
         return None
 
-    return BlinkProperties(signal, frame_blinks, sfreq, params, fitted=run_fit).df
+    blink_properties = BlinkProperties(
+        signal, frame_blinks, sfreq, params_local, fitted=run_fit
+    )
+    props_df = blink_properties.df
+    if props_df.empty:
+        return props_df
+
+    modality = blink_properties.modality
+    allowed_methods = METHODS_BY_MODALITY.get(modality, ())
+
+    metric_records: List[Dict[str, float]] = []
+    n_samples = signal.shape[0]
+    for _, row in props_df.iterrows():
+        row_metrics: Dict[str, float] = {}
+        for method in ALL_METHODS:
+            method_keys = _METHOD_METRIC_KEYS[method]
+            if method not in allowed_methods:
+                row_metrics.update(core_nan_dict(method_keys))
+                continue
+
+            bounds = blink_properties.blink_bounds(row, method)
+            if bounds is None:
+                row_metrics.update(core_nan_dict(method_keys))
+                continue
+
+            start_idx, end_idx = bounds
+            start_idx = max(0, min(n_samples - 1, int(start_idx)))
+            end_idx = max(0, min(n_samples - 1, int(end_idx)))
+            if end_idx < start_idx:
+                row_metrics.update(core_nan_dict(method_keys))
+                continue
+
+            segment = signal[start_idx : end_idx + 1]
+            metrics = compute_segment_kinematics(
+                segment,
+                sfreq,
+                methods=(method,),
+                modality=modality,
+            )
+            waveform_metrics = compute_blink_waveform_metrics(
+                segment,
+                sfreq,
+                methods=(method,),
+                modality=modality,
+            )
+            metrics.update(waveform_metrics)
+            row_metrics.update(metrics)
+
+        metric_records.append(row_metrics)
+
+    metrics_df = pd.DataFrame(metric_records, index=props_df.index)
+    return pd.concat([props_df, metrics_df], axis=1)
 
