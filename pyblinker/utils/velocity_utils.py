@@ -1,4 +1,4 @@
-"""Helper utilities for velocity calculations."""
+"""Velocity computation helpers."""
 
 from __future__ import annotations
 
@@ -9,7 +9,6 @@ import numpy as np
 from numpy.typing import ArrayLike
 
 from pyblinker.logging import get_logger
-
 
 logger = get_logger(__name__)
 
@@ -27,19 +26,7 @@ CoefficientLike = SupportsCoef | Sequence[float] | np.ndarray
 
 
 def _extract_linear_slope(coefficients: CoefficientLike) -> float:
-    """Return the slope component from ``coefficients``.
-
-    Args:
-        coefficients: Linear polynomial description supporting either the
-            :class:`SupportsCoef` protocol or representing the coefficients
-            directly as a one-dimensional sequence.
-
-    Returns:
-        The slope (first-order coefficient) as a floating-point value.
-
-    Raises:
-        ValueError: If ``coefficients`` lacks a linear term or is empty.
-    """
+    """Return the slope component from ``coefficients``."""
 
     if isinstance(coefficients, SupportsCoef):
         coef_array = np.asarray(coefficients.coef, dtype=float)
@@ -63,25 +50,7 @@ def average_velocity(
     x_values: ArrayLike | None = None,
     x_scale: float | None = None,
 ) -> float:
-    """Compute the average velocity associated with a linear fit.
-
-    Args:
-        coefficients: Linear polynomial coefficients or objects exposing a
-            ``coef`` attribute in the style of :class:`numpy.polynomial.Polynomial`.
-        x_values: Optional x coordinates used to create the linear fit. When
-            provided, the population standard deviation of ``x_values`` becomes
-            the scaling factor.
-        x_scale: Optional pre-computed scaling factor (for example the standard
-            deviation returned by MATLAB's ``polyfit`` implementation).
-
-    Returns:
-        The average velocity defined as the slope divided by the relevant x-axis
-        scaling factor.
-
-    Raises:
-        ValueError: If neither ``x_values`` nor ``x_scale`` are provided, or if
-            the coefficient input does not expose a linear term.
-    """
+    """Compute the average velocity associated with a linear fit."""
 
     if x_scale is None:
         if x_values is None:

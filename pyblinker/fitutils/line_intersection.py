@@ -12,7 +12,7 @@ from pyblinker.fitutils.forking import (
     get_intersection,
 )
 from pyblinker.blinker.zero_crossing import get_line_intersection_slope
-from pyblinker.utils.velocity import average_velocity
+from pyblinker.utils.velocity_utils import average_velocity
 
 
 def lines_intersection(

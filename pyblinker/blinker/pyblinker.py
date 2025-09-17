@@ -1,7 +1,7 @@
 from pyblinker.logging import get_logger
 
 from . import default_setting
-from ..utils.misc import create_annotation
+from ..utils.annotation_utils import create_annotation
 from ..viz.viz_pd import viz_complete_blink_prop
 from ..pipeline_steps import (
     process_channel_data as core_process_channel_data,
