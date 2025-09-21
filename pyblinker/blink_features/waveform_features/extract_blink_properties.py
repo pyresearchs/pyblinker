@@ -1,3 +1,5 @@
+from typing import Literal, Tuple
+
 import numpy as np
 import pandas as pd
 
@@ -21,6 +23,11 @@ class BlinkProperties:
         the input candidate_signal, DataFrame of blink fits, sampling rate, and parameters.
         It initializes blink velocity, durations, amplitude-velocity ratios,
         and time-related features.
+
+        The optional ``params['modality']`` flag controls whether zero-based
+        landmarks are considered. ``"ear"`` modality retains the schema but
+        fills all ``*_zero`` columns with ``NaN`` because Eye Aspect Ratio
+        blinks lack zero crossings.
 
         Parameters
         ----------
@@ -50,6 +57,12 @@ class BlinkProperties:
         self.shut_amp_fraction = params["shut_amp_fraction"]
         self.p_avr_threshold = params["p_avr_threshold"]
         self.z_thresholds = params["z_thresholds"]
+
+        modality_param = params.get("modality", "eeg")
+        modality_norm = str(modality_param).lower()
+        if modality_norm == "eog":
+            modality_norm = "eeg"
+        self.modality: Literal["eeg", "ear"] = "ear" if modality_norm == "ear" else "eeg"
 
         self.fitted = fitted
 
@@ -81,9 +94,12 @@ class BlinkProperties:
         self.df["duration_base"] = (
             self.df["right_base"] - self.df["left_base"]
         ) / self.srate
-        self.df["duration_zero"] = (
-            self.df["right_zero"] - self.df["left_zero"]
-        ) / self.srate
+        if {"right_zero", "left_zero"}.issubset(self.df.columns) and self.modality != "ear":
+            self.df["duration_zero"] = (
+                self.df["right_zero"] - self.df["left_zero"]
+            ) / self.srate
+        else:
+            self.df["duration_zero"] = np.nan
 
         if self.fitted:
             self.df["duration_tent"] = (
@@ -92,9 +108,15 @@ class BlinkProperties:
             self.df["duration_half_base"] = (
                 (self.df["right_base_half_height"] - self.df["left_base_half_height"]) + constant
             ) / self.srate
-            self.df["duration_half_zero"] = (
-                (self.df["right_zero_half_height"] - self.df["left_zero_half_height"]) + constant
-            ) / self.srate
+            if (
+                {"right_zero_half_height", "left_zero_half_height"}.issubset(self.df.columns)
+                and self.modality != "ear"
+            ):
+                self.df["duration_half_zero"] = (
+                    (self.df["right_zero_half_height"] - self.df["left_zero_half_height"]) + constant
+                ) / self.srate
+            else:
+                self.df["duration_half_zero"] = np.nan
 
     def compute_amplitude_velocity_ratio(
         self, start_key, end_key, ratio_key, aggregator="max", idx_col=None
@@ -172,6 +194,12 @@ class BlinkProperties:
 
     def set_blink_amp_velocity_ratio_zero_to_max(self):
         """ "Computes and sets both positive and negative amplitude-velocity ratios (zero-to-max)."""
+        if self.modality == "ear":
+            self.df["pos_amp_vel_ratio_zero"] = np.nan
+            self.df["neg_amp_vel_ratio_zero"] = np.nan
+            self.df["peaks_pos_vel_zero"] = np.nan
+            return
+
         self.compute_pos_amp_vel_ratio_zero()
         self.compute_neg_amp_vel_ratio_zero()
 
@@ -278,6 +306,12 @@ class BlinkProperties:
         Time zero shut
         :return:
         """
+        if "left_zero" not in self.df.columns or self.modality == "ear":
+            self.df["closing_time_zero"] = np.nan
+            self.df["reopening_time_zero"] = np.nan
+            self.df["time_shut_zero"] = np.nan
+            return
+
         self.df["closing_time_zero"] = (
             self.df["max_blink"] - self.df["left_zero"]
         ) / self.srate
@@ -285,14 +319,14 @@ class BlinkProperties:
             self.df["right_zero"] - self.df["max_blink"]
         ) / self.srate
 
-        self.df["time_shut_base"] = self.df.apply(
+        self.df["time_shut_zero"] = self.df.apply(
             lambda row: self.compute_time_shut(
                 row,
                 self.candidate_signal,
                 self.srate,
                 self.shut_amp_fraction,
-                key_prefix="Base",
-                default_no_thresh=0,
+                key_prefix="Zero",
+                default_no_thresh=np.nan,
             ),
             axis=1,
         )
@@ -379,6 +413,44 @@ class BlinkProperties:
         self.df["inter_blink_max_vel_base"] = (
             self.df["peaks_pos_vel_base"] * -1
         ) / self.srate
-        self.df["inter_blink_max_vel_zero"] = (
-            self.df["peaks_pos_vel_zero"] * -1
-        ) / self.srate
+        if self.modality == "ear":
+            self.df["inter_blink_max_vel_zero"] = np.nan
+        else:
+            self.df["inter_blink_max_vel_zero"] = (
+                self.df["peaks_pos_vel_zero"] * -1
+            ) / self.srate
+
+    def blink_bounds(self, row: pd.Series, method: str) -> Tuple[int, int] | None:
+        """Return inclusive (left, right) indices for the requested method."""
+
+        method_key = method.lower()
+        mapping = {
+            "base": ("left_base", "right_base"),
+            "zero": ("left_zero", "right_zero"),
+            "tent": ("left_x_intercept", "right_x_intercept"),
+            "half_base": ("left_base_half_height", "right_base_half_height"),
+            "half_zero": ("left_zero_half_height", "right_zero_half_height"),
+        }
+        if method_key not in mapping:
+            raise ValueError(f"Unknown blink boundary method: {method}")
+        if self.modality == "ear" and "zero" in method_key:
+            return None
+
+        left_col, right_col = mapping[method_key]
+        if left_col not in row or right_col not in row:
+            return None
+
+        left_val = row[left_col]
+        right_val = row[right_col]
+        if pd.isna(left_val) or pd.isna(right_val):
+            return None
+
+        try:
+            left_idx = int(round(float(left_val)))
+            right_idx = int(round(float(right_val)))
+        except (TypeError, ValueError):
+            return None
+
+        if right_idx < left_idx:
+            return None
+        return left_idx, right_idx
