@@ -10,6 +10,7 @@ import pandas as pd
 
 from .per_blink import compute_blink_waveform_metrics
 from ..energy.helpers import extract_blink_windows, segment_to_samples, _safe_stats
+from ...utils.epoch_utils import build_metric_stat_columns, resolve_channels
 from ...utils.modality import infer_modality
 
 logger = get_logger(__name__)
@@ -21,14 +22,15 @@ _METRICS = _BASE_METRICS + ("duration",)
 _STATS = tuple(_safe_stats([]).keys())
 
 
-def _make_columns(ch_names: Sequence[str]) -> List[str]:
-    """Generate ordered column names for the output DataFrame."""
-    columns: List[str] = []
-    for ch in ch_names:
-        for metric in _METRICS:
-            for stat in _STATS:
-                columns.append(f"{metric}_{stat}_{ch}")
-    return columns
+def _default_morphology_channels(epochs: mne.Epochs) -> List[str]:
+    """Select default EAR/EOG channels when ``picks`` are unspecified."""
+
+    ch_names = [
+        ch for ch in epochs.ch_names if "EOG" in ch.upper() or "EAR" in ch.upper()
+    ]
+    if not ch_names:
+        raise ValueError("No default EAR/EOG channels found")
+    return ch_names
 
 
 def compute_epoch_morphology_features(
@@ -63,29 +65,14 @@ def compute_epoch_morphology_features(
     if epochs.metadata is None:
         raise ValueError("epochs.metadata must be provided")
 
-    if picks is None:
-        ch_names = [
-            ch
-            for ch in epochs.ch_names
-            if "EOG" in ch.upper() or "EAR" in ch.upper()
-        ]
-        if not ch_names:
-            raise ValueError("No default EAR/EOG channels found")
-    elif isinstance(picks, str):
-        ch_names = [picks]
-    else:
-        ch_names = list(picks)
-
-    missing = [ch for ch in ch_names if ch not in epochs.ch_names]
-    if missing:
-        raise ValueError(f"Channels not found: {missing}")
+    ch_names = resolve_channels(epochs, picks, default=_default_morphology_channels)
 
     data = epochs.get_data(picks=ch_names)
     sfreq = float(epochs.info["sfreq"])
     n_epochs, n_ch, n_times = data.shape
     index = epochs.metadata.index
 
-    columns = _make_columns(ch_names)
+    columns = build_metric_stat_columns(ch_names, _METRICS, _STATS)
     if n_epochs == 0:
         return pd.DataFrame(index=index, columns=columns, dtype=float)
 

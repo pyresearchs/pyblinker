@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Callable, List, Optional, Sequence, Tuple
 
 import mne
 import numpy as np
@@ -11,8 +11,44 @@ import pandas as pd
 from tqdm import tqdm
 
 from pyblinker.logging import get_logger
+from .channel_utils import normalize_picks, require_channels
 
 logger = get_logger(__name__)
+
+
+ChannelSelector = Callable[[mne.Epochs], Sequence[str]]
+
+
+def resolve_channels(
+    epochs: mne.Epochs,
+    picks: str | Sequence[str] | None,
+    *,
+    default: ChannelSelector | None = None,
+) -> List[str]:
+    """Resolve and validate channel names for feature extraction."""
+
+    logger.debug("Resolving channel picks: %s", picks)
+    if picks is None:
+        ch_names = (
+            list(epochs.ch_names) if default is None else list(default(epochs))
+        )
+    else:
+        ch_names = normalize_picks(picks)
+    require_channels(epochs, ch_names)
+    return ch_names
+
+
+def build_metric_stat_columns(
+    ch_names: Sequence[str], metrics: Sequence[str], stats: Sequence[str]
+) -> List[str]:
+    """Construct column names for metric/statistic combinations per channel."""
+
+    return [
+        f"{metric}_{stat}_{ch}"
+        for ch in ch_names
+        for metric in metrics
+        for stat in stats
+    ]
 
 
 def slice_raw_to_segments(
@@ -177,6 +213,8 @@ def slice_into_mini_raws(
 
 
 __all__ = [
+    "resolve_channels",
+    "build_metric_stat_columns",
     "slice_raw_to_segments",
     "slice_raw_into_mne_epochs",
     "slice_raw_into_epochs",
