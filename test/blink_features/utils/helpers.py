@@ -7,8 +7,8 @@ from contextlib import contextmanager
 import numpy as np
 import pandas as pd
 
+from pyblinker.blink_features._core_blink import CANONICAL_METRIC_STEMS
 from pyblinker.blink_features.energy.helpers import _safe_stats
-from pyblinker.blink_features.morphology.epoch_features import WAVEFORM_METRICS
 
 
 def assert_numeric_or_nan(testcase, values: Iterable[float]) -> None:
@@ -33,6 +33,6 @@ def assert_df_has_columns(testcase, df: pd.DataFrame, columns: Sequence[str]) ->
 
 def morphology_column_names(channels: Sequence[str]) -> List[str]:
     """Return expected morphology feature columns for given channels."""
-    metrics = WAVEFORM_METRICS + ("duration",)
+    metrics = tuple(f"{stem}_base" for stem in CANONICAL_METRIC_STEMS) + ("duration",)
     stats = tuple(_safe_stats([]).keys())
     return [f"{m}_{s}_{ch}" for ch in channels for m in metrics for s in stats]

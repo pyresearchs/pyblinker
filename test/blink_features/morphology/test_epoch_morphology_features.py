@@ -5,8 +5,10 @@ import unittest
 from pathlib import Path
 
 import mne
+import numpy as np
 
 from pyblinker.blink_features.morphology import compute_epoch_morphology_features
+from pyblinker.blink_features.morphology.per_blink import compute_blink_waveform_metrics
 from pyblinker.utils.refinement_utils import slice_raw_into_mne_epochs_refine_annot
 
 from ..utils.helpers import (
@@ -62,6 +64,23 @@ class TestEpochMorphologyFeatures(unittest.TestCase):
         df = compute_epoch_morphology_features(self.epochs[:0], picks=picks)
         assert_df_has_columns(self, df, morphology_column_names(picks))
         self.assertEqual(len(df), 0)
+
+    def test_waveform_metric_suffixes(self) -> None:
+        """Waveform metrics expose method suffixes and modality-specific NaNs."""
+        segment = np.array([0.0, 0.5, 0.1, 0.0])
+        metrics = compute_blink_waveform_metrics(
+            {"base": segment, "tent": segment}, 100.0, modality="eeg"
+        )
+        self.assertIn("area_abs_total_rect_base", metrics)
+        self.assertIn("area_abs_total_rect_tent", metrics)
+
+        ear_metrics = compute_blink_waveform_metrics(
+            segment, 100.0, methods=("zero",), modality="ear"
+        )
+        self.assertTrue(
+            np.isnan(ear_metrics["area_abs_total_rect_zero"]),
+            msg="EAR modality should yield NaN for zero-crossing metrics",
+        )
 
 
 if __name__ == "__main__":

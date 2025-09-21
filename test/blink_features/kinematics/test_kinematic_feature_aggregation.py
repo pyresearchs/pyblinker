@@ -6,9 +6,11 @@ import unittest
 from pathlib import Path
 
 import mne
+import numpy as np
 import pandas as pd
 
 from pyblinker.blink_features.kinematics import compute_kinematic_features
+from pyblinker.blink_features.kinematics.per_blink import compute_segment_kinematics
 from pyblinker.utils.refinement_utils import slice_raw_into_mne_epochs_refine_annot
 
 from ..utils.helpers import assert_df_has_columns, assert_numeric_or_nan
@@ -42,20 +44,11 @@ class TestKinematicFeatureAggregation(unittest.TestCase):
         blink_counts = pd.read_csv(blink_counts_path, index_col="epoch_id")
         df = df.join(blink_counts)
 
-        metrics = [
-            "peak_amp",
-            "t2p",
-            "vel_mean",
-            "vel_peak",
-            "acc_mean",
-            "acc_peak",
-            "rise_time",
-            "fall_time",
-            "auc",
-            "symmetry",
-        ]
+        metric_keys = tuple(
+            compute_segment_kinematics(np.zeros(3), 1.0, methods=("base",)).keys()
+        )
         expected_cols = [
-            f"{m}_{s}_{ch}" for m in metrics for s in ("mean", "std", "cv")
+            f"{m}_{s}_{ch}" for m in metric_keys for s in ("mean", "std", "cv")
         ]
         assert_df_has_columns(self, df, expected_cols + ["blink_count"])
         assert_numeric_or_nan(self, df.iloc[0])
