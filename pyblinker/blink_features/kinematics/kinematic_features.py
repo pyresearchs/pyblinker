@@ -12,23 +12,13 @@ import pandas as pd
 
 from .per_blink import compute_segment_kinematics
 from ..energy.helpers import extract_blink_windows, segment_to_samples, _safe_stats
+from ...utils.epoch_utils import build_metric_stat_columns, resolve_channels
 
 logger = get_logger(__name__)
 
 # Derive metric and statistic names from helper functions to avoid hardcoding
 _METRICS = tuple(compute_segment_kinematics(np.zeros(3), 1.0).keys())
 _STATS = tuple(_safe_stats([]).keys())
-
-
-def _make_columns(ch_names: Sequence[str]) -> List[str]:
-    """Generate ordered column names for all metrics and statistics."""
-
-    columns: List[str] = []
-    for ch in ch_names:
-        for metric in _METRICS:
-            for stat in _STATS:
-                columns.append(f"{metric}_{stat}_{ch}")
-    return columns
 
 
 def compute_kinematic_features(
@@ -57,22 +47,13 @@ def compute_kinematic_features(
     are ``NaN``.
     """
 
-    if picks is None:
-        ch_names = epochs.ch_names
-    elif isinstance(picks, str):
-        ch_names = [picks]
-    else:
-        ch_names = list(picks)
-
-    missing = [ch for ch in ch_names if ch not in epochs.ch_names]
-    if missing:
-        raise ValueError(f"Channels not found: {missing}")
+    ch_names = resolve_channels(epochs, picks)
 
     sfreq = float(epochs.info["sfreq"])
     n_epochs = len(epochs)
     n_times = epochs.get_data(picks=[ch_names[0]]).shape[-1] if n_epochs else 0
 
-    columns = _make_columns(ch_names)
+    columns = build_metric_stat_columns(ch_names, _METRICS, _STATS)
     index = (
         epochs.metadata.index
         if isinstance(epochs.metadata, pd.DataFrame)
