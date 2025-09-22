@@ -2,7 +2,6 @@ import logging
 import warnings
 from pyblinker.logging import get_logger
 
-import numpy as np
 import pandas as pd
 
 from .zero_crossing import (
@@ -12,6 +11,7 @@ from .zero_crossing import (
 )
 from .base_left_right import create_left_right_base
 from ..fitutils.line_intersection import lines_intersection
+from ..utils.statistics_utils import get_max_blink
 
 
 logger = get_logger(__name__)
@@ -60,33 +60,6 @@ class FitBlinks:
             "right_x_intercept",
         ]
 
-    def get_max_blink(self, start_idx, end_idx):
-        """Return the maximum value and its index within ``start_idx`` and ``end_idx``.
-
-        Parameters
-        ----------
-        start_idx : int or float
-            Starting sample index of the blink window.
-        end_idx : int or float
-            Ending sample index of the blink window.
-
-        Returns
-        -------
-        tuple[float, int]
-            ``(max_value, frame_index_at_max)`` within the specified range.
-        """
-
-        start_idx = int(start_idx)
-        end_idx = int(end_idx)
-
-        blink_range = np.arange(start_idx, end_idx + 1, dtype=int)
-        blink_frame = self.candidate_signal[start_idx : end_idx + 1]
-        # One-pass for max value and index
-        max_idx = np.argmax(blink_frame)
-        max_val = blink_frame[max_idx]
-        max_fr = blink_range[max_idx]
-        return max_val, max_fr
-
     def dprocess_segment_raw(self, *, run_fit: bool = False) -> None:
         """Process blink metadata for a raw segment.
 
@@ -113,14 +86,18 @@ class FitBlinks:
 
         # Compute the maximum value within each blink interval
         # self.df[["max_value", "max_blink"]] = self.df.apply(
-        #     lambda row: self.get_max_blink(row["start_blink"], row["end_blink"]),
+        #     lambda row: get_max_blink(
+        #         self.candidate_signal, row["start_blink"], row["end_blink"]
+        #     ),
         #     axis=1,
         #     result_type="expand",
         # )
         if not {"max_value", "max_blink"}.issubset(self.df.columns):
             # Compute the maximum value within each blink interval
             self.df[["max_value", "max_blink"]] = self.df.apply(
-                lambda row: self.get_max_blink(row["start_blink"], row["end_blink"]),
+                lambda row: get_max_blink(
+                    self.candidate_signal, row["start_blink"], row["end_blink"]
+                ),
                 axis=1,
                 result_type="expand",
             )
@@ -155,7 +132,9 @@ class FitBlinks:
 
         # Find the max_frame index and max_value at that max_frame index
         self.df[["max_value", "max_blink"]] = self.df.apply(
-            lambda row: self.get_max_blink(row["start_blink"], row["end_blink"]),
+            lambda row: get_max_blink(
+                self.candidate_signal, row["start_blink"], row["end_blink"]
+            ),
             axis=1,
             result_type="expand",
         )

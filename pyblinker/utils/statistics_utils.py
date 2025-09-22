@@ -11,6 +11,38 @@ from pyblinker.blinker.default_setting import SCALING_FACTOR
 from pyblinker.fitutils import mad
 
 
+def get_max_blink(
+    candidate_signal: np.ndarray,
+    start_idx: int | float,
+    end_idx: int | float,
+) -> tuple[float, int]:
+    """Return the maximum value and index within ``start_idx`` and ``end_idx``.
+
+    Parameters
+    ----------
+    candidate_signal
+        The signal values that contain the blink of interest.
+    start_idx
+        Starting sample index of the blink window (inclusive).
+    end_idx
+        Ending sample index of the blink window (inclusive).
+
+    Returns
+    -------
+    tuple[float, int]
+        ``(max_value, frame_index_at_max)`` within the specified range.
+    """
+
+    start = int(start_idx)
+    end = int(end_idx)
+
+    signal = np.asarray(candidate_signal)
+    blink_frame = signal[start : end + 1]
+    max_idx = int(np.argmax(blink_frame))
+    max_val = float(blink_frame[max_idx])
+    return max_val, start + max_idx
+
+
 def calculate_within_range(
     all_values: np.ndarray, best_median: float, best_robust_std: float
 ) -> int:
@@ -141,6 +173,7 @@ def get_good_blink_mask(
 
 
 __all__ = [
+    "get_max_blink",
     "calculate_within_range",
     "calculate_good_ratio",
     "get_blink_statistic",
