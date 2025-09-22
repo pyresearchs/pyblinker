@@ -1,14 +1,7 @@
-from functools import wraps
 import warnings
 from pyblinker.logging import get_logger
 
 import numpy as np
-
-from .fit_range import (
-    compute_fit_range as _compute_fit_range,
-    get_left_range as _get_left_range,
-    get_right_range as _get_right_range,
-)
 
 
 logger = get_logger(__name__)
@@ -159,42 +152,3 @@ def max_pos_vel_frame(blink_velocity, max_blink, left_zero, right_zero):
         max_neg_vel_frame = np.nan
 
     return max_pos_vel_frame, max_neg_vel_frame
-
-
-@wraps(_get_left_range)
-def get_left_range(left_zero, max_blink, candidate_signal, blink_top, blink_bottom):
-    warnings.warn(
-        "get_left_range has moved to pyblinker.blinker.fit_range.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    return _get_left_range(left_zero, max_blink, candidate_signal, blink_top, blink_bottom)
-
-
-@wraps(_get_right_range)
-def get_right_range(max_blink, right_zero, candidate_signal, blink_top, blink_bottom):
-    warnings.warn(
-        "get_right_range has moved to pyblinker.blinker.fit_range.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    return _get_right_range(max_blink, right_zero, candidate_signal, blink_top, blink_bottom)
-
-
-@wraps(_compute_fit_range)
-def compute_fit_range(
-    candidate_signal, max_blink, left_zero, right_zero, base_fraction, top_bottom=None
-):
-    warnings.warn(
-        "compute_fit_range has moved to pyblinker.blinker.fit_range.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    return _compute_fit_range(
-        candidate_signal,
-        max_blink,
-        left_zero,
-        right_zero,
-        base_fraction,
-        top_bottom,
-    )
