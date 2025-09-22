@@ -8,9 +8,12 @@ dedicated, easier to maintain home.
 
 from __future__ import annotations
 
-import warnings
+from pyblinker.logging import get_logger
 
 import numpy as np
+
+logger = get_logger(__name__)
+
 
 def get_left_range(left_zero, max_blink, candidate_signal, blink_top, blink_bottom):
     """Identify the left blink range using the provided thresholds."""
@@ -125,7 +128,10 @@ def compute_fit_range(
 
     if top_bottom is None:
         # Return minimal information
-        warnings.warn("To modify this so that all function return the top_bottom point")
+        logger.warning(
+            "compute_fit_range called without top_bottom flag; returning minimal output",
+            extra={"top_bottom": top_bottom},
+        )
         return x_left, x_right, left_range, right_range
 
     # Return extended info including top/bottom points

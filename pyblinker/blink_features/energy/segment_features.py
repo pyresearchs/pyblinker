@@ -28,7 +28,7 @@ def compute_time_domain_features(signal: np.ndarray, sfreq: float) -> Dict[str, 
         Dictionary with energy, Teager energy, line length and velocity integral.
     """
     signal_arr = np.asarray(signal, dtype=float)
-    logger.info(
+    logger.debug(
         "Computing time-domain features for segment of length %d", signal_arr.size
     )
     metrics = compute_energy_metrics(signal_arr, sfreq)

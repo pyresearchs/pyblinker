@@ -262,7 +262,7 @@ def polyval(p, x, S=None, mu=None):
     delta : ndarray or None
         Prediction error estimates at x.
     """
-    logger.info("Entering polyval")
+    logger.debug("Entering polyval")
 
     # Ensure p is a vector or empty
     if not (np.ndim(p) == 1 or len(p) == 0):
@@ -294,7 +294,7 @@ def polyval(p, x, S=None, mu=None):
         # Check if R is singular
         if np.linalg.det(R) == 0:
             logger.warning("Singular matrix R. Skipping delta calculation.")
-            logger.info("Exiting polyval")
+            logger.debug("Exiting polyval")
             return y, None
 
         # Construct Vandermonde matrix for x
@@ -310,7 +310,7 @@ def polyval(p, x, S=None, mu=None):
             E = E_T.T
         except np.linalg.LinAlgError as e:
             logger.exception("Error solving triangular system: %s", e)
-            logger.info("Exiting polyval")
+            logger.debug("Exiting polyval")
             return y, None
 
         e = np.sqrt(1 + np.sum(E ** 2, axis=1))
@@ -322,7 +322,7 @@ def polyval(p, x, S=None, mu=None):
 
         delta = delta.reshape(x.shape)
 
-    logger.info("Exiting polyval")
+    logger.debug("Exiting polyval")
     return y, delta
 
 

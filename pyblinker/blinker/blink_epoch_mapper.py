@@ -198,7 +198,7 @@ def map_blinks_to_epochs(
     progress_bar: bool = True,
 ) -> pd.DataFrame:
     """Map blink onsets back to each epoch."""
-    logger.info("Entering map_blinks_to_epochs")
+    logger.debug("Entering map_blinks_to_epochs")
     sfreq = epochs.info["sfreq"]
     ep_starts, ep_ends = _epoch_boundaries_in_samples(epochs)
 
@@ -232,7 +232,7 @@ def map_blinks_to_epochs(
         "blink_durations": durations,
     }, index=epochs.selection)
 
-    logger.info("Leaving map_blinks_to_epochs")
+    logger.debug("Leaving map_blinks_to_epochs")
     return meta
 
 
@@ -249,14 +249,14 @@ def add_blink_counts(epochs: mne.Epochs) -> mne.Epochs:
     mne.Epochs
         The same object with a new ``n_blinks`` column in ``metadata``.
     """
-    logger.info("Adding blink counts to metadata")
+    logger.debug("Adding blink counts to metadata")
     if epochs.metadata is None:
         raise ValueError("Epochs.metadata is missing blink information")
 
     meta = epochs.metadata.copy()
     meta["n_blinks"] = meta["blink_onsets"].apply(len)
     epochs.metadata = meta
-    logger.info("Blink counts added")
+    logger.debug("Blink counts added")
     return epochs
 
 
@@ -292,7 +292,7 @@ def find_blinks_epoch(
         The input epochs updated with blink metadata attached to
         ``epochs.metadata``.
     """
-    logger.info("Entering find_blinks_epoch")
+    logger.debug("Entering find_blinks_epoch")
 
     if ch_name is None:
         ch_idx = 0
@@ -333,6 +333,6 @@ def find_blinks_epoch(
     add_blink_counts(epochs)
 
     logger.info("Assigned blink metadata to epochs")
-    logger.info("Leaving find_blinks_epoch")
+    logger.debug("Leaving find_blinks_epoch")
     return epochs
 

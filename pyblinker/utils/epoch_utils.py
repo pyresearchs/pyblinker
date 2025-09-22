@@ -81,7 +81,7 @@ def slice_raw_into_mne_epochs(
 ) -> mne.Epochs:
     """Convert a continuous recording into equally spaced MNE epochs."""
 
-    logger.info("Entering slice_raw_into_mne_epochs")
+    logger.debug("Entering slice_raw_into_mne_epochs")
     events = mne.make_fixed_length_events(raw, duration=epoch_len)
     sfreq = raw.info["sfreq"]
     epochs = mne.Epochs(
@@ -122,7 +122,7 @@ def slice_raw_into_mne_epochs(
                     metadata.at[idx, "blink_duration"] = rel_durations.tolist()
     epochs.metadata = metadata
     logger.debug("Epoch metadata head: %s", metadata.head())
-    logger.info("Exiting slice_raw_into_mne_epochs")
+    logger.debug("Exiting slice_raw_into_mne_epochs")
     return epochs
 
 
@@ -194,7 +194,7 @@ def slice_into_mini_raws(
 ) -> Tuple[List[mne.io.BaseRaw], pd.DataFrame, List[Tuple[int, int]], Optional["mne.Report"]]:
     """Slice a raw recording into epochs with optional saving and reporting."""
 
-    logger.info("Entering slice_into_mini_raws")
+    logger.debug("Entering slice_into_mini_raws")
     segments, df, boundary_pairs, times = slice_raw_into_epochs(
         raw, epoch_len=epoch_len, blink_label=blink_label, progress_bar=progress_bar
     )
@@ -208,7 +208,7 @@ def slice_into_mini_raws(
 
             rep = generate_epoch_report(segments, times, verbose=False)
             rep.save(out_dir / "epoch_report.html", overwrite=overwrite, open_browser=False)
-    logger.info("Exiting slice_into_mini_raws")
+    logger.debug("Exiting slice_into_mini_raws")
     return segments, df, boundary_pairs, rep
 
 

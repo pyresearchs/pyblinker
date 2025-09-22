@@ -43,11 +43,14 @@ def _compute_wavelet_energies(
         cannot be computed due to segment length or Nyquist constraints the
         corresponding entry is ``NaN``.
     """
-    logger.info("Computing wavelet energies for segment of length %d", segment.size)
+    logger.debug("Computing wavelet energies for segment of length %d", segment.size)
     logger.debug("Sampling frequency: %.2f Hz", sfreq)
 
     if segment.size == 0:
-        logger.info("Segment empty; returning NaNs")
+        logger.warning(
+            "Wavelet energy computation received empty segment; returning NaNs",
+            extra={"segment_length": int(segment.size)},
+        )
         return [float("nan")] * max_level
 
     max_level_available = min(pywt.dwt_max_level(segment.size, "db4"), max_level)
@@ -68,5 +71,5 @@ def _compute_wavelet_energies(
         coeff = coeffs[level]
         energies.append(float(np.sum(coeff**2)))
 
-    logger.info("Computed %d wavelet energy values", len(energies))
+    logger.debug("Computed %d wavelet energy values", len(energies))
     return energies

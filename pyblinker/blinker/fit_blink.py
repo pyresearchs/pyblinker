@@ -1,5 +1,3 @@
-import logging
-import warnings
 from pyblinker.logging import get_logger
 
 import pandas as pd
@@ -103,10 +101,10 @@ class FitBlinks:
 
 
         if run_fit:
-            msg = "Running fit() may drop blinks due to NaNs in fit range"
-            logger.warning(msg)
-            if logger.isEnabledFor(logging.DEBUG):
-                warnings.warn(msg, RuntimeWarning)
+            logger.warning(
+                "Running fit() may drop blinks due to NaNs in fit range",
+                extra={"run_fit": run_fit},
+            )
             self.fit()
         else:
             # Compute baseline information required by downstream features

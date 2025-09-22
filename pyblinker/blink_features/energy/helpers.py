@@ -37,13 +37,13 @@ def segment_to_samples(onset_s: float, duration_s: float, sfreq: float, n_times:
         Slice object representing the samples belonging to the blink. The
         slice is clamped to the valid range ``[0, n_times)``.
     """
-    logger.info("Entering segment_to_samples")
+    logger.debug("Entering segment_to_samples")
     start = int(round(onset_s * sfreq))
     stop = start + int(round(duration_s * sfreq))
     start = max(start, 0)
     stop = min(stop, n_times)
     logger.debug("Blink window samples: start=%d stop=%d", start, stop)
-    logger.info("Exiting segment_to_samples")
+    logger.debug("Exiting segment_to_samples")
     return slice(start, stop)
 
 

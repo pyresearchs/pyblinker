@@ -1,4 +1,3 @@
-import warnings
 from pyblinker.logging import get_logger
 
 import numpy as np
@@ -87,8 +86,10 @@ def left_right_zero_crossing(
         try:
             extreme_outer = np.arange(m_frame, candidate_signal.shape[0], dtype=int)
         except TypeError:
-            print("Error")
-            # If this except triggers, raise or handle accordingly
+            logger.exception(
+                "Failed to extend search range to signal boundary; returning NaN",
+                extra={"max_blink": m_frame},
+            )
             return left_zero, np.nan
 
         s_ind_right_zero_ex = np.flatnonzero(candidate_signal[extreme_outer] < 0)
@@ -146,8 +147,9 @@ def max_pos_vel_frame(blink_velocity, max_blink, left_zero, right_zero):
         max_neg_vel_idx = np.argmin(blink_velocity[down_stroke])
         max_neg_vel_frame = down_stroke[max_neg_vel_idx]
     else:
-        warnings.warn(
-            "Force nan but require further investigation why happen like this"
+        logger.warning(
+            "Down-stroke segment empty; forcing NaN for max negative velocity",
+            extra={"down_stroke_size": int(down_stroke.size)},
         )
         max_neg_vel_frame = np.nan
 

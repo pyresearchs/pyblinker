@@ -13,11 +13,7 @@ from pyblinker.blink_features.frequency_domain import (
 )
 from pyblinker.utils.refinement_utils import slice_raw_into_mne_epochs_refine_annot
 
-from ..utils.helpers import (
-    assert_df_has_columns,
-    assert_numeric_or_nan,
-    with_userwarning,
-)
+from ..utils.helpers import assert_df_has_columns, assert_numeric_or_nan
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -58,12 +54,19 @@ class TestFrequencyDomainBlinkFeatures(unittest.TestCase):
             extractor.compute()
 
     def test_low_sampling_frequency_warning(self) -> None:
-        """Warn and drop Nyquist-touching levels when fs < 30 Hz."""
+        """Log a warning and drop Nyquist-touching levels when fs < 30 Hz."""
         epochs = self.epochs.copy().resample(20.0, npad="auto")
-        with with_userwarning(self):
+        with self.assertLogs("pyblinker", level="WARNING") as cm:
             df = aggregate_frequency_domain_features(
                 epochs, picks="EAR-avg_ear", progress_bar=False
             )
+        self.assertTrue(
+            any(
+                "Frequency-domain features may be unreliable below 30 Hz" in message
+                for message in cm.output
+            ),
+            msg="Expected warning log missing",
+        )
         self.assertTrue(df["wavelet_energy_d1"].isna().all())
         assert_df_has_columns(
             self, df, ["ep"] + [f"wavelet_energy_d{i}" for i in range(2, 5)]
