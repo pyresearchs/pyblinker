@@ -2,7 +2,7 @@ import numpy as np
 
 from pyblinker.logging import get_logger
 
-from .zero_crossing import max_pos_vel_frame
+from .stroke_utils import max_pos_vel_frame
 
 
 logger = get_logger(__name__)
