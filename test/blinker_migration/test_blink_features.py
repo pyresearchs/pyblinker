@@ -73,10 +73,8 @@ import pandas as pd
 import pytest
 from pathlib import Path
 
-from pyblinker.blinker.zero_crossing import (
-    left_right_zero_crossing,
-    compute_fit_range,
-)
+from pyblinker.blinker.fit_range import compute_fit_range
+from pyblinker.blinker.zero_crossing import left_right_zero_crossing
 from pyblinker.blinker.base_left_right import create_left_right_base
 from pyblinker.fitutils.line_intersection import (
     lines_intersection,
