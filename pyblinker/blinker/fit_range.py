@@ -12,9 +12,6 @@ import warnings
 
 import numpy as np
 
-__all__ = ["compute_fit_range", "get_left_range", "get_right_range"]
-
-
 def get_left_range(left_zero, max_blink, candidate_signal, blink_top, blink_bottom):
     """Identify the left blink range using the provided thresholds."""
 
