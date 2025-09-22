@@ -79,21 +79,22 @@ class TestSegmentRawFeaturePipeline(unittest.TestCase):
         df_energy = pd.DataFrame(energy_rows)
 
         if run_fit:
-            fit_logger = logging.getLogger("pyblinker.blinker.fit_blink")
-            prev_level = fit_logger.level
-            fit_logger.setLevel(logging.DEBUG)
-            try:
-                with self.assertWarns(RuntimeWarning):
-                    blink_props = compute_segment_blink_properties(
-                        self.segments,
-                        self.params,
-                        blink_df=self.blink_df,
-                        channel="EEG-E8",
-                        run_fit=run_fit,
-                        progress_bar=False,
-                    )
-            finally:
-                fit_logger.setLevel(prev_level)
+            with self.assertLogs("pyblinker.blinker.fit_blink", level="WARNING") as cm:
+                blink_props = compute_segment_blink_properties(
+                    self.segments,
+                    self.params,
+                    blink_df=self.blink_df,
+                    channel="EEG-E8",
+                    run_fit=run_fit,
+                    progress_bar=False,
+                )
+            self.assertTrue(
+                any(
+                    "Running fit() may drop blinks due to NaNs in fit range" in message
+                    for message in cm.output
+                ),
+                msg="Expected fit warning log missing",
+            )
         else:
             blink_props = compute_segment_blink_properties(
                 self.segments,

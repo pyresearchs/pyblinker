@@ -42,7 +42,7 @@ def create_annotation(
         If required columns are missing or ``sfreq`` is non-positive.
     """
 
-    logger.info("Entering create_annotation")
+    logger.debug("Entering create_annotation")
     if not isinstance(sblink, pd.DataFrame):
         raise TypeError("sblink must be a pandas.DataFrame")
 
@@ -71,7 +71,7 @@ def create_annotation(
         duration=duration,
         description=list(descriptions),
     )
-    logger.info("Exiting create_annotation")
+    logger.debug("Exiting create_annotation")
     return annot
 
 

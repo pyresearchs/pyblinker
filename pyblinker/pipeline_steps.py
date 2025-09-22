@@ -22,7 +22,7 @@ logger = get_logger(__name__)
 
 def process_channel_data(detector, channel: str, verbose: bool = True) -> None:
     """Process blink data for a single channel using the legacy six-step pipeline."""
-    logger.info(f"Processing channel: {channel}")
+    logger.debug("Processing channel: %s", channel)
 
     # STEP 1: Get blink positions
     df = get_blink_position(
@@ -32,7 +32,7 @@ def process_channel_data(detector, channel: str, verbose: bool = True) -> None:
     )
 
     if df.empty and verbose:
-        logger.warning(f"No blinks detected in channel: {channel}")
+        logger.warning("No blinks detected in channel: %s", channel)
 
     # STEP 2: Fit blinks
     fitblinks = FitBlinks(
@@ -80,7 +80,7 @@ def process_channel_data(detector, channel: str, verbose: bool = True) -> None:
 
 def process_all_channels(detector) -> None:
     """Process all channels available in the raw data."""
-    logger.info(f"Processing {len(detector.channel_list)} channels.")
+    logger.info("Processing %d channels.", len(detector.channel_list))
     for channel in tqdm(
         detector.channel_list, desc="Processing Channels", unit="channel", colour="BLACK"
     ):
@@ -114,7 +114,9 @@ def get_blink(detector):
     process_all_channels(detector)
 
     ch_selected = select_representative_channel(detector)
-    logger.info(f"Selected representative channel: {ch_selected.loc[0, 'ch']}")
+    logger.info(
+        "Selected representative channel: %s", ch_selected.loc[0, "ch"]
+    )
 
     ch, data, df = get_representative_blink_data(detector, ch_selected)
     annot = detector.create_annotations(df)
@@ -122,7 +124,10 @@ def get_blink(detector):
     fig_data = detector.generate_viz(data, df) if detector.viz_data else []
     n_good_blinks = ch_selected.loc[0, "number_good_blinks"]
 
-    logger.info(f"Blink detection completed. {n_good_blinks} good blinks detected.")
+    logger.info(
+        "Blink detection completed. %d good blinks detected.",
+        n_good_blinks,
+    )
 
     return annot, ch, n_good_blinks, df, fig_data, ch_selected
 
