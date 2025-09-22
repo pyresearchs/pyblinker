@@ -7,18 +7,6 @@ import numpy as np
 logger = get_logger(__name__)
 
 
-def get_line_intersection_slope(
-    x_intersect, y_intersect, left_x_intersect, right_x_intersect
-):
-    """
-    Original logic retained. Computes slopes at the intersection point.
-    """
-    # Local variable usage here is minimal since there's only two lines.
-    left_slope = y_intersect / (x_intersect - left_x_intersect)
-    right_slope = y_intersect / (x_intersect - right_x_intersect)
-    return left_slope, right_slope
-
-
 def left_right_zero_crossing(
     candidate_signal: np.ndarray,
     max_blink: float,
