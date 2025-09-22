@@ -162,8 +162,8 @@ def test_get_half_height_all(candidate_signal: np.ndarray, test_df: pd.DataFrame
     Internals:
       - Uses blinkVelocity = diff(signal)
       - Finds max_pos_vel_frame, max_neg_vel_frame
-      - Determines left_base via reversed velocity crossing <=0 via the function base_left_right._get_left_base
-      - Determines right_base via forward velocity crossing >=0 via the function base_left_right._get_right_base
+      - Determines left_base via reversed velocity crossing <=0 via the function base_left_right.get_left_base
+      - Determines right_base via forward velocity crossing >=0 via the function base_left_right.get_right_base
       - Computes half-height relative to both base and zero baselines
 
     Expected Return Shape and Types:
