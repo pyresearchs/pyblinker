@@ -29,6 +29,7 @@ from .statistics_utils import (
     calculate_within_range,
     get_blink_statistic,
     get_good_blink_mask,
+    get_max_blink,
 )
 from .velocity_utils import average_velocity
 
@@ -56,6 +57,7 @@ __all__ = [
     "calculate_good_ratio",
     "get_blink_statistic",
     "get_good_blink_mask",
+    "get_max_blink",
     "average_velocity",
     "infer_modality",
 ]

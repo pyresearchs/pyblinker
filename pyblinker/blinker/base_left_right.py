@@ -1,9 +1,92 @@
 import numpy as np
-from .zero_crossing import (
-    max_pos_vel_frame,
-    get_left_base,
-    get_right_base,
-)
+
+from pyblinker.logging import get_logger
+
+from .zero_crossing import max_pos_vel_frame
+
+
+logger = get_logger(__name__)
+
+
+def get_left_base(blink_velocity, left_outer, max_pos_vel_frame):
+    """Determine the left base frame index.
+
+    The left base is identified by scanning from ``max_pos_vel_frame`` back to
+    ``left_outer`` until the blink velocity becomes non-positive. The index of
+    the first frame satisfying the condition is returned.
+    """
+
+    l_outer = int(left_outer)
+    m_pos_vel = int(max_pos_vel_frame)
+
+    left_range = np.arange(l_outer, m_pos_vel + 1)
+    reversed_velocity = np.flip(blink_velocity[left_range])
+
+    left_base_index = np.argmax(reversed_velocity <= 0)
+    left_base = m_pos_vel - left_base_index - 1
+    return left_base
+
+
+def get_right_base(
+    candidate_signal: np.ndarray,
+    blink_velocity: np.ndarray,
+    right_outer: int,
+    max_neg_vel_frame: float | int,
+) -> int | float | None:
+    """Compute the right base frame index.
+
+    Parameters
+    ----------
+    candidate_signal : numpy.ndarray
+        The filtered blink signal from which baseline metrics are derived.
+    blink_velocity : numpy.ndarray
+        First derivative of ``candidate_signal`` used to locate zero crossings.
+    right_outer : int
+        Right boundary frame of the blink segment.
+    max_neg_vel_frame : float | int
+        Frame index corresponding to the most negative blink velocity.
+
+    Returns
+    -------
+    int | float | None
+        The frame index of the right base. Returns ``numpy.nan`` when
+        ``max_neg_vel_frame`` is ``NaN`` and ``None`` when a valid range cannot
+        be determined.
+    """
+
+    r_outer = int(right_outer)
+
+    # Return ``NaN`` when no negative velocity peak exists.
+    if np.isnan(max_neg_vel_frame):
+        return np.nan
+    m_neg_vel = int(max_neg_vel_frame)
+
+    # Ensure boundaries are valid
+    if m_neg_vel > r_outer:
+        return None
+
+    max_size = candidate_signal.size
+    end_idx = min(r_outer, max_size)
+    right_range = np.arange(m_neg_vel, end_idx)
+
+    if right_range.size == 0:
+        return None
+
+    # Avoid out-of-bounds indexing for blink_velocity
+    if right_range[-1] >= blink_velocity.size:
+        right_range = right_range[:-1]
+        if right_range.size == 0 or right_range[-1] >= blink_velocity.size:
+            logger.warning(
+                "Unable to compute right base: right_range %s exceeds blink_velocity length %d",
+                right_range,
+                blink_velocity.size,
+            )
+            return None
+
+    right_base_velocity = blink_velocity[right_range]
+    right_base_index = np.argmax(right_base_velocity >= 0)
+    right_base = m_neg_vel + right_base_index + 1
+    return right_base
 
 
 def create_left_right_base(candidate_signal, df):

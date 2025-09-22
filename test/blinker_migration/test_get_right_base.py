@@ -1,5 +1,5 @@
 import numpy as np
-from pyblinker.blinker.zero_crossing import get_right_base
+from pyblinker.blinker.base_left_right import get_right_base
 
 
 def test_get_right_base_returns_none_when_range_exceeds_velocity():
