@@ -4,10 +4,8 @@ from pyblinker.logging import get_logger
 
 import pandas as pd
 
-from .zero_crossing import (
-    compute_fit_range,
-    left_right_zero_crossing,
-)
+from .fit_range import compute_fit_range
+from .zero_crossing import left_right_zero_crossing
 from .base_left_right import create_left_right_base
 from ..fitutils.line_intersection import lines_intersection
 from ..utils.statistics_utils import get_max_blink
