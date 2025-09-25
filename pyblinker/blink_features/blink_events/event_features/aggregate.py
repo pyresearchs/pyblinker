@@ -191,15 +191,18 @@ def _compute_family_features(
     elif family_key == "morph":
         df = compute_epoch_morphology_features(epochs, picks=picks)
     elif family_key == "wave":
-        params: Mapping[str, Any] = _DEFAULT_WAVEFORM_PARAMS
-        run_fit = False
+        params_dict: dict[str, Any] = dict(_DEFAULT_WAVEFORM_PARAMS)
+        run_fit = True
         if extra_inputs is not None:
-            params = extra_inputs.get("waveform_params", params)
-            run_fit = bool(extra_inputs.get("waveform_run_fit", False))
+            params_override = extra_inputs.get("waveform_params")
+            if isinstance(params_override, Mapping):
+                params_dict.update(params_override)
+            if "waveform_run_fit" in extra_inputs:
+                run_fit = bool(extra_inputs.get("waveform_run_fit"))
         df = _compute_waveform_epoch_features(
             epochs,
             picks,
-            params,
+            params_dict,
             run_fit=run_fit,
             progress_bar=progress_bar,
         )

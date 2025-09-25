@@ -73,10 +73,16 @@ class TestAggregateBlinkFeatures(unittest.TestCase):
 
     def test_expected_columns_present(self) -> None:
         df = self._run_aggregate(self.epochs)
+        try:
+            df.to_excel("output.xlsx", index=False)
+        except ModuleNotFoundError:  # pragma: no cover - environment-specific
+            df.to_csv("output.xlsx.csv", index=False)
         expected_some = [
             "EOG__events__blink_total",
             "EAR__energy__blink_signal_energy_mean_EAR-avg_ear",
             "EEG__freq__wavelet_energy_d1",
+            "EEG__wave__peak_time_tent_EEG-E8",
+            "EEG__wave__pos_amp_vel_ratio_tent_EEG-E8",
         ]
         for col in expected_some:
             self.assertIn(col, df.columns)
