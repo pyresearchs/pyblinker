@@ -5,6 +5,7 @@ Minimal tutorial: load raw FIF, epoch, extract blink features, save as Excel (or
 This example mirrors the workflow exercised in the aggregate blink feature tests.
 """
 
+from datetime import datetime
 from pathlib import Path
 
 import mne
@@ -25,7 +26,7 @@ TEST_FILES_DIR = PROJECT_ROOT / "test" / "test_files"
 RAW_PATH = TEST_FILES_DIR / "ear_eog_raw.fif"   # input FIF file
 EPOCH_LEN = 30.0                                # seconds per epoch
 CSV_META = TEST_FILES_DIR / "ear_eog_blink_count_epoch.csv"  # optional metadata
-OUT_FILE = Path("blink_features.xlsx")          # output Excel file
+OUT_FILE = Path("blink_features.xlsx")          # base output Excel file name
 INCLUDE_MODALITIES = ("EEG", "EOG", "EAR")           # which modalities
 FEATURE_FAMILIES = (
     "events",
@@ -64,11 +65,16 @@ df = aggregate_blink_features(
 )
 
 # --- 4) Save to Excel (or fallback to CSV if needed) ---
+timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+timestamped_out = OUT_FILE.with_name(
+    f"{OUT_FILE.stem}_{timestamp}{OUT_FILE.suffix}"
+)
+
 try:
-    df.to_excel(OUT_FILE, index=False)
-    print(f"Saved features to {OUT_FILE.resolve()}")
+    df.to_excel(timestamped_out, index=False)
+    print(f"Saved features to {timestamped_out.resolve()}")
 except ModuleNotFoundError:
-    csv_fallback = OUT_FILE.with_suffix(".csv")
+    csv_fallback = timestamped_out.with_suffix(".csv")
     df.to_csv(csv_fallback, index=False)
     print(f"openpyxl not found, saved CSV instead: {csv_fallback.resolve()}")
 

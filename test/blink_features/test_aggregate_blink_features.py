@@ -71,6 +71,12 @@ class TestAggregateBlinkFeatures(unittest.TestCase):
         self.assertEqual("epoch", df.index.name)
         self.assertEqual(len(df), len(self.epochs))
 
+    def test_epoch_column_present_and_integer(self) -> None:
+        df = self._run_aggregate(self.epochs)
+        self.assertIn("epoch", df.columns)
+        self.assertTrue(np.issubdtype(df["epoch"].dtype, np.integer))
+        self.assertTrue(df["epoch"].is_monotonic_increasing)
+
     def test_expected_columns_present(self) -> None:
         df = self._run_aggregate(self.epochs)
         try:
@@ -126,7 +132,8 @@ class TestAggregateBlinkFeatures(unittest.TestCase):
 
     def test_columns_sorted(self) -> None:
         df = self._run_aggregate(self.epochs)
-        self.assertListEqual(list(df.columns), sorted(df.columns))
+        self.assertEqual(df.columns[0], "epoch")
+        self.assertListEqual(list(df.columns[1:]), sorted(df.columns[1:]))
 
     def test_no_all_nan_columns(self) -> None:
         df = self._run_aggregate(self.epochs)
@@ -143,7 +150,11 @@ class TestAggregateBlinkFeatures(unittest.TestCase):
         families = ("events", "energy", "freq", "kin", "morph", "wave")
         for family in families:
             self.assertTrue(
-                any(col.split("__")[1] == family for col in df.columns),
+                any(
+                    col.split("__")[1] == family
+                    for col in df.columns
+                    if "__" in col
+                ),
                 msg=f"Expected feature family '{family}' in aggregated output",
             )
 
