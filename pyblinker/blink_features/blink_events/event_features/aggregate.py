@@ -172,7 +172,8 @@ def _compute_family_features(
     epoch_index: pd.Index,
     *,
     progress_bar: bool,
-    extra_inputs: Mapping[str, Any] | None,
+    waveform_params: Mapping[str, Any] | None,
+    waveform_run_fit: bool,
 ) -> pd.DataFrame:
     """Dispatch feature computation for a modality/family pair."""
 
@@ -192,18 +193,13 @@ def _compute_family_features(
         df = compute_epoch_morphology_features(epochs, picks=picks)
     elif family_key == "wave":
         params_dict: dict[str, Any] = dict(_DEFAULT_WAVEFORM_PARAMS)
-        run_fit = True
-        if extra_inputs is not None:
-            params_override = extra_inputs.get("waveform_params")
-            if isinstance(params_override, Mapping):
-                params_dict.update(params_override)
-            if "waveform_run_fit" in extra_inputs:
-                run_fit = bool(extra_inputs.get("waveform_run_fit"))
+        if waveform_params is not None:
+            params_dict.update(dict(waveform_params))
         df = _compute_waveform_epoch_features(
             epochs,
             picks,
             params_dict,
-            run_fit=run_fit,
+            run_fit=waveform_run_fit,
             progress_bar=progress_bar,
         )
     else:
@@ -215,30 +211,28 @@ def _compute_family_features(
 
 
 def _load_extra_features(
-    epoch_index: pd.Index, extra_inputs: Mapping[str, Any] | None
+    epoch_index: pd.Index, metadata_csv_path: str | Path | None
 ) -> list[pd.DataFrame]:
     """Load auxiliary inputs such as CSV blink counts."""
 
     pieces: list[pd.DataFrame] = []
-    if not extra_inputs:
+    if not metadata_csv_path:
         return pieces
 
-    csv_path = extra_inputs.get("csv_path")
-    if csv_path:
-        try:
-            csv_df = pd.read_csv(Path(csv_path))
-        except FileNotFoundError:
-            logger.warning("Blink count CSV not found at %s", csv_path)
+    try:
+        csv_df = pd.read_csv(Path(metadata_csv_path))
+    except FileNotFoundError:
+        logger.warning("Blink count CSV not found at %s", metadata_csv_path)
+    else:
+        if "epoch_id" in csv_df.columns:
+            csv_df = csv_df.set_index("epoch_id")
         else:
-            if "epoch_id" in csv_df.columns:
-                csv_df = csv_df.set_index("epoch_id")
-            else:
-                csv_df = csv_df.set_index(csv_df.columns[0])
-            csv_df = csv_df.reindex(epoch_index)
-            csv_df.columns = [f"META__events__{col}" for col in csv_df.columns]
-            for col in csv_df.columns:
-                csv_df[col] = pd.to_numeric(csv_df[col], errors="coerce")
-            pieces.append(csv_df)
+            csv_df = csv_df.set_index(csv_df.columns[0])
+        csv_df = csv_df.reindex(epoch_index)
+        csv_df.columns = [f"META__events__{col}" for col in csv_df.columns]
+        for col in csv_df.columns:
+            csv_df[col] = pd.to_numeric(csv_df[col], errors="coerce")
+        pieces.append(csv_df)
     return pieces
 
 
@@ -257,9 +251,40 @@ def aggregate_blink_features(
         "morph",
         "wave",
     ),
-    extra_inputs: Mapping[str, Any] | None = None,
+    waveform_params: Mapping[str, Any] | None = None,
+    waveform_run_fit: bool = True,
+    metadata_csv_path: str | Path | None = None,
 ) -> pd.DataFrame:
-    """Return consolidated blink features across modalities and families."""
+    """Return consolidated blink features across modalities and families.
+
+    Parameters
+    ----------
+    raw_or_epochs : mne.io.BaseRaw | mne.Epochs
+        Continuous recording or pre-computed epochs used for feature
+        extraction.
+    epoch_len : float, optional
+        Epoch length in seconds when ``raw_or_epochs`` is a Raw instance.
+    blink_label : str | None, optional
+        Annotation label describing blinks. ``None`` uses all annotations.
+    progress_bar : bool, optional
+        Whether to display progress bars during computations.
+    include_modalities : tuple of str, optional
+        Modalities to include (e.g., ``("EEG", "EOG", "EAR")``).
+    feature_families : tuple of str, optional
+        Feature families to compute (``"events"``, ``"energy"``, ``"freq"``,
+        ``"kin"``, ``"morph"``, ``"wave"``).
+    waveform_params : Mapping[str, Any] | None, optional
+        Optional overrides for waveform feature parameters.
+    waveform_run_fit : bool, optional
+        Whether to run the blink waveform fitting routine.
+    metadata_csv_path : str | Path | None, optional
+        Optional CSV file containing per-epoch metadata to merge.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Consolidated blink features indexed by epoch.
+    """
 
     if isinstance(raw_or_epochs, mne.io.BaseRaw):
         epochs = slice_raw_into_mne_epochs_refine_annot(
@@ -297,7 +322,8 @@ def aggregate_blink_features(
                     picks,
                     epoch_index,
                     progress_bar=progress_bar,
-                    extra_inputs=extra_inputs,
+                    waveform_params=waveform_params,
+                    waveform_run_fit=waveform_run_fit,
                 )
             except Exception as exc:  # pragma: no cover - logged for visibility
                 logger.warning(
@@ -311,7 +337,7 @@ def aggregate_blink_features(
                 continue
             pieces.append(features_df)
 
-    pieces.extend(_load_extra_features(epoch_index, extra_inputs))
+    pieces.extend(_load_extra_features(epoch_index, metadata_csv_path))
 
     if pieces:
         result = pd.concat(pieces, axis=1)
