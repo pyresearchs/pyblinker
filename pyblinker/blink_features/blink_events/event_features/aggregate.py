@@ -353,7 +353,14 @@ def aggregate_blink_features(
     result.index.name = "epoch"
 
     if not result.empty:
-        result = result.loc[:, sorted(result.columns)]
+        try:
+            epoch_values = epoch_index.astype(int)
+        except (TypeError, ValueError):
+            epoch_values = np.arange(len(epoch_index), dtype=int)
+        epoch_series = pd.Series(epoch_values, index=epoch_index, name="epoch")
+        result = result.assign(epoch=epoch_series)
+        feature_cols = [col for col in result.columns if col != "epoch"]
+        result = result.loc[:, ["epoch"] + sorted(feature_cols)]
 
     return result
 
