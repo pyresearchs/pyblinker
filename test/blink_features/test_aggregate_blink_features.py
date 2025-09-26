@@ -62,7 +62,7 @@ class TestAggregateBlinkFeatures(unittest.TestCase):
             progress_bar=False,
             include_modalities=("EEG", "EOG", "EAR"),
             feature_families=("events", "energy", "freq", "kin", "morph", "wave"),
-            extra_inputs={"csv_path": self.csv_path},
+            metadata_csv_path=self.csv_path,
         )
 
     def test_aggregate_returns_dataframe(self) -> None:
@@ -92,6 +92,22 @@ class TestAggregateBlinkFeatures(unittest.TestCase):
         self.assertTrue(
             any(col.startswith("META__events__blink_count") for col in df.columns)
         )
+
+    def test_csv_totals_match_output(self) -> None:
+        df = self._run_aggregate(self.epochs)
+        meta_col = "META__events__blink_count"
+        self.assertIn(meta_col, df.columns)
+
+        csv_counts = pd.read_csv(self.csv_path).set_index("epoch_id")
+        csv_counts = csv_counts.reindex(df.index)["blink_count"].fillna(0.0)
+        meta_series = df[meta_col].fillna(0.0)
+
+        pd.testing.assert_series_equal(
+            meta_series.astype(float),
+            csv_counts.astype(float),
+            check_names=False,
+        )
+        self.assertAlmostEqual(float(meta_series.sum()), float(csv_counts.sum()))
 
     def test_numeric_columns_and_uniqueness(self) -> None:
         df = self._run_aggregate(self.epochs)
