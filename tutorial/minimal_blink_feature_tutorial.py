@@ -16,10 +16,16 @@ from pyblinker.utils.refinement_utils import slice_raw_into_mne_epochs_refine_an
 
 
 # --- User settings ---
-RAW_PATH = Path("test/test_files/ear_eog_raw.fif")   # input FIF file
-EPOCH_LEN = 30.0                                     # seconds per epoch
-CSV_META = Path("test/test_files/ear_eog_blink_count_epoch.csv")  # optional metadata
-OUT_FILE = Path("blink_features.xlsx")               # output Excel file
+# Resolve project directories relative to this script so it can be executed from
+# any working directory.
+SCRIPT_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = SCRIPT_DIR.parent
+TEST_FILES_DIR = PROJECT_ROOT / "test" / "test_files"
+
+RAW_PATH = TEST_FILES_DIR / "ear_eog_raw.fif"   # input FIF file
+EPOCH_LEN = 30.0                                # seconds per epoch
+CSV_META = TEST_FILES_DIR / "ear_eog_blink_count_epoch.csv"  # optional metadata
+OUT_FILE = Path("blink_features.xlsx")          # output Excel file
 INCLUDE_MODALITIES = ("EEG", "EOG", "EAR")           # which modalities
 FEATURE_FAMILIES = (
     "events",
