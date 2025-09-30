@@ -10,9 +10,7 @@ from pathlib import Path
 
 import mne
 
-from pyblinker.blink_features.blink_events.event_features.aggregate import (
-    aggregate_blink_features,
-)
+from pyblinker.blink_features.aggregate import aggregate_blink_features
 from pyblinker.utils.refinement_utils import slice_raw_into_mne_epochs_refine_annot
 
 
