@@ -33,7 +33,7 @@ def compute_frequency_domain_features(
         corresponding energy values. Levels that cannot be computed are ``NaN``.
     """
 
-    logger.info(
+    logger.debug(
         "Computing segment frequency-domain features (n=%d sfreq=%.2f)",
         len(segment_signal),
         sfreq,

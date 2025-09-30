@@ -120,10 +120,10 @@ The tests rely on fixtures located in `test/test_files`:
 | `interBlinkMaxAmp` | `inter_blink_max_amp` | `extract_blink_properties.py` | Column name |
 | `interBlinkMaxVelBase` | `inter_blink_max_vel_base` | `extract_blink_properties.py` | Column name |
 | `interBlinkMaxVelZero` | `inter_blink_max_vel_zero` | `extract_blink_properties.py` | Column name |
-| `_max_pos_vel_frame` | `max_pos_vel_frame` | `zero_crossing.py` | Function name |
-| `_get_left_base` | `get_left_base` | `zero_crossing.py` | Function name |
-| `_get_right_base` | `get_right_base` | `zero_crossing.py` | Function name |
-| `_get_half_height` | `get_half_height` | `zero_crossing.py` | Function name |
+| `_max_pos_vel_frame` | `max_pos_vel_frame` | `stroke_utils.py` | Function name |
+| `_get_left_base` | `get_left_base` | `base_left_right.py` | Function name |
+| `_get_right_base` | `get_right_base` | `base_left_right.py` | Function name |
+| `_get_half_height` | `get_half_height` | `waveform_features/half_height.py` | Function name |
 
 Column names now use singular nouns such as `start_blink` or `end_blink` to emphasize a single blink event rather than multiple events.
 

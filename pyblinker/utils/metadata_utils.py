@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 def onset_entry_to_blinks(onset: Any) -> List[Dict[str, float]]:
     """Convert a ``blink_onset`` metadata entry into blink dictionaries."""
 
-    logger.info("Entering onset_entry_to_blinks")
+    logger.debug("Entering onset_entry_to_blinks")
     if isinstance(onset, list):
         blinks = [{"onset": float(o)} for o in onset]
     elif onset is None or pd.isna(onset):
@@ -30,14 +30,14 @@ def onset_entry_to_blinks(onset: Any) -> List[Dict[str, float]]:
     else:
         blinks = [{"onset": float(onset)}]
     logger.debug("Converted %s to %d blink entries", onset, len(blinks))
-    logger.info("Exiting onset_entry_to_blinks")
+    logger.debug("Exiting onset_entry_to_blinks")
     return blinks
 
 
 def attach_blink_metadata(epochs: "mne.Epochs", blink_df: pd.DataFrame) -> pd.DataFrame:
     """Aggregate per-blink properties and merge them into epoch metadata."""
 
-    logger.info("Entering attach_blink_metadata")
+    logger.debug("Entering attach_blink_metadata")
 
     sfreq = float(epochs.info["sfreq"])
     selection_map = {orig: new for new, orig in enumerate(epochs.selection)}
@@ -83,7 +83,7 @@ def attach_blink_metadata(epochs: "mne.Epochs", blink_df: pd.DataFrame) -> pd.Da
     epochs.metadata = merged
     epochs.metadata.reset_index(drop=True, inplace=True)
 
-    logger.info("Exiting attach_blink_metadata")
+    logger.debug("Exiting attach_blink_metadata")
     return df.drop(columns=["epoch_index"])
 
 
@@ -96,7 +96,7 @@ def sample_windows_from_metadata(
 ) -> List[slice]:
     """Convert blink onset/duration metadata to sample windows."""
 
-    logger.info("Entering sample_windows_from_metadata")
+    logger.debug("Entering sample_windows_from_metadata")
     windows = extract_blink_windows(metadata, channel, epoch_index)
     sample_windows: List[slice] = []
     for onset_s, duration_s in windows:
@@ -104,7 +104,7 @@ def sample_windows_from_metadata(
         if sl.stop - sl.start > 1:
             sample_windows.append(sl)
     logger.debug("Found %d sample windows", len(sample_windows))
-    logger.info("Exiting sample_windows_from_metadata")
+    logger.debug("Exiting sample_windows_from_metadata")
     return sample_windows
 
 
@@ -116,7 +116,7 @@ def extract_blink_windows(
     """Extract blink onset/duration pairs for a single epoch."""
 
     channel_label = channel if channel is not None else "generic"
-    logger.info(
+    logger.debug(
         "Entering extract_blink_windows for channel %s (epoch %d)",
         channel_label,
         epoch_index,
@@ -152,7 +152,7 @@ def extract_blink_windows(
                 channel_label,
             )
             windows: List[Tuple[float, float]] = []
-            logger.info("Exiting extract_blink_windows")
+            logger.debug("Exiting extract_blink_windows")
             return windows
     else:
         generic_keys = ("blink_onset", "blink_duration")
@@ -171,7 +171,7 @@ def extract_blink_windows(
                 channel_label,
             )
             windows = []
-            logger.info("Exiting extract_blink_windows")
+            logger.debug("Exiting extract_blink_windows")
             return windows
 
     onsets_list = ensure_list(onsets)
@@ -184,7 +184,7 @@ def extract_blink_windows(
         windows.append((float(onset), float(duration)))
 
     logger.debug("Extracted %d blink windows", len(windows))
-    logger.info("Exiting extract_blink_windows")
+    logger.debug("Exiting extract_blink_windows")
     return windows
 
 

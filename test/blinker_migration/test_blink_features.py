@@ -73,14 +73,14 @@ import pandas as pd
 import pytest
 from pathlib import Path
 
-from pyblinker.blinker.zero_crossing import (
-    left_right_zero_crossing,
-    get_half_height as _get_half_height,
-    compute_fit_range,
-)
+from pyblinker.blinker.fit_range import compute_fit_range
+from pyblinker.blinker.zero_crossing import left_right_zero_crossing
 from pyblinker.blinker.base_left_right import create_left_right_base
 from pyblinker.fitutils.line_intersection import (
     lines_intersection,
+)
+from pyblinker.blink_features.waveform_features.half_height import (
+    get_half_height as _get_half_height,
 )
 
 
@@ -162,8 +162,8 @@ def test_get_half_height_all(candidate_signal: np.ndarray, test_df: pd.DataFrame
     Internals:
       - Uses blinkVelocity = diff(signal)
       - Finds max_pos_vel_frame, max_neg_vel_frame
-      - Determines left_base via reversed velocity crossing <=0 via the function base_left_right._get_left_base
-      - Determines right_base via forward velocity crossing >=0 via the function base_left_right._get_right_base
+      - Determines left_base via reversed velocity crossing <=0 via the function base_left_right.get_left_base
+      - Determines right_base via forward velocity crossing >=0 via the function base_left_right.get_right_base
       - Computes half-height relative to both base and zero baselines
 
     Expected Return Shape and Types:

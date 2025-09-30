@@ -234,7 +234,7 @@ def slice_raw_into_mne_epochs_refine_annot(
     epochs.metadata = metadata
 
     logger.debug("Epoch metadata head: %s", metadata.head())
-    logger.info("Exiting slice_raw_into_mne_epochs_refine_annot")
+    logger.debug("Exiting slice_raw_into_mne_epochs_refine_annot")
     return epochs
 
 

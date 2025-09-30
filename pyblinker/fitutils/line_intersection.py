@@ -11,8 +11,19 @@ from pyblinker.fitutils.forking import (
     polyfit,
     get_intersection,
 )
-from pyblinker.blinker.zero_crossing import get_line_intersection_slope
 from pyblinker.utils.velocity_utils import average_velocity
+
+
+def get_line_intersection_slope(
+    x_intersect, y_intersect, left_x_intersect, right_x_intersect
+):
+    """
+    Original logic retained. Computes slopes at the intersection point.
+    """
+    # Local variable usage here is minimal since there's only two lines.
+    left_slope = y_intersect / (x_intersect - left_x_intersect)
+    right_slope = y_intersect / (x_intersect - right_x_intersect)
+    return left_slope, right_slope
 
 
 def lines_intersection(

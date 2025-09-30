@@ -4,7 +4,6 @@ from __future__ import annotations
 from pyblinker.logging import get_logger
 
 from typing import Dict, List, Sequence
-import warnings
 
 import mne
 import numpy as np
@@ -56,11 +55,10 @@ class FrequencyDomainBlinkFeatureExtractor:
             DataFrame indexed like ``epochs`` with columns ``ep`` and
             ``wavelet_energy_d1`` .. ``wavelet_energy_d4``.
 
-        Warns
+        Notes
         -----
-        UserWarning
-            If the sampling frequency is below 30 Hz, features may be
-            unreliable.
+        A warning is logged when the sampling frequency is below 30 Hz
+        because wavelet features become unreliable at low rates.
         """
 
         if self.epochs is None:
@@ -68,8 +66,9 @@ class FrequencyDomainBlinkFeatureExtractor:
 
         sfreq = self._sampling_frequency()
         if sfreq < 30:
-            warnings.warn(
-                "Frequency-domain features may be unreliable below 30 Hz", UserWarning
+            logger.warning(
+                "Frequency-domain features may be unreliable below 30 Hz",
+                extra={"sfreq": sfreq},
             )
 
         if picks is None:

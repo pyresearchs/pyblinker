@@ -55,7 +55,7 @@ def require_channels(
     ValueError
         If any channel in ``picks`` is missing from ``data``.
     """
-    logger.info("Validating channel picks: %s", picks)
+    logger.debug("Validating channel picks: %s", picks)
     if isinstance(data, (mne.Epochs, BaseRaw)):
         ch_names = data.info["ch_names"]
     else:
