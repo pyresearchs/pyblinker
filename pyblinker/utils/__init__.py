@@ -13,6 +13,7 @@ from .epoch_utils import (
     slice_raw_into_mne_epochs,
     slice_raw_to_segments,
 )
+from .feature_dataframe import to_epoch_indexed
 from .io_utils import prepare_refined_segments, save_epoch_raws
 from .metadata_utils import onset_entry_to_blinks
 from .modality import infer_modality
@@ -45,6 +46,7 @@ __all__ = [
     "slice_into_mini_raws",
     "save_epoch_raws",
     "prepare_refined_segments",
+    "to_epoch_indexed",
     "generate_epoch_report",
     "add_blink_plots_to_report",
     "refine_ear_extrema_and_threshold_stub",
