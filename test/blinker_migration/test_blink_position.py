@@ -1,3 +1,11 @@
+'''
+
+We will the following input
+test/migration_files/step1bi_data_input_getBlinkPositions.mat
+that will be feed into the get_blink_position function
+and we will compare the output against the expected output stored in
+test/migration_files/step1bi_data_output_getBlinkPositions.mat
+'''
 import pickle
 import unittest
 
@@ -7,6 +15,7 @@ from pathlib import Path
 
 from pyblinker.blinker.get_blink_positions import get_blink_position
 from test.blinker_migration.pyblinker.utils.update_pkl_variables import RENAME_MAP, rename_keys
+
 
 class TestGetBlinkPosition(unittest.TestCase):
 
