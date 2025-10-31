@@ -28,6 +28,7 @@ Differences ≤ TOLERANCE_SAMPLES are considered acceptable.
 """
 
 from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import mne
@@ -48,6 +49,8 @@ assert MAT_INPUT_PATH.exists(), f"MAT input file not found: {MAT_INPUT_PATH}"
 assert MAT_OUTPUT_PATH.exists(), f"MAT output file not found: {MAT_OUTPUT_PATH}"
 N_PREVIEW_ROWS = 10
 N_DIFF_ROWS = 30
+SAMPLING_RATE_HZ = 100.0
+RAW_PLOT_SCALINGS = {"eeg": 0.5}
 
 # ➤ Allowable integer difference between MATLAB vs Python indices
 TOLERANCE_SAMPLES = 20  # e.g. 374 vs 376 is considered “same”
@@ -66,10 +69,10 @@ def run_python_from_edf() -> tuple[pd.DataFrame, np.ndarray]:
     raw = read_raw_edf(EDF_PATH.as_posix(), preload=True, verbose="ERROR")
 
     raw.filter(1.0, 30.0, fir_design="firwin", n_jobs=1, verbose="ERROR")
-    raw.resample(100, n_jobs=1, verbose="ERROR")
+    raw.resample(SAMPLING_RATE_HZ, n_jobs=1, verbose="ERROR")
 
     srate = float(raw.info["sfreq"])
-    assert abs(srate - 100.0) < 1e-6, f"Expected 100 Hz after resample, got {srate}"
+    assert abs(srate - SAMPLING_RATE_HZ) < 1e-6, f"Expected {SAMPLING_RATE_HZ} Hz after resample, got {srate}"
 
     preferred_channel_names = ["EEG 003", "EEG003", "chan003"]
     picks = next(( [n] for n in preferred_channel_names if n in raw.ch_names ), None)
@@ -148,7 +151,7 @@ def build_diagnostic_raw(
     data = np.vstack([matlab_blink_signal[:n_samples], python_blink_signal[:n_samples]])
     info = mne.create_info(
         ch_names=["matlab_blink_signal", "python_blink_signal"],
-        sfreq=100.0,
+        sfreq=SAMPLING_RATE_HZ,
         ch_types="eeg",
     )
     raw = mne.io.RawArray(data, info, verbose="ERROR")
@@ -158,8 +161,8 @@ def build_diagnostic_raw(
     descriptions: list[str] = []
 
     def _sample_to_seconds(start_sample: int, end_sample: int) -> tuple[float, float]:
-        onset_sec = (start_sample - 1) / 100.0
-        duration_sec = (end_sample - start_sample + 1) / 100.0
+        onset_sec = (start_sample - 1) / SAMPLING_RATE_HZ
+        duration_sec = (end_sample - start_sample + 1) / SAMPLING_RATE_HZ
         return onset_sec, duration_sec
 
     min_blinks = min(len(python_start_samples), len(mat_start_samples))
@@ -238,6 +241,7 @@ def _diff_report(py_df: pd.DataFrame, mat_df: pd.DataFrame, tolerance: int, max_
     mismatches = []
     for i in range(min_len):
         if (abs(py_start[i] - mat_start[i]) > tolerance) or (abs(py_end[i] - mat_end[i]) > tolerance):
+            approx_start_sample = (py_start[i] + mat_start[i]) / 2
             mismatches.append(
                 {
                     "idx": i,
@@ -247,12 +251,15 @@ def _diff_report(py_df: pd.DataFrame, mat_df: pd.DataFrame, tolerance: int, max_
                     "mat_end": mat_end[i],
                     "py_end": py_end[i],
                     "Δend": py_end[i] - mat_end[i],
+                    "time_sec": (approx_start_sample - 1) / SAMPLING_RATE_HZ,
                 }
             )
 
     if mismatches:
         print(f"\n[diff] mismatches beyond ±{tolerance} samples (showing {max_rows}):")
-        print(pd.DataFrame(mismatches).head(max_rows))
+        diff_df = pd.DataFrame(mismatches)
+        diff_df["time_sec"] = diff_df["time_sec"].round(3)
+        print(diff_df.head(max_rows))
     else:
         print(f"\n[diff] All differences ≤ ±{tolerance} samples (OK).")
 
@@ -335,6 +342,14 @@ def main():
     raw = compare_python_vs_matlab(
         py_df, mat_df, matlab_blink_signal, python_blink_signal
     )
+    try:
+        raw.plot(
+            block=True,
+            title="MATLAB vs Python Blink Signal Comparison",
+            scalings=RAW_PLOT_SCALINGS,
+        )
+    except (RuntimeError, ValueError) as exc:
+        print(f"[warn] Unable to open interactive Raw browser: {exc}")
     return raw
 
 
