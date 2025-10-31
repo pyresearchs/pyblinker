@@ -285,7 +285,14 @@ def build_diagnostic_raw(
 # =====================================================================
 # PART 3 — diff helper
 # =====================================================================
-def _diff_report(py_df: pd.DataFrame, mat_df: pd.DataFrame, tolerance: int, max_rows: int):
+def _diff_report(
+    py_df: pd.DataFrame,
+    mat_df: pd.DataFrame,
+    tolerance: int,
+    max_rows: int,
+    *,
+    precomputed_alignments: Optional[list[BlinkAlignment]] = None,
+):
     """Print detailed diff report beyond tolerance, aligning rows greedily."""
 
     def _time_from_sample(sample: float | None) -> float | None:
@@ -303,12 +310,16 @@ def _diff_report(py_df: pd.DataFrame, mat_df: pd.DataFrame, tolerance: int, max_
     py_end = py_df["end_blink"].astype(int).to_numpy()
     mat_start = mat_df["start_blink"].astype(int).to_numpy()
     mat_end = mat_df["end_blink"].astype(int).to_numpy()
-    alignments = _align_blink_events(
-        mat_start=mat_start,
-        mat_end=mat_end,
-        py_start=py_start,
-        py_end=py_end,
-        tolerance=tolerance,
+    alignments = (
+        precomputed_alignments
+        if precomputed_alignments is not None
+        else _align_blink_events(
+            mat_start=mat_start,
+            mat_end=mat_end,
+            py_start=py_start,
+            py_end=py_end,
+            tolerance=tolerance,
+        )
     )
 
     mismatches: list[dict[str, float | int | None]] = []
@@ -426,23 +437,97 @@ def compare_python_vs_matlab(
     mat_start_samples = mat_df["start_blink"].astype(int).to_numpy()
     mat_end_samples = mat_df["end_blink"].astype(int).to_numpy()
 
+    alignments = _align_blink_events(
+        mat_start=mat_start_samples,
+        mat_end=mat_end_samples,
+        py_start=python_start_samples,
+        py_end=python_end_samples,
+        tolerance=TOLERANCE_SAMPLES,
+    )
+
     # compute absolute diffs (only for overlapping indices)
     min_len = min(len(python_start_samples), len(mat_start_samples))
-    diff_start = np.abs(python_start_samples[:min_len] - mat_start_samples[:min_len])
-    diff_end = np.abs(python_end_samples[:min_len] - mat_end_samples[:min_len])
+    diff_start = (
+        np.abs(python_start_samples[:min_len] - mat_start_samples[:min_len])
+        if min_len
+        else np.array([], dtype=int)
+    )
+    diff_end = (
+        np.abs(python_end_samples[:min_len] - mat_end_samples[:min_len])
+        if min_len
+        else np.array([], dtype=int)
+    )
 
     # within tolerance?
-    ok_start = diff_start <= TOLERANCE_SAMPLES
-    ok_end = diff_end <= TOLERANCE_SAMPLES
-    all_ok = np.all(ok_start & ok_end) and (len(py_df) == len(mat_df))
+    ok_start = diff_start <= TOLERANCE_SAMPLES if diff_start.size else np.array([], dtype=bool)
+    ok_end = diff_end <= TOLERANCE_SAMPLES if diff_end.size else np.array([], dtype=bool)
+    all_ok = (
+        (ok_start.size == 0 or np.all(ok_start))
+        and (ok_end.size == 0 or np.all(ok_end))
+        and (len(py_df) == len(mat_df))
+    )
 
     if all_ok:
         print(f"\n✅ PASSED: all blink intervals match within ±{TOLERANCE_SAMPLES} samples.")
     else:
-        _diff_report(py_df, mat_df, tolerance=TOLERANCE_SAMPLES, max_rows=N_DIFF_ROWS)
+        _diff_report(
+            py_df,
+            mat_df,
+            tolerance=TOLERANCE_SAMPLES,
+            max_rows=N_DIFF_ROWS,
+            precomputed_alignments=alignments,
+        )
         # raise AssertionError(
         #     f"Blink positions differ by more than ±{TOLERANCE_SAMPLES} samples."
         # )
+
+    print("\n[metrics] Blink alignment summary:")
+    total_mat_events = len(mat_df)
+    total_py_events = len(py_df)
+    matched_events = sum(1 for a in alignments if a.mat_idx is not None and a.py_idx is not None)
+    matched_within_tol = sum(
+        1
+        for a in alignments
+        if (
+            a.mat_idx is not None
+            and a.py_idx is not None
+            and a.start_diff is not None
+            and a.end_diff is not None
+            and abs(a.start_diff) <= TOLERANCE_SAMPLES
+            and abs(a.end_diff) <= TOLERANCE_SAMPLES
+        )
+    )
+    unmatched_mat = sum(1 for a in alignments if a.mat_idx is not None and a.py_idx is None)
+    unmatched_py = sum(1 for a in alignments if a.py_idx is not None and a.mat_idx is None)
+    total_reference = max(total_mat_events, total_py_events, 1)
+    pct_within_tol = (matched_within_tol / total_reference) * 100.0
+    print(
+        f"  • Matched within tolerance: {matched_within_tol}/{total_reference} "
+        f"({pct_within_tol:.2f}%)"
+    )
+    print(f"  • Total paired events: {matched_events}")
+    print(f"  • Unmatched MATLAB events: {unmatched_mat}")
+    print(f"  • Unmatched Python events: {unmatched_py}")
+
+    aligned_samples = min(len(matlab_blink_signal), len(python_blink_signal))
+    if aligned_samples:
+        matlab_segment = np.asarray(matlab_blink_signal[:aligned_samples], dtype=float)
+        python_segment = np.asarray(python_blink_signal[:aligned_samples], dtype=float)
+        diff_signal = matlab_segment - python_segment
+        mean_abs_diff = float(np.mean(np.abs(diff_signal)))
+        max_abs_diff = float(np.max(np.abs(diff_signal)))
+        rms_diff = float(np.sqrt(np.mean(diff_signal**2)))
+        if np.std(matlab_segment) > 0 and np.std(python_segment) > 0:
+            corr = float(np.corrcoef(matlab_segment, python_segment)[0, 1])
+        else:
+            corr = float("nan")
+        print("\n[metrics] Signal amplitude comparison (first aligned segment):")
+        print(f"  • Mean absolute difference: {mean_abs_diff:.6f}")
+        print(f"  • RMS difference: {rms_diff:.6f}")
+        print(f"  • Max absolute difference: {max_abs_diff:.6f}")
+        print(f"  • Pearson correlation: {corr:.6f}")
+    else:
+        print("\n[metrics] Signal amplitude comparison skipped (no overlapping samples).")
 
     return build_diagnostic_raw(
         matlab_blink_signal=matlab_blink_signal,
