@@ -27,6 +27,7 @@ Differences ≤ TOLERANCE_SAMPLES are considered acceptable.
 
 """
 
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -190,6 +191,8 @@ def build_diagnostic_raw(
     python_start_samples: np.ndarray,
     python_end_samples: np.ndarray,
     tolerance_samples: int,
+    *,
+    alignments: Optional[list[BlinkAlignment]] = None,
 ) -> mne.io.RawArray:
     """Create an annotated two-channel RawArray for visual inspection."""
 
@@ -222,12 +225,16 @@ def build_diagnostic_raw(
         duration_sec = (end_sample - start_sample + 1) / SAMPLING_RATE_HZ
         return onset_sec, duration_sec
 
-    alignments = _align_blink_events(
-        mat_start=mat_start_samples,
-        mat_end=mat_end_samples,
-        py_start=python_start_samples,
-        py_end=python_end_samples,
-        tolerance=tolerance_samples,
+    alignments = (
+        alignments
+        if alignments is not None
+        else _align_blink_events(
+            mat_start=mat_start_samples,
+            mat_end=mat_end_samples,
+            py_start=python_start_samples,
+            py_end=python_end_samples,
+            tolerance=tolerance_samples,
+        )
     )
 
     for alignment in alignments:
@@ -277,7 +284,13 @@ def build_diagnostic_raw(
     else:
         raw.set_annotations(None)
 
-    print(f"[mne] Created synthetic Raw with {len(onsets)} blink annotations")
+    print(
+        "[mne] Created synthetic Raw with "
+        f"{len(onsets)} blink annotations (matched: "
+        f"{sum(1 for a in alignments if a.mat_idx is not None and a.py_idx is not None)}, "
+        f"MATLAB-only: {sum(1 for a in alignments if a.mat_idx is not None and a.py_idx is None)}, "
+        f"Python-only: {sum(1 for a in alignments if a.py_idx is not None and a.mat_idx is None)})"
+    )
 
     return raw
 
@@ -484,7 +497,7 @@ def compare_python_vs_matlab(
     print("\n[metrics] Blink alignment summary:")
     total_mat_events = len(mat_df)
     total_py_events = len(py_df)
-    matched_events = sum(1 for a in alignments if a.mat_idx is not None and a.py_idx is not None)
+    total_pairs = sum(1 for a in alignments if a.mat_idx is not None and a.py_idx is not None)
     matched_within_tol = sum(
         1
         for a in alignments
@@ -499,15 +512,30 @@ def compare_python_vs_matlab(
     )
     unmatched_mat = sum(1 for a in alignments if a.mat_idx is not None and a.py_idx is None)
     unmatched_py = sum(1 for a in alignments if a.py_idx is not None and a.mat_idx is None)
-    total_reference = max(total_mat_events, total_py_events, 1)
-    pct_within_tol = (matched_within_tol / total_reference) * 100.0
+    pairs_outside_tol = total_pairs - matched_within_tol
+    total_union = total_pairs + unmatched_mat + unmatched_py
+
+    def _pct(n: int, d: int) -> float:
+        return (n / d) * 100.0 if d else float("nan")
+
+    print(f"  • Total MATLAB events: {total_mat_events}")
+    print(f"  • Total Python events: {total_py_events}")
     print(
-        f"  • Matched within tolerance: {matched_within_tol}/{total_reference} "
-        f"({pct_within_tol:.2f}%)"
+        f"  • Paired events within tolerance: {matched_within_tol}/{total_pairs} "
+        f"({ _pct(matched_within_tol, total_pairs):.2f}% of pairs)"
+        if total_pairs
+        else "  • Paired events within tolerance: 0"
     )
-    print(f"  • Total paired events: {matched_events}")
-    print(f"  • Unmatched MATLAB events: {unmatched_mat}")
-    print(f"  • Unmatched Python events: {unmatched_py}")
+    if pairs_outside_tol:
+        print(f"  • Paired events outside tolerance: {pairs_outside_tol}")
+    print(f"  • MATLAB-only events: {unmatched_mat}")
+    print(f"  • Python-only events: {unmatched_py}")
+    print(
+        f"  • Share of total unique events within tolerance: {matched_within_tol}/{total_union} "
+        f"({_pct(matched_within_tol, total_union):.2f}%)"
+        if total_union
+        else "  • Share of total unique events within tolerance: n/a"
+    )
 
     aligned_samples = min(len(matlab_blink_signal), len(python_blink_signal))
     if aligned_samples:
@@ -537,6 +565,7 @@ def compare_python_vs_matlab(
         python_start_samples=python_start_samples,
         python_end_samples=python_end_samples,
         tolerance_samples=TOLERANCE_SAMPLES,
+        alignments=alignments,
     )
 
 
@@ -549,14 +578,17 @@ def main():
     raw = compare_python_vs_matlab(
         py_df, mat_df, matlab_blink_signal, python_blink_signal
     )
-    try:
-        raw.plot(
-            block=True,
-            title="MATLAB vs Python Blink Signal Comparison",
-            scalings=RAW_PLOT_SCALINGS,
-        )
-    except (RuntimeError, ValueError) as exc:
-        print(f"[warn] Unable to open interactive Raw browser: {exc}")
+    if os.environ.get("PYBLINKER_SKIP_PLOT") == "1":
+        print("[info] Skipping raw.plot() because PYBLINKER_SKIP_PLOT=1")
+    else:
+        try:
+            raw.plot(
+                block=True,
+                title="MATLAB vs Python Blink Signal Comparison",
+                scalings=RAW_PLOT_SCALINGS,
+            )
+        except (RuntimeError, ValueError) as exc:
+            print(f"[warn] Unable to open interactive Raw browser: {exc}")
     return raw
 
 
