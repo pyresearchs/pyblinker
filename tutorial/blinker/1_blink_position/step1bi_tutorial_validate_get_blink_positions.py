@@ -81,8 +81,8 @@ def main():
     base_path = Path(__file__).resolve().parents[0] / "test" / "migration_files"
     # mat_input_path = base_path / "step1bi_data_input_getBlinkPositions.mat"
     # mat_output_path = base_path / "step1bi_data_output_getBlinkPositions.mat"
-    mat_input_path = Path(r"C:\Users\balan\IdeaProjects\pyblinker\test\migration_files\step1bi_data_input_getBlinkPositions.mat")
-    mat_output_path = Path(r"C:\Users\balan\IdeaProjects\pyblinker\test\migration_files\step1bi_data_output_getBlinkPositions.mat")
+    mat_input_path = Path(r"/test/migration_files/step1bi_data_input_getBlinkPositions.mat")
+    mat_output_path = Path(r"/test/migration_files/step1bi_data_output_getBlinkPositions.mat")
     assert mat_input_path.exists(), f"Input .mat not found: {mat_input_path}"
     assert mat_output_path.exists(), f"Output .mat not found: {mat_output_path}"
 
