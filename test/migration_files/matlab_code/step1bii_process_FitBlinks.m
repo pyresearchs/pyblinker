@@ -1,77 +1,200 @@
-%% Step 2
+function process_fit_blinks_step1bii()
+% PROCESS_FIT_BLINKS_STEP1BII
+% -------------------------------------------------------------------------
+% Reference implementation for the **FitBlinks** stage (STEP 1bii)
+% in the Blinker pipeline.
+%
+% This function reproduces the MATLAB gold-standard behavior for fitting
+% detected blinks to their temporal waveforms. It validates the MATLAB
+% output from the `fitBlinks()` function and compares it with a stored
+% gold-standard reference file.
+%
+% -------------------------------------------------------------------------
+% Background and design note
+% -------------------------------------------------------------------------
+% In the original Blinker implementation, the FitBlinks step is embedded in
+% the `extractBlinksEEG` workflow. For clarity and migration testing, this
+% function isolates that logic into a standalone script while maintaining
+% identical behavior to the original.
+%
+% The function:
+%   1. Loads configuration and resolves project paths.
+%   2. Loads input/output `.mat` files (MATLAB gold data).
+%   3. Runs the `fitBlinks()` function using default parameters.
+%   4. Compares the generated blink fit structure against the reference.
+%   5. Optionally plots one blink for visual verification.
+%
+% -------------------------------------------------------------------------
+% Migration testing purpose
+% -------------------------------------------------------------------------
+% This script serves as the **gold-standard reference** for validating the
+% Python `pyblinker` port of the `fitBlinks()` step (STEP 1bii).
+% Its results provide the authoritative baseline for regression testing.
+%
+% -------------------------------------------------------------------------
+% Execution overview
+% -------------------------------------------------------------------------
+% 1. Resolve paths relative to this file
+% 2. Optionally load `config.m` (overrides defaults)
+% 3. Load input `.mat` file (candidateSignal, blinkPositions)
+% 4. Compute blink fits via `fitBlinks(candidateSignal, blinkPositions)`
+% 5. Compare with MATLAB gold-standard output
+% 6. Call `plot_blink_fit_example()` for debugging visualization
+%
+% Recommended filename:
+%   process_fit_blinks_step1bii.m
+% -------------------------------------------------------------------------
 
-function step1bii_process_FitBlinks()
-    % processBlinkComp loads blinkComp.mat and processes blink positions
-        % Load configuration
-    config; % Load paths from config.m
+    % ---------------------------------------------------------------------
+    % 1. Resolve paths relative to THIS file
+    % ---------------------------------------------------------------------
+    this_file = mfilename('fullpath');
+    this_dir  = fileparts(this_file);
+    project_root = fileparts(fileparts(this_dir));  % go up twice
 
-    % Define file paths dynamically
-    input_file = fullfile(main_folder, 'step1bii_data_input_process_FitBlinks.mat');
-    output_file = fullfile(main_folder, 'step1bii_data_output_process_FitBlinks.mat');
+    data_dir_default   = fullfile(project_root, 'migration_files');
+    output_dir_default = fullfile(project_root, 'migration_files');
+    if ~exist(output_dir_default, 'dir')
+        mkdir(output_dir_default);
+    end
 
-    % Load the data from blinkComp.mat
-    data = load(input_file);  % Loads blinkComp, blinkPositions
-    candidateSignal = data.candidateSignal; 
-    blinkPositions = data.blinkPositions;
+    % ---------------------------------------------------------------------
+    % 2. Optionally load config.m (to override defaults)
+    % ---------------------------------------------------------------------
+    config_file = fullfile(this_dir, 'config.m');
+    if exist(config_file, 'file')
+        run(config_file);
+    end
 
-    % Call the fitBlinks function to get blink fit data
+    if exist('main_folder', 'var') && isfolder(main_folder)
+        output_dir = main_folder;
+    else
+        output_dir = output_dir_default;
+    end
+
+    if exist('migration_data_dir', 'var') && isfolder(migration_data_dir)
+        data_dir = migration_data_dir;
+    else
+        data_dir = data_dir_default;
+    end
+
+    % ---------------------------------------------------------------------
+    % 3. Define input/output file paths
+    % ---------------------------------------------------------------------
+    input_file  = fullfile(output_dir, 'step1bii_data_input_process_FitBlinks.mat');
+    output_file = fullfile(output_dir, 'step1bii_data_output_process_FitBlinks.mat');
+
+    assert(isfile(input_file),  'Input .mat file not found: %s', input_file);
+    assert(isfile(output_file), 'Output .mat file not found: %s', output_file);
+
+    % ---------------------------------------------------------------------
+    % 4. Load data and run FitBlinks
+    % ---------------------------------------------------------------------
+    input_data = load(input_file);  % loads candidateSignal, blinkPositions
+    candidateSignal = input_data.candidateSignal;
+    blinkPositions  = input_data.blinkPositions;
+
+    % Compute blink fits using MATLAB's gold-standard function
     blinkFits = fitBlinks(candidateSignal, blinkPositions);
-    
-    data_output = load(output_file); 
-    blinkFits_output=data_output.blinkFits;
-    [areStructsEqual, diffDetails] = compareblinkpropertiesstructure(blinkFits , blinkFits_output);
-    % Define the blink index to be plotted (e.g., 1 for the first blink)
-    blinkIndex = 3;
 
-    % Get relevant indices for the specified blink
-    maxFrame = blinkFits(blinkIndex).maxFrame;
-    leftOuter = blinkFits(blinkIndex).leftOuter;
-    rightOuter = blinkFits(blinkIndex).rightOuter;
-    leftZero = blinkFits(blinkIndex).leftZero;
-    rightZero = blinkFits(blinkIndex).rightZero;
-    leftBase = blinkFits(blinkIndex).leftBase;
-    rightBase = blinkFits(blinkIndex).rightBase;
+    % Load MATLAB gold output
+    output_data = load(output_file);
+    blinkFits_expected = output_data.blinkFits;
 
-    % Extract time range for the selected blink event
-    timeRange = leftOuter-10:rightOuter+10;
+    % ---------------------------------------------------------------------
+    % 5. Compare computed results with the reference gold output
+    % ---------------------------------------------------------------------
+    [areStructsEqual, diffDetails] = ...
+        compareblinkpropertiesstructure(blinkFits, blinkFits_expected);
+
+    if areStructsEqual
+        fprintf('\nBlink fit structures match the MATLAB gold output ✅\n');
+    else
+        fprintf('\nBlink fit structures DO NOT match the MATLAB gold output ❌\n');
+        disp('Differences found:');
+        disp(diffDetails);
+    end
+
+    % ---------------------------------------------------------------------
+    % 6. Optional: Plot example blink (for debugging / visual check)
+    % ---------------------------------------------------------------------
+    blinkIndex = 3; % Example blink to visualize
+    if numel(blinkFits) >= blinkIndex
+        plot_blink_fit_example(candidateSignal, blinkFits, blinkIndex);
+    else
+        fprintf('⚠️ Not enough blink fits to plot (requested #%d)\n', blinkIndex);
+    end
+
+    fprintf('\nProcessing complete. Comparison and (optional) plot generated.\n');
+end
+
+
+% -------------------------------------------------------------------------
+% Helper Function: plot_blink_fit_example
+% -------------------------------------------------------------------------
+function plot_blink_fit_example(candidateSignal, blinkFits, blinkIndex)
+% PLOT_BLINK_FIT_EXAMPLE
+% -------------------------------------------------------------------------
+% Utility function for visualizing the blink waveform and fitted points
+% generated by `fitBlinks()`. This function is separated for easier
+% debugging and reuse during migration testing.
+%
+% Arguments:
+%   candidateSignal : vector of EEG signal data containing blink
+%   blinkFits       : struct array returned by fitBlinks()
+%   blinkIndex      : integer index of blink to visualize
+% -------------------------------------------------------------------------
+
+    assert(blinkIndex <= numel(blinkFits), ...
+        'Blink index exceeds available blinks.');
+
+    bf = blinkFits(blinkIndex);
+
+    % Retrieve key feature frames
+    maxFrame  = bf.maxFrame;
+    leftOuter = bf.leftOuter;  rightOuter = bf.rightOuter;
+    leftZero  = bf.leftZero;   rightZero  = bf.rightZero;
+    leftBase  = bf.leftBase;   rightBase  = bf.rightBase;
+
+    % Extract time range and data segment
+    timeRange    = leftOuter-10 : rightOuter+10;
     blinkSegment = candidateSignal(timeRange);
-    % blinkComp= candidateSignal
 
-    % Create a plot
-    figure;
-     plot(timeRange, blinkSegment, 'LineWidth', 1.5, 'Color', [0, 0, 0, 0.4]); % RGBA color for transparency
+    % --- Plot ---
+    figure('Name', sprintf('Blink Fit Visualization #%d', blinkIndex), ...
+           'Color', 'w');
+    plot(timeRange, blinkSegment, 'LineWidth', 1.5, 'Color', [0 0 0 0.4]);
     hold on;
 
-    % Plot and annotate each relevant point
-    plot(maxFrame, candidateSignal(maxFrame), 'ro', 'MarkerSize', 8, 'DisplayName', 'Max Frame');
+    % Annotate all key frames
+    plot(maxFrame, candidateSignal(maxFrame), 'ro', 'MarkerSize', 8);
     text(maxFrame, candidateSignal(maxFrame), ' Max Frame', 'VerticalAlignment', 'top');
 
-    plot(leftOuter, candidateSignal(leftOuter), 'go', 'MarkerSize', 8, 'DisplayName', 'Left Outer');
+    plot([leftOuter, rightOuter], candidateSignal([leftOuter, rightOuter]), ...
+        'go', 'MarkerSize', 8);
     text(leftOuter, candidateSignal(leftOuter), ' Left Outer', 'VerticalAlignment', 'bottom');
-
-    plot(rightOuter, candidateSignal(rightOuter), 'go', 'MarkerSize', 8, 'DisplayName', 'Right Outer');
     text(rightOuter, candidateSignal(rightOuter), ' Right Outer', 'VerticalAlignment', 'bottom');
 
-    plot(leftZero, candidateSignal(leftZero), 'mo', 'MarkerSize', 8, 'DisplayName', 'Left Zero');
+    plot([leftZero, rightZero], candidateSignal([leftZero, rightZero]), ...
+        'mo', 'MarkerSize', 8);
     text(leftZero, candidateSignal(leftZero), ' Left Zero', 'VerticalAlignment', 'top');
-
-    plot(rightZero, candidateSignal(rightZero), 'mo', 'MarkerSize', 8, 'DisplayName', 'Right Zero');
     text(rightZero, candidateSignal(rightZero), ' Right Zero', 'VerticalAlignment', 'top');
 
-    plot(leftBase, candidateSignal(leftBase), 'co', 'MarkerSize', 8, 'DisplayName', 'Left Base');
+    plot([leftBase, rightBase], candidateSignal([leftBase, rightBase]), ...
+        'co', 'MarkerSize', 8);
     text(leftBase, candidateSignal(leftBase), ' Left Base', 'VerticalAlignment', 'bottom');
-
-    plot(rightBase, candidateSignal(rightBase), 'co', 'MarkerSize', 8, 'DisplayName', 'Right Base');
     text(rightBase, candidateSignal(rightBase), ' Right Base', 'VerticalAlignment', 'bottom');
-        % Overlay scatter plot on the line plot
-    scatter(timeRange, blinkSegment, 15, 'b', 'filled'); % Scatter with blue filled markers
 
-    % Label and legend setup
-    xlabel('Frame');
+    % Scatter points for clarity
+    scatter(timeRange, blinkSegment, 15, 'b', 'filled');
+
+    % Labels and aesthetics
+    xlabel('Frame Index');
     ylabel('Blink Amplitude');
-    title(['Blink Analysis for Blink ', num2str(blinkIndex)]);
-    legend('show');
+    title(sprintf('Blink Fit Visualization (Blink #%d)', blinkIndex));
+    legend({'Signal', 'Feature Points'}, 'Location', 'best');
     grid on;
     hold off;
-    j=1
+
+    fprintf('Plotted blink fit visualization for Blink #%d.\n', blinkIndex);
 end

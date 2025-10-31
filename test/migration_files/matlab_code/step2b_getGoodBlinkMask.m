@@ -24,5 +24,5 @@ function step2b_getGoodBlinkMask()
 
     % [areStructsEqual, diffDetails] = compareblinkpropertiesstructure(struct1, struct2)
     findingx=isequal(goodBlinkMask_output,goodBlinkMask) % Return True 1 if same
-    g=1
+
 end
