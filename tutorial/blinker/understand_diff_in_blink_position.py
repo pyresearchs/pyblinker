@@ -27,7 +27,9 @@ Differences ≤ TOLERANCE_SAMPLES are considered acceptable.
 
 """
 
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -125,6 +127,61 @@ def load_matlab_gold() -> tuple[pd.DataFrame, np.ndarray]:
     ), matlab_blink_signal
 
 
+@dataclass
+class BlinkAlignment:
+    """Represents one aligned MATLAB/Python blink interval."""
+
+    mat_idx: Optional[int]
+    py_idx: Optional[int]
+    start_diff: Optional[float]
+    end_diff: Optional[float]
+
+
+def _align_blink_events(
+    mat_start: np.ndarray,
+    mat_end: np.ndarray,
+    py_start: np.ndarray,
+    py_end: np.ndarray,
+    tolerance: int,
+) -> list[BlinkAlignment]:
+    """Greedily align MATLAB and Python blink intervals."""
+
+    alignments: list[BlinkAlignment] = []
+    i = j = 0
+    while i < len(mat_start) and j < len(py_start):
+        start_delta = float(py_start[j] - mat_start[i])
+        end_delta = float(py_end[j] - mat_end[i])
+        abs_start = abs(start_delta)
+        abs_end = abs(end_delta)
+
+        if abs_start <= tolerance and abs_end <= tolerance:
+            alignments.append(BlinkAlignment(i, j, start_delta, end_delta))
+            i += 1
+            j += 1
+            continue
+
+        if mat_start[i] < py_start[j]:
+            alignments.append(BlinkAlignment(i, None, None, None))
+            i += 1
+        elif py_start[j] < mat_start[i]:
+            alignments.append(BlinkAlignment(None, j, None, None))
+            j += 1
+        else:
+            alignments.append(BlinkAlignment(i, j, start_delta, end_delta))
+            i += 1
+            j += 1
+
+    while i < len(mat_start):
+        alignments.append(BlinkAlignment(i, None, None, None))
+        i += 1
+
+    while j < len(py_start):
+        alignments.append(BlinkAlignment(None, j, None, None))
+        j += 1
+
+    return alignments
+
+
 def build_diagnostic_raw(
     matlab_blink_signal: np.ndarray,
     python_blink_signal: np.ndarray,
@@ -165,46 +222,50 @@ def build_diagnostic_raw(
         duration_sec = (end_sample - start_sample + 1) / SAMPLING_RATE_HZ
         return onset_sec, duration_sec
 
-    min_blinks = min(len(python_start_samples), len(mat_start_samples))
-    for i in range(min_blinks):
-        start_diff = abs(python_start_samples[i] - mat_start_samples[i])
-        end_diff = abs(python_end_samples[i] - mat_end_samples[i])
+    alignments = _align_blink_events(
+        mat_start=mat_start_samples,
+        mat_end=mat_end_samples,
+        py_start=python_start_samples,
+        py_end=python_end_samples,
+        tolerance=tolerance_samples,
+    )
 
-        if start_diff <= tolerance_samples and end_diff <= tolerance_samples:
+    for alignment in alignments:
+        if alignment.mat_idx is not None and alignment.py_idx is not None:
             mat_onset, mat_duration = _sample_to_seconds(
-                mat_start_samples[i], mat_end_samples[i]
+                mat_start_samples[alignment.mat_idx],
+                mat_end_samples[alignment.mat_idx],
             )
             py_onset, py_duration = _sample_to_seconds(
-                python_start_samples[i], python_end_samples[i]
-            )
-            onsets.append((mat_onset + py_onset) / 2)
-            durations.append((mat_duration + py_duration) / 2)
-            descriptions.append("blink")
-        else:
-            mat_onset, mat_duration = _sample_to_seconds(
-                mat_start_samples[i], mat_end_samples[i]
-            )
-            py_onset, py_duration = _sample_to_seconds(
-                python_start_samples[i], python_end_samples[i]
+                python_start_samples[alignment.py_idx],
+                python_end_samples[alignment.py_idx],
             )
 
-            onsets.extend([mat_onset, py_onset])
-            durations.extend([mat_duration, py_duration])
-            descriptions.extend(["blink_matlab", "blink_python"])
-
-    if len(mat_start_samples) > min_blinks:
-        for j in range(min_blinks, len(mat_start_samples)):
+            if (
+                alignment.start_diff is not None
+                and alignment.end_diff is not None
+                and abs(alignment.start_diff) <= tolerance_samples
+                and abs(alignment.end_diff) <= tolerance_samples
+            ):
+                onsets.append((mat_onset + py_onset) / 2)
+                durations.append((mat_duration + py_duration) / 2)
+                descriptions.append("blink")
+            else:
+                onsets.extend([mat_onset, py_onset])
+                durations.extend([mat_duration, py_duration])
+                descriptions.extend(["blink_matlab", "blink_python"])
+        elif alignment.mat_idx is not None:
             mat_onset, mat_duration = _sample_to_seconds(
-                mat_start_samples[j], mat_end_samples[j]
+                mat_start_samples[alignment.mat_idx],
+                mat_end_samples[alignment.mat_idx],
             )
             onsets.append(mat_onset)
             durations.append(mat_duration)
             descriptions.append("blink_matlab")
-
-    if len(python_start_samples) > min_blinks:
-        for j in range(min_blinks, len(python_start_samples)):
+        elif alignment.py_idx is not None:
             py_onset, py_duration = _sample_to_seconds(
-                python_start_samples[j], python_end_samples[j]
+                python_start_samples[alignment.py_idx],
+                python_end_samples[alignment.py_idx],
             )
             onsets.append(py_onset)
             durations.append(py_duration)
@@ -242,131 +303,78 @@ def _diff_report(py_df: pd.DataFrame, mat_df: pd.DataFrame, tolerance: int, max_
     py_end = py_df["end_blink"].astype(int).to_numpy()
     mat_start = mat_df["start_blink"].astype(int).to_numpy()
     mat_end = mat_df["end_blink"].astype(int).to_numpy()
+    alignments = _align_blink_events(
+        mat_start=mat_start,
+        mat_end=mat_end,
+        py_start=py_start,
+        py_end=py_end,
+        tolerance=tolerance,
+    )
 
     mismatches: list[dict[str, float | int | None]] = []
-    i = j = 0
-    while i < len(mat_start) and j < len(py_start):
-        start_diff = abs(py_start[j] - mat_start[i])
-        end_diff = abs(py_end[j] - mat_end[i])
-
-        if start_diff <= tolerance and end_diff <= tolerance:
-            i += 1
-            j += 1
+    for alignment in alignments:
+        if alignment.mat_idx is None and alignment.py_idx is None:
             continue
 
-        if start_diff <= tolerance:
-            mismatches.append(
-                {
-                    "mat_idx": float(i),
-                    "mat_start": mat_start[i],
-                    "mat_end": mat_end[i],
-                    "py_idx": float(j),
-                    "py_start": py_start[j],
-                    "py_end": py_end[j],
-                    "Δstart": py_start[j] - mat_start[i],
-                    "Δend": py_end[j] - mat_end[i],
-                    "time_sec": _time_from_sample((py_start[j] + mat_start[i]) / 2),
-                }
-            )
-            i += 1
-            j += 1
-            continue
-
-        if mat_start[i] < py_start[j]:
-            mismatches.append(
-                {
-                    "mat_idx": float(i),
-                    "mat_start": mat_start[i],
-                    "mat_end": mat_end[i],
-                    "py_idx": np.nan,
-                    "py_start": np.nan,
-                    "py_end": np.nan,
-                    "Δstart": np.nan,
-                    "Δend": np.nan,
-                    "time_sec": _time_from_sample(mat_start[i]),
-                }
-            )
-            i += 1
-        elif py_start[j] < mat_start[i]:
+        if alignment.mat_idx is None:
+            idx = alignment.py_idx
+            assert idx is not None
             mismatches.append(
                 {
                     "mat_idx": np.nan,
                     "mat_start": np.nan,
                     "mat_end": np.nan,
-                    "py_idx": float(j),
-                    "py_start": py_start[j],
-                    "py_end": py_end[j],
+                    "py_idx": float(idx),
+                    "py_start": py_start[idx],
+                    "py_end": py_end[idx],
                     "Δstart": np.nan,
                     "Δend": np.nan,
-                    "time_sec": _time_from_sample(py_start[j]),
+                    "time_sec": _time_from_sample(py_start[idx]),
                 }
             )
-            j += 1
-        else:
+            continue
+
+        if alignment.py_idx is None:
+            idx = alignment.mat_idx
             mismatches.append(
                 {
-                    "mat_idx": float(i),
-                    "mat_start": mat_start[i],
-                    "mat_end": mat_end[i],
-                    "py_idx": float(j),
-                    "py_start": py_start[j],
-                    "py_end": py_end[j],
-                    "Δstart": py_start[j] - mat_start[i],
-                    "Δend": py_end[j] - mat_end[i],
-                    "time_sec": _time_from_sample((py_start[j] + mat_start[i]) / 2),
+                    "mat_idx": float(idx),
+                    "mat_start": mat_start[idx],
+                    "mat_end": mat_end[idx],
+                    "py_idx": np.nan,
+                    "py_start": np.nan,
+                    "py_end": np.nan,
+                    "Δstart": np.nan,
+                    "Δend": np.nan,
+                    "time_sec": _time_from_sample(mat_start[idx]),
                 }
             )
-            i += 1
-            j += 1
-
-    while i < len(mat_start):
-        mismatches.append(
-            {
-                "mat_idx": float(i),
-                "mat_start": mat_start[i],
-                "mat_end": mat_end[i],
-                "py_idx": np.nan,
-                "py_start": np.nan,
-                "py_end": np.nan,
-                "Δstart": np.nan,
-                "Δend": np.nan,
-                "time_sec": _time_from_sample(mat_start[i]),
-            }
-        )
-        i += 1
-
-    while j < len(py_start):
-        mismatches.append(
-            {
-                "mat_idx": np.nan,
-                "mat_start": np.nan,
-                "mat_end": np.nan,
-                "py_idx": float(j),
-                "py_start": py_start[j],
-                "py_end": py_end[j],
-                "Δstart": np.nan,
-                "Δend": np.nan,
-                "time_sec": _time_from_sample(py_start[j]),
-            }
-        )
-        j += 1
-
-    filtered_mismatches = []
-    for mismatch in mismatches:
-        if np.isnan(mismatch["mat_idx"]) or np.isnan(mismatch["py_idx"]):
-            filtered_mismatches.append(mismatch)
             continue
 
-        delta_start = mismatch["Δstart"]
-        delta_end = mismatch["Δend"]
-        if np.isnan(delta_start) or np.isnan(delta_end):
-            filtered_mismatches.append(mismatch)
-            continue
+        delta_start = alignment.start_diff if alignment.start_diff is not None else np.nan
+        delta_end = alignment.end_diff if alignment.end_diff is not None else np.nan
 
-        if abs(delta_start) > tolerance or abs(delta_end) > tolerance:
-            filtered_mismatches.append(mismatch)
-
-    mismatches = filtered_mismatches
+        if (
+            np.isnan(delta_start)
+            or np.isnan(delta_end)
+            or abs(delta_start) > tolerance
+            or abs(delta_end) > tolerance
+        ):
+            mat_idx = alignment.mat_idx
+            py_idx = alignment.py_idx
+            mismatches.append(
+                {
+                    "mat_idx": float(mat_idx),
+                    "mat_start": mat_start[mat_idx],
+                    "mat_end": mat_end[mat_idx],
+                    "py_idx": float(py_idx),
+                    "py_start": py_start[py_idx],
+                    "py_end": py_end[py_idx],
+                    "Δstart": delta_start,
+                    "Δend": delta_end,
+                    "time_sec": _time_from_sample((py_start[py_idx] + mat_start[mat_idx]) / 2),
+                }
+            )
 
     if mismatches:
         print(f"\n[diff] mismatches beyond ±{tolerance} samples (showing {max_rows}):")
