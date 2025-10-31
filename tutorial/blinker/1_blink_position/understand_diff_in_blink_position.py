@@ -28,9 +28,26 @@ Differences ≤ TOLERANCE_SAMPLES are considered acceptable.
 """
 
 import os
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
+
+
+def _find_repo_root() -> Path:
+    """Return the repository root (directory containing pyproject.toml)."""
+
+    current = Path(__file__).resolve()
+    for candidate in (current,) + tuple(current.parents):
+        if (candidate / "pyproject.toml").exists():
+            return candidate
+    raise RuntimeError("Could not locate repository root relative to this file")
+
+
+REPO_ROOT = _find_repo_root()
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
 
 import numpy as np
 import pandas as pd
@@ -43,7 +60,7 @@ from test.blinker_migration.debugging_tools import load_matlab_data
 # ---------------------------------------------------------------------
 # CONFIG
 # ---------------------------------------------------------------------
-BASE_DIR = Path(__file__).resolve().parents[2]
+BASE_DIR = _find_repo_root()
 EDF_PATH = BASE_DIR / "test" / "test_files" / "mne_sample_audvis_raw.edf"
 MAT_INPUT_PATH = BASE_DIR / "test" / "migration_files" / "step1bi_data_input_getBlinkPositions.mat"
 MAT_OUTPUT_PATH = BASE_DIR / "test" / "migration_files" / "step1bi_data_output_getBlinkPositions.mat"
