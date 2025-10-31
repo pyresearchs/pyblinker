@@ -145,48 +145,6 @@ class TestFitBlinks(unittest.TestCase):
 
         return report, missing_columns_report
 
-    # @staticmethod
-    # def compare_dataframes(df_ground_truth, df_output, decimal_places=4):
-    #     """
-    #     Compare two DataFrames and return a comparison report, including missing columns.
-    #     """
-    #     report = df_ground_truth.copy()
-    #
-    #     # Identify missing columns
-    #     ground_truth_columns = set(df_ground_truth.columns)
-    #     output_columns = set(df_output.columns)
-    #     missing_in_ground_truth = output_columns - ground_truth_columns
-    #     missing_in_output = ground_truth_columns - output_columns
-    #
-    #     missing_columns_report = {
-    #         "missing_in_ground_truth": list(missing_in_ground_truth),
-    #         "missing_in_output": list(missing_in_output),
-    #     }
-    #
-    #     # Find common columns
-    #     common_columns = ground_truth_columns.intersection(output_columns)
-    #
-    #     # Round values to specified decimal places
-    #     for column in common_columns:
-    #         df_ground_truth[column] = df_ground_truth[column].apply(
-    #             lambda x: np.round(x, decimal_places) if isinstance(x, (int, float)) else x
-    #         )
-    #         df_output[column] = df_output[column].apply(
-    #             lambda x: np.round(x, decimal_places) if isinstance(x, (int, float)) else x
-    #         )
-    #
-    #     # Compare values and update report
-    #     for column in common_columns:
-    #         for idx in range(len(df_ground_truth)):
-    #             gt_value = df_ground_truth.at[idx, column]
-    #             output_value = df_output.at[idx, column]
-    #
-    #             if np.array_equal(gt_value, output_value):
-    #                 report.at[idx, column] = 'consistent'
-    #             else:
-    #                 report.at[idx, column] = f'not consistent (GT: {gt_value}, Output: {output_value})'
-    #
-    #     return report, missing_columns_report
 
     def test_fit_blinks_output(self):
         """

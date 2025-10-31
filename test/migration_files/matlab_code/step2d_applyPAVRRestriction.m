@@ -79,7 +79,7 @@ function process_apply_pavr_restriction_step2d()
     params     = in_data.params;
     blinkProps = in_data.blinkProps;
     blinkFits  = in_data.blinkFits;
-
+    g=1
     % ---------------------------------------------------------------------
     % 5. Run the actual function under test
     % ---------------------------------------------------------------------

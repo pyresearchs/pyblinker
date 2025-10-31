@@ -1,3 +1,4 @@
+% Problem
 function step3_selectChannels()
     config;  % This will load the variable main_folder
     data = load(fullfile(main_folder, 'step3a_input_selectChannel_compact.mat'));  % Loads blinkComp, blinkPositions
