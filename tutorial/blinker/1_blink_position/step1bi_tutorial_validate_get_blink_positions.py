@@ -60,7 +60,25 @@ If not, the script will raise an AssertionError and print diffs.
 
 """
 
+import sys
 from pathlib import Path
+
+
+def _find_repo_root() -> Path:
+    """Return the repository root (directory containing pyproject.toml)."""
+
+    current = Path(__file__).resolve()
+    for candidate in (current,) + tuple(current.parents):
+        if (candidate / "pyproject.toml").exists():
+            return candidate
+    raise RuntimeError("Could not locate repository root relative to this file")
+
+
+REPO_ROOT = _find_repo_root()
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+
 import numpy as np
 import pandas as pd
 
@@ -72,17 +90,13 @@ from test.blinker_migration.debugging_tools import load_matlab_data
 # CONFIG
 # ---------------------------------------------------------------------
 N_PREVIEW_ROWS = 10  # how many rows to show for quick visual inspection
-
-
 def main():
     # -----------------------------------------------------------------
     # 1. Locate test data
     # -----------------------------------------------------------------
-    base_path = Path(__file__).resolve().parents[0] / "test" / "migration_files"
-    # mat_input_path = base_path / "step1bi_data_input_getBlinkPositions.mat"
-    # mat_output_path = base_path / "step1bi_data_output_getBlinkPositions.mat"
-    mat_input_path = Path(r"/test/migration_files/step1bi_data_input_getBlinkPositions.mat")
-    mat_output_path = Path(r"/test/migration_files/step1bi_data_output_getBlinkPositions.mat")
+    base_path = _find_repo_root() / "test" / "migration_files"
+    mat_input_path = base_path / "step1bi_data_input_getBlinkPositions.mat"
+    mat_output_path = base_path / "step1bi_data_output_getBlinkPositions.mat"
     assert mat_input_path.exists(), f"Input .mat not found: {mat_input_path}"
     assert mat_output_path.exists(), f"Output .mat not found: {mat_output_path}"
 
