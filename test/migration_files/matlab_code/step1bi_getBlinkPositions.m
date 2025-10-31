@@ -1,4 +1,61 @@
-%% Step 1
+%% Step 1: Process EEG Channel 003
+%
+% This step isolates and processes EEG data for channel **003** to create
+% the MATLAB "gold standard" reference for blink detection validation.
+%
+% -------------------------------------------------------------------------
+% **Purpose**
+% -------------------------------------------------------------------------
+% To reduce computation time, this step focuses on channel **003** only.
+% The data for this channel are extracted from a previously processed
+% section and include the following variables:
+%
+%   - **blinkComp** : [1 × 27800 double] — extracted blink component signal  
+%   - **srate**     : [scalar = 100 Hz] — sampling rate of the signal  
+%   - **stdThreshold** : [scalar = 1.5] — standard deviation threshold for
+%                        blink detection
+%
+% The blink signal (`blinkComp`) is obtained after applying a band-pass
+% filter using the EEGLAB function:
+%
+%   ```matlab
+%   EEG1 = pop_eegfiltnew(EEG1, params.lowCutoffHz, params.highCutoffHz);
+%   ```
+%
+% The filtered data are then passed to Blinker's internal function
+% `getCandidateSignals`, which is subsequently used within
+% `extractBlinks` to identify candidate blink events.
+%
+% -------------------------------------------------------------------------
+% **Validation Context**
+% -------------------------------------------------------------------------
+% This script establishes MATLAB's output as the **ground-truth reference**
+% for cross-language validation. The same input data will be used in
+% the Python implementation (PyBlinker), allowing for direct comparison
+% of results between MATLAB and Python frameworks.
+%
+% The comparison ensures that the Python implementation accurately
+% reproduces MATLAB's behavior for:
+%   - Filtering (`pop_eegfiltnew`)
+%   - Blink component extraction and candidate signal generation
+%   - Threshold-based blink detection
+%
+% -------------------------------------------------------------------------
+% **Summary**
+% -------------------------------------------------------------------------
+% Step 1: Load and process EEG channel 003  
+% Step 2: Generate blink component (`blinkComp`)  
+% Step 3: Use the MATLAB output as gold-standard reference for Python validation
+%
+% -------------------------------------------------------------------------
+% **Example**
+% -------------------------------------------------------------------------
+% ```matlab
+% % Example usage:
+% EEG1 = pop_eegfiltnew(EEG1, params.lowCutoffHz, params.highCutoffHz);
+% blinkComp = getCandidateSignals(EEG1, 'channel', '003');
+% ```
+
 
 function step1bi_getBlinkPositions()
     % processBlinkComp loads blinkComp.mat and processes blink positions
