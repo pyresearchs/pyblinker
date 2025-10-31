@@ -127,7 +127,7 @@ def save_outputs(edf_path: Path, frames: Dict[str, pd.DataFrame], overwrite: boo
 
 
 def run_blinker_batch(
-    dataset_root: Path,
+    edf_path: Path,
     eeglab_root: Path,
     project_root: Path = DEFAULT_PROJECT_ROOT,
     blinker_plugin: str = "Blinker1.2.0",
@@ -158,40 +158,16 @@ def run_blinker_batch(
         Number of EDF files successfully passed through Blinker.
     """
 
-    if not dataset_root.exists():
-        raise FileNotFoundError(f"Dataset root does not exist: {dataset_root}")
-
-    if not eeglab_root.exists():
-        raise FileNotFoundError(f"EEGLAB root does not exist: {eeglab_root}")
-
-    if edf_files is None:
-        edf_list = list(iter_edf_files(dataset_root))
-    else:
-        edf_list = []
-        for path in edf_files:
-            candidate = Path(path)
-            if candidate.exists():
-                edf_list.append(candidate)
-            else:
-                logger.warning("EDF path does not exist and will be skipped: %s", candidate)
-
-    if not edf_list:
-        logger.warning("No seg_annotated_raw.edf files found.")
-        return 0
 
     eng = start_matlab(eeglab_root, project_root, blinker_plugin)
 
-    processed = 0
+
     try:
-        for edf_path in edf_list:
-            logger.info("Running Blinker on %s", edf_path)
-            frames = run_blinker(eng, edf_path)
-            save_outputs(edf_path, frames, overwrite=overwrite)
-            processed += 1
+        frames = run_blinker(eng, edf_path)
     finally:
         eng.quit()
 
-    return processed
+    return frames
 
 
 def main() -> None:
