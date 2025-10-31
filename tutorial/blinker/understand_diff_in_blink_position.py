@@ -225,40 +225,154 @@ def build_diagnostic_raw(
 # PART 3 — diff helper
 # =====================================================================
 def _diff_report(py_df: pd.DataFrame, mat_df: pd.DataFrame, tolerance: int, max_rows: int):
-    """Print detailed diff report beyond tolerance."""
+    """Print detailed diff report beyond tolerance, aligning rows greedily."""
+
+    def _time_from_sample(sample: float | None) -> float | None:
+        if sample is None:
+            return None
+        return (sample - 1) / SAMPLING_RATE_HZ
+
     print("\n============== DIFF REPORT (with tolerance) ==============")
 
     len_py, len_mat = len(py_df), len(mat_df)
     print(f"Python rows : {len_py}")
     print(f"MATLAB rows : {len_mat}")
-    min_len = min(len_py, len_mat)
 
     py_start = py_df["start_blink"].astype(int).to_numpy()
     py_end = py_df["end_blink"].astype(int).to_numpy()
     mat_start = mat_df["start_blink"].astype(int).to_numpy()
     mat_end = mat_df["end_blink"].astype(int).to_numpy()
 
-    mismatches = []
-    for i in range(min_len):
-        if (abs(py_start[i] - mat_start[i]) > tolerance) or (abs(py_end[i] - mat_end[i]) > tolerance):
-            approx_start_sample = (py_start[i] + mat_start[i]) / 2
+    mismatches: list[dict[str, float | int | None]] = []
+    i = j = 0
+    while i < len(mat_start) and j < len(py_start):
+        start_diff = abs(py_start[j] - mat_start[i])
+        end_diff = abs(py_end[j] - mat_end[i])
+
+        if start_diff <= tolerance and end_diff <= tolerance:
+            i += 1
+            j += 1
+            continue
+
+        if start_diff <= tolerance:
             mismatches.append(
                 {
-                    "idx": i,
+                    "mat_idx": float(i),
                     "mat_start": mat_start[i],
-                    "py_start": py_start[i],
-                    "Δstart": py_start[i] - mat_start[i],
                     "mat_end": mat_end[i],
-                    "py_end": py_end[i],
-                    "Δend": py_end[i] - mat_end[i],
-                    "time_sec": (approx_start_sample - 1) / SAMPLING_RATE_HZ,
+                    "py_idx": float(j),
+                    "py_start": py_start[j],
+                    "py_end": py_end[j],
+                    "Δstart": py_start[j] - mat_start[i],
+                    "Δend": py_end[j] - mat_end[i],
+                    "time_sec": _time_from_sample((py_start[j] + mat_start[i]) / 2),
                 }
             )
+            i += 1
+            j += 1
+            continue
+
+        if mat_start[i] < py_start[j]:
+            mismatches.append(
+                {
+                    "mat_idx": float(i),
+                    "mat_start": mat_start[i],
+                    "mat_end": mat_end[i],
+                    "py_idx": np.nan,
+                    "py_start": np.nan,
+                    "py_end": np.nan,
+                    "Δstart": np.nan,
+                    "Δend": np.nan,
+                    "time_sec": _time_from_sample(mat_start[i]),
+                }
+            )
+            i += 1
+        elif py_start[j] < mat_start[i]:
+            mismatches.append(
+                {
+                    "mat_idx": np.nan,
+                    "mat_start": np.nan,
+                    "mat_end": np.nan,
+                    "py_idx": float(j),
+                    "py_start": py_start[j],
+                    "py_end": py_end[j],
+                    "Δstart": np.nan,
+                    "Δend": np.nan,
+                    "time_sec": _time_from_sample(py_start[j]),
+                }
+            )
+            j += 1
+        else:
+            mismatches.append(
+                {
+                    "mat_idx": float(i),
+                    "mat_start": mat_start[i],
+                    "mat_end": mat_end[i],
+                    "py_idx": float(j),
+                    "py_start": py_start[j],
+                    "py_end": py_end[j],
+                    "Δstart": py_start[j] - mat_start[i],
+                    "Δend": py_end[j] - mat_end[i],
+                    "time_sec": _time_from_sample((py_start[j] + mat_start[i]) / 2),
+                }
+            )
+            i += 1
+            j += 1
+
+    while i < len(mat_start):
+        mismatches.append(
+            {
+                "mat_idx": float(i),
+                "mat_start": mat_start[i],
+                "mat_end": mat_end[i],
+                "py_idx": np.nan,
+                "py_start": np.nan,
+                "py_end": np.nan,
+                "Δstart": np.nan,
+                "Δend": np.nan,
+                "time_sec": _time_from_sample(mat_start[i]),
+            }
+        )
+        i += 1
+
+    while j < len(py_start):
+        mismatches.append(
+            {
+                "mat_idx": np.nan,
+                "mat_start": np.nan,
+                "mat_end": np.nan,
+                "py_idx": float(j),
+                "py_start": py_start[j],
+                "py_end": py_end[j],
+                "Δstart": np.nan,
+                "Δend": np.nan,
+                "time_sec": _time_from_sample(py_start[j]),
+            }
+        )
+        j += 1
+
+    filtered_mismatches = []
+    for mismatch in mismatches:
+        if np.isnan(mismatch["mat_idx"]) or np.isnan(mismatch["py_idx"]):
+            filtered_mismatches.append(mismatch)
+            continue
+
+        delta_start = mismatch["Δstart"]
+        delta_end = mismatch["Δend"]
+        if np.isnan(delta_start) or np.isnan(delta_end):
+            filtered_mismatches.append(mismatch)
+            continue
+
+        if abs(delta_start) > tolerance or abs(delta_end) > tolerance:
+            filtered_mismatches.append(mismatch)
+
+    mismatches = filtered_mismatches
 
     if mismatches:
         print(f"\n[diff] mismatches beyond ±{tolerance} samples (showing {max_rows}):")
         diff_df = pd.DataFrame(mismatches)
-        diff_df["time_sec"] = diff_df["time_sec"].round(3)
+        if "time_sec" in diff_df.columns:
+            diff_df["time_sec"] = diff_df["time_sec"].round(3)
         print(diff_df.head(max_rows))
     else:
         print(f"\n[diff] All differences ≤ ±{tolerance} samples (OK).")
