@@ -9,10 +9,14 @@ from __future__ import annotations
 
 from typing import Iterable, Optional
 
+import logging
+
 import numpy as np
 import pandas as pd
 
 import mne
+
+logger = logging.getLogger(__name__)
 
 from . import similarity
 from .similarity import Alignment
@@ -57,10 +61,16 @@ def print_comparison_summary(metrics_dict: dict[str, float], tolerance_samples: 
     in ``metrics_dict``.
     """
 
-    print("\n[comparison] Blink event alignment summary:")
-    print(f"  • Tolerance: ±{tolerance_samples} samples")
-    print(f"  • Total ground truth events: {int(metrics_dict.get('total_ground_truth', 0))}")
-    print(f"  • Total detected events: {int(metrics_dict.get('total_detected', 0))}")
+    logger.info("[comparison] Blink event alignment summary:")
+    logger.info("  • Tolerance: ±%d samples", tolerance_samples)
+    logger.info(
+        "  • Total ground truth events: %d",
+        int(metrics_dict.get("total_ground_truth", 0)),
+    )
+    logger.info(
+        "  • Total detected events: %d",
+        int(metrics_dict.get("total_detected", 0)),
+    )
 
     paired = int(metrics_dict.get("paired_events", 0))
     matches = int(metrics_dict.get("matches_within_tolerance", 0))
@@ -71,25 +81,29 @@ def print_comparison_summary(metrics_dict: dict[str, float], tolerance_samples: 
 
     if paired:
         pct_pairs = (matches / paired) * 100.0
-        print(
-            f"  • Paired events within tolerance: {matches}/{paired} ({pct_pairs:.2f}% of pairs)"
+        logger.info(
+            "  • Paired events within tolerance: %d/%d (%.2f%% of pairs)",
+            matches,
+            paired,
+            pct_pairs,
         )
     else:
-        print("  • Paired events within tolerance: 0")
+        logger.info("  • Paired events within tolerance: 0")
 
     if outside:
-        print(f"  • Paired events outside tolerance: {outside}")
+        logger.info("  • Paired events outside tolerance: %d", outside)
 
-    print(f"  • Ground truth-only events: {gt_only}")
-    print(f"  • Detected-only events: {det_only}")
+    logger.info("  • Ground truth-only events: %d", gt_only)
+    logger.info("  • Detected-only events: %d", det_only)
     if np.isfinite(share):
-        print(
-            "  • Share of total unique events within tolerance: "
-            f"{matches}/"
-            f"{matches + outside + gt_only + det_only} ({share:.2f}%)"
+        logger.info(
+            "  • Share of total unique events within tolerance: %d/%d (%.2f%%)",
+            matches,
+            matches + outside + gt_only + det_only,
+            share,
         )
     else:
-        print("  • Share of total unique events within tolerance: n/a")
+        logger.info("  • Share of total unique events within tolerance: n/a")
 
 
 def make_diff_table(
@@ -288,12 +302,24 @@ def build_diagnostic_raw(
     else:
         raw.set_annotations(None)
 
-    print(
-        "[mne] Created synthetic Raw with "
-        f"{len(onsets)} blink annotations (matched: "
-        f"{sum(1 for a in alignments if a.ground_truth_idx is not None and a.detected_idx is not None)}, "
-        f"ground truth-only: {sum(1 for a in alignments if a.ground_truth_idx is not None and a.detected_idx is None)}, "
-        f"detected-only: {sum(1 for a in alignments if a.detected_idx is not None and a.ground_truth_idx is None)})"
+    logger.info(
+        "[mne] Created synthetic Raw with %d blink annotations (matched: %d, ground truth-only: %d, detected-only: %d)",
+        len(onsets),
+        sum(
+            1
+            for a in alignments
+            if a.ground_truth_idx is not None and a.detected_idx is not None
+        ),
+        sum(
+            1
+            for a in alignments
+            if a.ground_truth_idx is not None and a.detected_idx is None
+        ),
+        sum(
+            1
+            for a in alignments
+            if a.detected_idx is not None and a.ground_truth_idx is None
+        ),
     )
 
     return raw
