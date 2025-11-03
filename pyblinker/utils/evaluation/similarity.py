@@ -122,23 +122,159 @@ def align_events(
     ground_truth_df: pd.DataFrame,
     tolerance_samples: int,
 ) -> list[Alignment]:
-    """Greedily align detected and ground truth blink events by sample index.
+    """
+    Greedily align detected and ground truth blink events by sample index.
 
-    All comparisons are performed in sample index units (1-based).
+    The routine walks both event lists once (O(n)) and tries to pair each
+    ground-truth (GT) blink with the earliest *eligible* detected blink.
+    A pair is considered a **match** when **both** the start and end deltas
+    (detected − ground truth, in samples) are within `tolerance_samples`.
+    All indices are **1-based** and inputs must be sorted by ``start_blink``.
+
+    The algorithm is intentionally simple and local (no backtracking):
+    it compares the "current" GT blink and "current" detected blink and then:
+      1) records a **match** if both deltas are within tolerance, or
+      2) records an **unpaired GT** if the GT starts earlier, or
+      3) records an **unpaired detection** if the detection starts earlier, or
+      4) if starts are equal but outside tolerance, records a **paired-but-out-of-tolerance**
+         entry (useful for error analysis) and advances both.
 
     Parameters
     ----------
-    detected_df, ground_truth_df
-        Event tables with ``start_blink`` and ``end_blink`` columns in 1-based sample
-        indices. The tables must be sorted by ``start_blink``.
-    tolerance_samples
-        Maximum allowed absolute difference (in samples) for start and end indices to
-        be considered a match.
+    detected_df : pd.DataFrame
+        Detected blink events with columns:
+          - ``start_blink`` (int): 1-based start index
+          - ``end_blink``   (int): 1-based end index
+        Must be sorted by ``start_blink``.
+    ground_truth_df : pd.DataFrame
+        Ground-truth blink events with the same schema and sort order.
+    tolerance_samples : int
+        Maximum allowed absolute difference (in samples) for both start and end
+        to count as a match. Must be non-negative.
 
     Returns
     -------
     list[Alignment]
-        Alignment results capturing pairings and differences between each table.
+        A list of Alignment objects with fields:
+          - ``ground_truth_idx`` : int | None
+          - ``detected_idx``     : int | None
+          - ``start_diff``       : float | None   (detected − GT; None if unpaired)
+          - ``end_diff``         : float | None   (detected − GT; None if unpaired)
+
+        Semantics:
+          - **Matched pair** → both indices are ints; diffs are floats within tolerance.
+          - **Unpaired GT** → ``detected_idx`` is None; diffs are None.
+          - **Unpaired detection** → ``ground_truth_idx`` is None; diffs are None.
+          - **Paired-but-out-of-tolerance** → both indices are ints; diffs present,
+            at least one exceeds tolerance. This captures "near misses" when starts
+            are equal but timing is off.
+
+    Notes
+    -----
+    • Greedy, single-pass alignment favors *earliest plausible* pairings.
+      If two detected events are both close to a GT event, only the first can match.
+    • Use the presence/absence of diffs to separate *matching quality* (tolerance)
+      from *coverage* (paired vs unpaired).
+
+    Flowchart (decision per pair)
+    -----------------------------
+        +-----------------------------+
+        | Compute start_delta,        |
+        |         end_delta           |
+        +--------------+--------------+
+                       |
+                       v
+        +-----------------------------+
+        | |start_delta| <= tol AND    |
+        | |end_delta|   <= tol ?      |
+        +--------------+--------------+
+                       | Yes
+                       v
+             [Record MATCH; advance both]
+                       |
+                     (done)
+                       |
+                       No
+                       v
+        +-----------------------------+
+        | gt_start < det_start ?      |
+        +--------------+--------------+
+           Yes                        No
+           v                          v
+    [Record UNPAIRED GT;        +------------------------+
+     advance GT only]           | det_start < gt_start ? |
+                                +-----------+------------+
+                                            | Yes
+                                            v
+                                   [Record UNPAIRED DET;
+                                    advance Det only]
+                                            |
+                                           No  (starts equal)
+                                            v
+                       [Record PAIRED-BUT-OUT-OF-TOLERANCE;
+                                    advance both]
+
+    Example A — Standard matching, misses, and false positives
+    ----------------------------------------------------------
+    >>> import pandas as pd
+    >>> detected = pd.DataFrame({
+    ...     "start_blink": [100, 310, 600],
+    ...     "end_blink":   [150, 360, 650],
+    ... })
+    >>> ground_truth = pd.DataFrame({
+    ...     "start_blink": [ 95, 300, 700],
+    ...     "end_blink":   [145, 350, 750],
+    ... })
+    >>> alignments = align_events(detected, ground_truth, tolerance_samples=20)
+    >>> for a in alignments:
+    ...     print(a)
+    Alignment(ground_truth_idx=0, detected_idx=0, start_diff=5.0, end_diff=5.0)
+    Alignment(ground_truth_idx=1, detected_idx=1, start_diff=10.0, end_diff=10.0)
+    Alignment(ground_truth_idx=2, detected_idx=None, start_diff=None, end_diff=None)
+    Alignment(ground_truth_idx=None, detected_idx=2, start_diff=None, end_diff=None)
+
+    Walk-through:
+      • GT[0] (95–145) vs Det[0] (100–150): deltas = (+5, +5) → within tol → MATCH.
+      • GT[1] (300–350) vs Det[1] (310–360): deltas = (+10, +10) → within tol → MATCH.
+      • GT[2] (700–750) vs Det[2] (600–650):
+            starts: 700 > 600 → Det starts earlier → UNPAIRED Det[2], advance Det.
+            (No detections left) → remaining GT[2] becomes UNPAIRED GT.
+
+    Timeline (1-based samples; ≈ = within tol)
+      GT:      [95---------145]   [300--------350]                 [700--------750]
+      Det:         [100---------150]   [310--------360]   [600----650]
+                 ≈ match #0            ≈ match #1             false positive
+                                                               (then GT miss)
+
+    Example B — Starts equal but end outside tolerance → paired-but-out-of-tolerance
+    --------------------------------------------------------------------------------
+    >>> detected = pd.DataFrame({
+    ...     "start_blink": [200],
+    ...     "end_blink":   [260],      # ends 30 samples later
+    ... })
+    >>> ground_truth = pd.DataFrame({
+    ...     "start_blink": [200],
+    ...     "end_blink":   [230],
+    ... })
+    >>> align_events(detected, ground_truth, tolerance_samples=20)[0]
+    Alignment(ground_truth_idx=0, detected_idx=0, start_diff=0.0, end_diff=30.0)
+
+    Because starts are equal but |end_diff| = 30 > tol, the algorithm records a
+    **paired-but-out-of-tolerance** entry and advances both. This preserves the
+    near-miss information (useful for bias/latency analysis).
+
+    Example C — Tolerance = 0 (exact matching only)
+    -----------------------------------------------
+    >>> detected = pd.DataFrame({"start_blink":[100], "end_blink":[150]})
+    >>> ground_truth = pd.DataFrame({"start_blink":[101], "end_blink":[151]})
+    >>> align_events(detected, ground_truth, tolerance_samples=0)
+    [
+      Alignment(ground_truth_idx=None, detected_idx=0, start_diff=None, end_diff=None),
+      Alignment(ground_truth_idx=0, detected_idx=None, start_diff=None, end_diff=None),
+    ]
+
+    With exact matching, any offset produces two unpaired entries (a false positive
+    and a miss) unless the indices are identical.
     """
 
     if tolerance_samples < 0:
