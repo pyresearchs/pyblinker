@@ -10,6 +10,7 @@ tqdm
 
 # Neuroimaging / signal analysis
 mne
+edfio>=0.4.0
 
 # Utilities
 gdown

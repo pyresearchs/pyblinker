@@ -210,3 +210,5 @@ __marimo__/
 # Local artefacts from aggregation tests
 output.xlsx
 output.xlsx.csv
+/test/migration_files/matlab_code/step0_load_edf.asv
+/test/migration_files/matlab_code/process_eeg_with_pop_blinker.asv
