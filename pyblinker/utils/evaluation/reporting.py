@@ -240,6 +240,20 @@ def build_diagnostic_raw(
     if n_samples == 0:
         raise ValueError("Signals must contain at least one sample to create RawArray.")
 
+    logger.warning(
+        "Assuming ground truth and detected blink signals are sampled at the same "
+        "rate of %.3f Hz for diagnostic visualization.",
+        float(sampling_rate_hz),
+    )
+
+    if len(ground_truth_signal) != len(detected_signal):
+        logger.warning(
+            "Signal lengths differ (%d vs %d samples); truncating to the overlapping "
+            "window under the shared sampling-rate assumption.",
+            len(ground_truth_signal),
+            len(detected_signal),
+        )
+
     data = np.vstack([ground_truth_signal[:n_samples], detected_signal[:n_samples]])
     info = mne.create_info(
         ch_names=["ground_truth_blink_signal", "detected_blink_signal"],
