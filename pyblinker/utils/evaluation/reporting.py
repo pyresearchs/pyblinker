@@ -11,15 +11,15 @@ from typing import Iterable, Optional
 
 import logging
 
+import mne
 import numpy as np
 import pandas as pd
 
-import mne
-
-logger = logging.getLogger(__name__)
-
 from . import similarity
 from .similarity import Alignment
+
+
+logger = logging.getLogger(__name__)
 
 
 def _to_seconds(sample_index: Optional[float], sampling_rate_hz: float) -> Optional[float]:

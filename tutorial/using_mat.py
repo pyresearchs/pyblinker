@@ -1,52 +1,44 @@
-import scipy.io
-import numpy as np
-import mne
-import scipy.io
-import numpy as np
-import mne
+"""Load a MATLAB file into MNE and run :class:`BlinkDetector` on selected channels."""
 
+from __future__ import annotations
+
+from pyblinker.blinker.pyblinker import BlinkDetector
 from pyblinker.utils.mat_edf import load_mat_to_mne
 
-if __name__ == "__main__":
-    mat_path = r"/CLA-SubjectJ-170510-3St-LRHand-Inter.mat"
-    # mat_path=r"C:\Users\balan\IdeaProjects\blinker_pyblinker_validation\CLA-SubjectJ-170510-3St-LRHand-Inter.mat"
-    # or the link https://s3.ap-northeast-1.wasabisys.com/gigadb-datasets/live/pub/10.5524/100001_101000/100295/mat_data/s01.mat
-    # dpath=r"s01.mat"
-    # mat_path=r"C:\Users\balan\IdeaProjects\pyblinker\S001R01.edf"
-    # raw=mne.io.read_raw_edf(mat_path,preload=True)
-    # sfreq=float(200.0)
-    raw = load_mat_to_mne(mat_path,sfreq_default=sfreq)
-    # print(raw)
-    # raw.plot(n_channels=min(32, len(raw.ch_names)), scalings='auto', show=True,block=True)
+from tutorial.utils.using_mat import parse_args
 
-    sfreq=raw.info['sfreq']
-    from pyblinker.blinker.pyblinker import BlinkDetector
-    drange=[f'CH{X}' for X in range (4)]
-    # # # drange=['CH4']
-    to_drop_ch = list(set(raw.ch_names) - set(drange))
-    raw = raw.drop_channels(to_drop_ch)
-    #
-    annot, ch, number_good_blinks, blink_details, fig_data, ch_selected = BlinkDetector(raw, visualize=False, annot_label=None,
-                                                                                        filter_low=0.5, filter_high=30.0, resample_rate=sfreq,
-                                                                                        n_jobs=2,use_multiprocessing=True).get_blink()
 
-    # from pyblinker.viz.report_no_fs import make_blink_report
-    #
-    # out_html = make_blink_report(
-    #     fig_data=fig_data,
-    #     ch=ch,
-    #     number_good_blinks=number_good_blinks,
-    #     ch_selected=ch_selected,
-    #     blink_details=blink_details,   # or None if you don't want the table
-    #     title=f"Blink Report — channel {ch}",
-    #     out_path="blink_report.html",
-    #     overwrite=True,
-    # )
-    # print(f"Report written to: {out_html}")
+def main() -> None:
+    args = parse_args()
+    raw = load_mat_to_mne(str(args.mat_path))
+    sfreq = float(raw.info["sfreq"])
 
-    raw.set_annotations(annot)
-    raw.plot(
-        block=True,
-        title=f"Eye close based on channel {ch}",
-        scalings=10e-6,  # show ±10 µV for all channels
+    if args.channel_count > 0:
+        selected = [f"{args.channel_prefix}{idx}" for idx in range(args.channel_count)]
+        available = [ch for ch in selected if ch in raw.ch_names]
+        if available:
+            to_drop = set(raw.ch_names) - set(available)
+            if to_drop:
+                raw.drop_channels(sorted(to_drop))
+
+    detector = BlinkDetector(
+        raw,
+        visualize=False,
+        annot_label=None,
+        filter_low=0.5,
+        filter_high=30.0,
+        resample_rate=sfreq,
+        n_jobs=2,
+        use_multiprocessing=True,
     )
+
+    annot, channel, blink_count, _, _, selected_channel = detector.get_blink()
+    raw.set_annotations(annot)
+
+    print(f"Detected {blink_count} eye-closure events on channel {channel} (selected {selected_channel}).")
+    if args.plot:
+        raw.plot(block=True, title=f"Eye closures based on channel {channel}", scalings=10e-6)
+
+
+if __name__ == "__main__":
+    main()

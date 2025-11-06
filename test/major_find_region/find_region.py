@@ -1,10 +1,8 @@
 import logging
-import os
 
-
-import matplotlib
 import mne
 from pyblinker.blinker.pyblinker import BlinkDetector
+
 logging.basicConfig(level=logging.INFO)
 
 

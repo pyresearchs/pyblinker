@@ -1,123 +1,101 @@
-"""
-Simple Blink Detection Tutorial
--------------------------------
-1. Downloads EEG .mat file if not found
-2. Converts it to MNE Raw
-3. Saves EDF and FIF (cached)
-4. Runs blink detection on selected channels
-5. Plots annotated EEG with blink markers
+#!/usr/bin/env python
+"""Compare PyBlinker detections against manual annotations from a MAT dataset.
 
-Requirements:
-    pip install mne scipy numpy pyedflib pyblinker
+This tutorial mirrors the workflow used in
+``tutorial/blinker/1_blink_position/understand_diff_in_blink_position.py`` but
+operates on the CLA subject MAT recording that ships with this repository.
+
+The heavy lifting now lives in :mod:`tutorial.utils`, leaving this file as a
+beginner-friendly walkthrough that wires together the individual steps:
+
+1. Download the MAT EEG recording (if necessary) and load it with MNE.
+2. Run :class:`pyblinker.blinker.pyblinker.BlinkDetector` on the channels of
+   interest.
+3. Load the manual annotations stored next to the MAT file.
+4. Compare the detected vs. ground-truth blink intervals and visualise the
+   differences.
+
+Adjust :data:`TOLERANCE_SAMPLES` to change how strict the comparison is.
 """
 
+from __future__ import annotations
+
+import os
+import sys
 from pathlib import Path
 
-from pyblinker.utils.mat_edf import load_mat_to_mne
-from pyblinker.utils.download import download_once
-# def read_annotations_csv(csv_path: Path) -> mne.Annotations:
-#     """Load annotations from a CSV file."""
-#     with open(csv_path, newline="", encoding="utf-8") as f:
-#         reader = csv.DictReader(f)
-#         names = {k.lower(): k for k in (reader.fieldnames or [])}
-#
-#         def pick(*cands):
-#             for c in cands:
-#                 if c in names:
-#                     return names[c]
-#             raise KeyError(f"Missing required column in {csv_path}")
-#
-#         k_onset = pick("onset_sec", "onset")
-#         k_dur = pick("duration_sec", "duration")
-#         k_desc = pick("description", "label")
-#
-#         on, du, de = [], [], []
-#         for row in reader:
-#             on.append(float(row[k_onset]))
-#             du.append(float(row[k_dur]))
-#             de.append(str(row[k_desc]))
-#
-#     return mne.Annotations(onset=on, duration=du, description=de)
+import mne
 
-def main():
-    url = "https://figshare.com/ndownloader/files/12400409"
-    mat_name = "CLA-SubjectJ-170510-3St-LRHand-Inter.mat"
-    edf_name = "CLA-SubjectJ-170510-3St-LRHand-Inter.edf"
-    fif_name = "CLA-SubjectJ-170510-3St-LRHand-Inter-raw.fif"
-    sfreq = 200.0
 
-    data_dir = Path(".")
-    mat_path = data_dir / mat_name
-    edf_path = data_dir / edf_name
-    fif_path = data_dir / fif_name
+SCRIPT_DIR = Path(__file__).resolve().parent
+DATA_URL = "https://figshare.com/ndownloader/files/12400409"
+MAT_FILENAME = "CLA-SubjectJ-170510-3St-LRHand-Inter.mat"
+CSV_FILENAME = "CLA-SubjectJ-170510-3St-LRHand-Inter_annotations.csv"
+MAT_PATH = SCRIPT_DIR / MAT_FILENAME
+CSV_PATH = SCRIPT_DIR / CSV_FILENAME
 
-    # 1️⃣ Load cached data if available
-    if mat_path.exists():
-        print(f"Loading cached Raw: {fif_path}")
-        raw = load_mat_to_mne(mat_path.as_posix(), sfreq_default=sfreq)
-    else:
-        # 2️⃣ Otherwise, download + convert
-        download_once(url, mat_path)
-        raw = load_mat_to_mne(mat_path.as_posix(), sfreq_default=sfreq)
-        # from pyblinker.utils.download import save_edf_once
-        # save_edf_once(raw, edf_path)
+SAMPLING_RATE_HZ = 200.0
+CHANNELS_TO_KEEP = ("CH1", "CH2", "CH3")
+TOLERANCE_SAMPLES = 20
+N_PREVIEW_ROWS = 10
+N_DIFF_ROWS = 30
+RAW_PLOT_SCALINGS = {"eeg": 0.5}
 
-    # -----------------------------------------------------------------
-    # 3️⃣ Blink Detection
-    # -----------------------------------------------------------------
-    from pyblinker.blinker.pyblinker import BlinkDetector
 
-    # Keep only the first few channels for simplicity
-    drange = [f"CH{i}" for i in range(1, 4)]  # CH1–CH3
-    to_drop = list(set(raw.ch_names) - set(drange))
-    raw = raw.drop_channels(to_drop)
+def main() -> mne.io.Raw:
+    """Run the full MAT vs PyBlinker comparison workflow."""
 
-    # Run BlinkDetector
-    print("Running BlinkDetector ...")
-    detector = BlinkDetector(
-        raw,
-        visualize=False,
-        annot_label="eye_blink",  # provide explicit label (str)
-        filter_low=0.5,
-        filter_high=30.0,
-        resample_rate=int(sfreq),  # ensure int
-        n_jobs=2,
-        use_multiprocessing=True,
+    repo_root = Path(__file__).resolve().parents[1]
+    if str(repo_root) not in sys.path:
+        sys.path.insert(0, str(repo_root))
+
+    from tutorial.utils.blink_comparison import compare_detected_vs_ground_truth
+    from tutorial.utils.blink_detection import run_pyblinker_detection
+    from tutorial.utils.mat_data import (
+        annotations_to_event_table,
+        ensure_mat_file,
+        load_manual_annotations_csv,
+        load_raw_from_mat,
+        pick_channels,
     )
-    annot, ch, num_good, blink_details, fig_data, ch_selected = detector.get_blink()
+    from tutorial.utils.pathing import ensure_repo_on_path
 
-    # Add annotations & plot for manual editing
-    raw.set_annotations(annot)
-    raw.plot(
-        block=True,
-        title=f"Eye close based on channel {ch} with length {len(raw.annotations)}",
-        # scalings=10e-6,  # ±10 µV
+    ensure_repo_on_path()
+
+    mat_path = ensure_mat_file(MAT_PATH, DATA_URL)
+    raw_full = load_raw_from_mat(mat_path, SAMPLING_RATE_HZ)
+    raw = pick_channels(raw_full, CHANNELS_TO_KEEP)
+    print(f"[mne] Loaded MAT file with channels: {raw.ch_names}")
+
+    detection = run_pyblinker_detection(raw, sampling_rate_hz=SAMPLING_RATE_HZ)
+    print(f"[detector] Event table rows: {len(detection.events)}")
+
+    annotations_df = load_manual_annotations_csv(CSV_PATH)
+    ground_truth_events = annotations_to_event_table(annotations_df, detection.sampling_rate_hz)
+    print(f"[ground-truth] Loaded {len(ground_truth_events)} manual annotations")
+
+    diagnostic_raw = compare_detected_vs_ground_truth(
+        detection,
+        ground_truth_events,
+        tolerance_samples=TOLERANCE_SAMPLES,
+        n_preview_rows=N_PREVIEW_ROWS,
+        n_diff_rows=N_DIFF_ROWS,
     )
-    # <<< Fixed manual annotation file >>>
-    CSV_PATH = Path(r"tutorial\CLA-SubjectJ-170510-3St-LRHand-Inter_annotations.csv")
-    if CSV_PATH.exists():
-        print(f"[csv] Loading manual annotations from: {CSV_PATH}")
-        manual = read_annotations_csv(CSV_PATH)
-        # raw.set_annotations(manual)
-        print(f"[csv] Loaded {len(manual)} annotations.")
-    else:
-        print(f"[csv] File not found: {CSV_PATH}")
-        # return
-    # Lets compare with the manual annotations
-    # By right,the auto-detected annotations should be 357
-    # wheras the manual annotations are 382
-     # 382- 357 = 25 annotations difference
-    print(f"[info] Auto-detected annotations: {len(raw.annotations)}")
-    # 357
-    from pyblinker.utils.evaluation import reporting, similarity
 
-    # Generate variable detected_df from the blink_details, extract the column start_blink and end_blink
-    import pandas as pd
-    similarity.validate_event_table(detected_df)
-    # For the manual annotations, there are 2 column, blink onset and duration, use this to create the surrogate start_blink and end_blink
-    similarity.validate_event_table(manual)
-# ---------------------------------------------------------------------
-# 5. Run script
-# ---------------------------------------------------------------------
+    if os.environ.get("PYBLINKER_SKIP_PLOT") == "1":
+        print("[info] Skipping raw.plot() because PYBLINKER_SKIP_PLOT=1")
+    else:
+        try:
+            diagnostic_raw.plot(
+                block=True,
+                title="Manual vs PyBlinker Blink Comparison",
+                scalings=RAW_PLOT_SCALINGS,
+            )
+        except (RuntimeError, ValueError) as exc:
+            print(f"[warn] Unable to open interactive Raw browser: {exc}")
+
+    return diagnostic_raw
+
+
 if __name__ == "__main__":
     main()
