@@ -54,6 +54,8 @@ from test.data_setup import ensure_mne_sample_edf
 from src.matlab_runner import execute_blinker
 import mne
 
+from tutorial.utils.dataframe_ops import pick_first_match
+
 DEFAULT_EEGLAB_ROOT = Path(r"D:\code development\matlab_plugin\eeglab2025.1.0")
 
 
@@ -102,15 +104,8 @@ left_candidates = ["leftZero", "left_zero"]
 right_candidates = ["rightZero", "right_zero"]
 
 
-def _pick(colnames, candidates):
-    for c in candidates:
-        if c in colnames:
-            return c
-    return None
-
-
-lkey = _pick(df.columns, left_candidates)
-rkey = _pick(df.columns, right_candidates)
+lkey = pick_first_match(df.columns, left_candidates)
+rkey = pick_first_match(df.columns, right_candidates)
 
 # Validate that required columns were found
 if lkey is None or rkey is None:
