@@ -8,7 +8,7 @@ import mne
 from pyblinker.utils.mat_edf import load_mat_to_mne
 
 if __name__ == "__main__":
-    mat_path = r"C:\Users\balan\IdeaProjects\pyblinker\CLA-SubjectJ-170510-3St-LRHand-Inter.mat"
+    mat_path = r"/CLA-SubjectJ-170510-3St-LRHand-Inter.mat"
     # mat_path=r"C:\Users\balan\IdeaProjects\blinker_pyblinker_validation\CLA-SubjectJ-170510-3St-LRHand-Inter.mat"
     # or the link https://s3.ap-northeast-1.wasabisys.com/gigadb-datasets/live/pub/10.5524/100001_101000/100295/mat_data/s01.mat
     # dpath=r"s01.mat"

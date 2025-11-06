@@ -26,11 +26,11 @@ SFREQ = 200.0
 # File paths
 URL = "https://figshare.com/ndownloader/files/12400409"
 MAT_NAME = "CLA-SubjectJ-170510-3St-LRHand-Inter.mat"
-DATA_DIR = Path(".")
+DATA_DIR = Path("..")
 MAT_PATH = DATA_DIR / MAT_NAME
 
 # <<< Fixed manual annotation file >>>
-CSV_PATH = Path(r"C:\Users\balan\IdeaProjects\pyblinker\tutorial\CLA-SubjectJ-170510-3St-LRHand-Inter_annotations.csv")
+CSV_PATH = Path(r"/tutorial/CLA-SubjectJ-170510-3St-LRHand-Inter_annotations.csv")
 
 
 # -------------------------------------------------------------------
