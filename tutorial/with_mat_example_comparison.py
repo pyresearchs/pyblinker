@@ -49,7 +49,11 @@ def main() -> mne.io.Raw:
     if str(repo_root) not in sys.path:
         sys.path.insert(0, str(repo_root))
 
-    from tutorial.utils.blink_comparison import compare_detected_vs_ground_truth
+    from tutorial.utils.blink_comparison import (
+        build_comparison_annotations,
+        compare_detected_vs_ground_truth,
+        compute_alignments_and_metrics,
+    )
     from tutorial.utils.blink_detection import run_pyblinker_detection
     from tutorial.utils.mat_data import (
         annotations_to_event_table,
@@ -74,7 +78,7 @@ def main() -> mne.io.Raw:
     ground_truth_events = annotations_to_event_table(annotations_df, detection.sampling_rate_hz)
     print(f"[ground-truth] Loaded {len(ground_truth_events)} manual annotations")
 
-    diagnostic_raw = compare_detected_vs_ground_truth(
+    _diagnostic_raw = compare_detected_vs_ground_truth(
         detection,
         ground_truth_events,
         tolerance_samples=TOLERANCE_SAMPLES,
@@ -82,10 +86,25 @@ def main() -> mne.io.Raw:
         n_diff_rows=N_DIFF_ROWS,
     )
 
-    annotations = diagnostic_raw.annotations
+    alignments, metrics = compute_alignments_and_metrics(
+        detected_df=detection.events,
+        ground_truth_df=ground_truth_events,
+        tolerance_samples=TOLERANCE_SAMPLES,
+    )
+
+    annotations = build_comparison_annotations(
+        ground_truth_starts=ground_truth_events["start_blink"].to_numpy(),
+        ground_truth_ends=ground_truth_events["end_blink"].to_numpy(),
+        detected_starts=detection.events["start_blink"].to_numpy(),
+        detected_ends=detection.events["end_blink"].to_numpy(),
+        sampling_rate_hz=detection.sampling_rate_hz,
+        tolerance_samples=TOLERANCE_SAMPLES,
+        alignments=alignments,
+    )
+
     if annotations is not None:
         print(f"[mne] Applying {len(annotations)} comparison annotations to the EEG raw")
-        raw.set_annotations(annotations.copy())
+        raw.set_annotations(annotations)
     else:
         print("[mne] No blink annotations generated; clearing annotations on the EEG raw")
         raw.set_annotations(None)
@@ -93,10 +112,20 @@ def main() -> mne.io.Raw:
     if os.environ.get("PYBLINKER_SKIP_PLOT") == "1":
         print("[info] Skipping raw.plot() because PYBLINKER_SKIP_PLOT=1")
     else:
+        matches = int(metrics["matches_within_tolerance"])
+        ground_truth_only = int(metrics["ground_truth_only"])
+        detected_only = int(metrics["detected_only"])
+        pairs_outside = int(metrics["pairs_outside_tolerance"])
+        total_differences = ground_truth_only + detected_only + pairs_outside
+        plot_title = (
+            "Manual vs PyBlinker Blink Comparison — "
+            f"Matches: {matches}, Ground Truth Only: {ground_truth_only}, "
+            f"PyBlinker Only: {detected_only}, Differences: {total_differences}"
+        )
         try:
             raw.plot(
                 block=True,
-                title="Manual vs PyBlinker Blink Comparison",
+                title=plot_title,
                 scalings=RAW_PLOT_SCALINGS,
             )
         except (RuntimeError, ValueError) as exc:

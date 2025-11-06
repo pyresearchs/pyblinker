@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Iterable, Sequence
+
 import mne
 import numpy as np
 import pandas as pd
@@ -50,6 +52,91 @@ def _print_indicator_diagnostics(
     print(f"  • Pearson correlation: {corr:.6f}")
 
 
+def compute_alignments_and_metrics(
+    detected_df: pd.DataFrame,
+    ground_truth_df: pd.DataFrame,
+    tolerance_samples: int,
+):
+    """Return alignments and metrics for two blink event tables."""
+
+    from pyblinker.utils.evaluation import similarity
+
+    alignments = similarity.align_events(
+        detected_df=detected_df,
+        ground_truth_df=ground_truth_df,
+        tolerance_samples=tolerance_samples,
+    )
+    metrics = similarity.compute_alignment_metrics(alignments, tolerance_samples)
+    return alignments, metrics
+
+
+def build_comparison_annotations(
+    *,
+    ground_truth_starts: Sequence[int],
+    ground_truth_ends: Sequence[int],
+    detected_starts: Sequence[int],
+    detected_ends: Sequence[int],
+    sampling_rate_hz: float,
+    tolerance_samples: int,
+    alignments: Iterable | None = None,
+):
+    """Construct :class:`mne.Annotations` describing blink comparisons."""
+
+    from pyblinker.utils.evaluation import reporting, similarity
+
+    if alignments is None:
+        gt_df = pd.DataFrame({"start_blink": ground_truth_starts, "end_blink": ground_truth_ends})
+        det_df = pd.DataFrame({"start_blink": detected_starts, "end_blink": detected_ends})
+        alignments = similarity.align_events(det_df, gt_df, tolerance_samples)
+    else:
+        alignments = list(alignments)
+
+    onsets: list[float] = []
+    durations: list[float] = []
+    descriptions: list[str] = []
+
+    for alignment in alignments:
+        if alignment.ground_truth_idx is not None and alignment.detected_idx is not None:
+            gt_idx = alignment.ground_truth_idx
+            det_idx = alignment.detected_idx
+            gt_start = int(ground_truth_starts[gt_idx])
+            gt_end = int(ground_truth_ends[gt_idx])
+            det_start = int(detected_starts[det_idx])
+            det_end = int(detected_ends[det_idx])
+
+            gt_onset = reporting._to_seconds(gt_start, sampling_rate_hz)
+            det_onset = reporting._to_seconds(det_start, sampling_rate_hz)
+            gt_duration = reporting._duration_seconds(gt_start, gt_end, sampling_rate_hz)
+            det_duration = reporting._duration_seconds(det_start, det_end, sampling_rate_hz)
+
+            if alignment.is_match(tolerance_samples):
+                onsets.append(float(gt_onset + det_onset) / 2.0)
+                durations.append(float(gt_duration + det_duration) / 2.0)
+                descriptions.append("blink")
+            else:
+                onsets.extend([float(gt_onset), float(det_onset)])
+                durations.extend([float(gt_duration), float(det_duration)])
+                descriptions.extend(["blink_ground_truth", "blink_detected"])
+        elif alignment.ground_truth_idx is not None:
+            gt_idx = alignment.ground_truth_idx
+            gt_start = int(ground_truth_starts[gt_idx])
+            gt_end = int(ground_truth_ends[gt_idx])
+            onsets.append(float(reporting._to_seconds(gt_start, sampling_rate_hz)))
+            durations.append(float(reporting._duration_seconds(gt_start, gt_end, sampling_rate_hz)))
+            descriptions.append("blink_ground_truth")
+        elif alignment.detected_idx is not None:
+            det_idx = alignment.detected_idx
+            det_start = int(detected_starts[det_idx])
+            det_end = int(detected_ends[det_idx])
+            onsets.append(float(reporting._to_seconds(det_start, sampling_rate_hz)))
+            durations.append(float(reporting._duration_seconds(det_start, det_end, sampling_rate_hz)))
+            descriptions.append("blink_detected")
+
+    if onsets:
+        return mne.Annotations(onset=onsets, duration=durations, description=descriptions)
+    return None
+
+
 def compare_detected_vs_ground_truth(
     detected: DetectionResult,
     ground_truth_events: pd.DataFrame,
@@ -81,12 +168,11 @@ def compare_detected_vs_ground_truth(
     print(f"\nFirst {nprev} rows (ground truth vs detected):")
     print(preview)
 
-    alignments = similarity.align_events(
+    alignments, metrics = compute_alignments_and_metrics(
         detected_df=detected_df,
         ground_truth_df=ground_truth_df,
         tolerance_samples=tolerance_samples,
     )
-    metrics = similarity.compute_alignment_metrics(alignments, tolerance_samples)
 
     start_diff, end_diff = similarity.compute_pairwise_differences(detected_df, ground_truth_df)
     ok_start = start_diff <= tolerance_samples if start_diff.size else np.array([], dtype=bool)
