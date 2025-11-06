@@ -11,9 +11,9 @@ import mne
 
 
 BASE_DIR = Path(__file__).resolve().parents[2]
-EDF_PATH = BASE_DIR / "test" / "test_files" / "mne_sample_audvis_raw.edf"
-MAT_INPUT_PATH = BASE_DIR / "test" / "migration_files" / "step1bi_data_input_getBlinkPositions.mat"
-MAT_OUTPUT_PATH = BASE_DIR / "test" / "migration_files" / "step1bi_data_output_getBlinkPositions.mat"
+# EDF_PATH = BASE_DIR / "test" / "test_files" / "mne_sample_audvis_raw.edf"
+MAT_INPUT_PATH = Path(r"C:\Users\balan\IdeaProjects\pyblinker\test\migration_files\step1bi_data_input_getBlinkPositions.mat")
+MAT_OUTPUT_PATH = Path(r"C:\Users\balan\IdeaProjects\pyblinker\test\migration_files\step1bi_data_output_getBlinkPositions.mat")
 N_PREVIEW_ROWS = 10
 N_DIFF_ROWS = 30
 SAMPLING_RATE_HZ = 100.0
@@ -21,7 +21,7 @@ RAW_PLOT_SCALINGS = {"eeg": 0.5}
 TOLERANCE_SAMPLES = 20  # Allowable sample difference between MATLAB vs Python
 PREFERRED_CHANNELS = ("EEG 003", "EEG003", "chan003")
 
-
+EDF_PATH= Path(r'C:\Users\balan\IdeaProjects\pyblinker\test\test_files\mne_sample_audvis_raw.edf')
 def main() -> mne.io.Raw:
     """Run the EDF vs. MATLAB blink comparison tutorial."""
 
