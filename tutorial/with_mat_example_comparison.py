@@ -39,7 +39,7 @@ CHANNELS_TO_KEEP = ("CH1", "CH2", "CH3")
 TOLERANCE_SAMPLES = 20
 N_PREVIEW_ROWS = 10
 N_DIFF_ROWS = 30
-RAW_PLOT_SCALINGS = {"eeg": 0.5}
+# RAW_PLOT_SCALINGS = {"eeg": 0.5}
 
 
 def main() -> mne.io.Raw:
@@ -126,7 +126,7 @@ def main() -> mne.io.Raw:
             raw.plot(
                 block=True,
                 title=plot_title,
-                scalings=RAW_PLOT_SCALINGS,
+                # scalings=RAW_PLOT_SCALINGS,
             )
         except (RuntimeError, ValueError) as exc:
             print(f"[warn] Unable to open interactive Raw browser: {exc}")
