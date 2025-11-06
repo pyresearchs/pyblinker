@@ -82,11 +82,19 @@ def main() -> mne.io.Raw:
         n_diff_rows=N_DIFF_ROWS,
     )
 
+    annotations = diagnostic_raw.annotations
+    if annotations is not None:
+        print(f"[mne] Applying {len(annotations)} comparison annotations to the EEG raw")
+        raw.set_annotations(annotations.copy())
+    else:
+        print("[mne] No blink annotations generated; clearing annotations on the EEG raw")
+        raw.set_annotations(None)
+
     if os.environ.get("PYBLINKER_SKIP_PLOT") == "1":
         print("[info] Skipping raw.plot() because PYBLINKER_SKIP_PLOT=1")
     else:
         try:
-            diagnostic_raw.plot(
+            raw.plot(
                 block=True,
                 title="Manual vs PyBlinker Blink Comparison",
                 scalings=RAW_PLOT_SCALINGS,
@@ -94,7 +102,7 @@ def main() -> mne.io.Raw:
         except (RuntimeError, ValueError) as exc:
             print(f"[warn] Unable to open interactive Raw browser: {exc}")
 
-    return diagnostic_raw
+    return raw
 
 
 if __name__ == "__main__":
