@@ -8,7 +8,6 @@ import sys
 from pathlib import Path
 
 import mne
-from mne.export import export_raw
 
 
 BASE_DIR = Path(__file__).resolve().parents[1]
@@ -23,24 +22,6 @@ TOLERANCE_SAMPLES = 20  # Allowable sample difference between MATLAB vs Python
 PREFERRED_CHANNELS = ("EEG 003", "EEG003", "chan003")
 
 
-
-def ensure_edf_file(edf_path: Path) -> Path:
-    """Ensure the tutorial EDF file exists, converting from MNE sample data if needed."""
-
-    if edf_path.exists():
-        return edf_path
-
-    print("[setup] EDF file missing; converting from MNE sample dataset")
-    sample_data_folder = Path(mne.datasets.sample.data_path())
-    raw_file = sample_data_folder / "MEG" / "sample" / "sample_audvis_filt-0-40_raw.fif"
-    if not raw_file.exists():
-        raise FileNotFoundError(f"Sample FIF file not found: {raw_file}")
-
-    edf_path.parent.mkdir(parents=True, exist_ok=True)
-    raw = mne.io.read_raw_fif(raw_file.as_posix(), preload=True, verbose="ERROR")
-    export_raw(edf_path.as_posix(), raw, fmt="edf", physical_range="auto")
-    print(f"[setup] Exported EDF to {edf_path}")
-    return edf_path
 def main() -> mne.io.Raw:
     """Run the EDF vs. MATLAB blink comparison tutorial."""
 
@@ -48,9 +29,9 @@ def main() -> mne.io.Raw:
     if str(repo_root) not in sys.path:
         sys.path.insert(0, str(repo_root))
 
-    from pyblinker.utils.evaluation import blink_comparison, blink_position
+    from pyblinker.utils.evaluation import blink_comparison, blink_position, sample_data
 
-    edf_path = ensure_edf_file(EDF_PATH)
+    edf_path = sample_data.ensure_edf_file(EDF_PATH)
 
     detection = blink_position.detect_blinks_from_edf(
         edf_path,

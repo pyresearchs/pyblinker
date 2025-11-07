@@ -7,6 +7,7 @@ from . import (
     dataframe_ops,
     mat_data,
     reporting,
+    sample_data,
     similarity,
 )
 
@@ -17,5 +18,6 @@ __all__ = [
     "dataframe_ops",
     "mat_data",
     "reporting",
+    "sample_data",
     "similarity",
 ]
