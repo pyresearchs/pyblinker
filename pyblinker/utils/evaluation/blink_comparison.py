@@ -1,4 +1,4 @@
-"""Common routines for comparing blink detections in tutorials."""
+"""Common routines for comparing blink detections against ground truth tables."""
 
 from __future__ import annotations
 
@@ -59,7 +59,7 @@ def compute_alignments_and_metrics(
 ):
     """Return alignments and metrics for two blink event tables."""
 
-    from pyblinker.utils.evaluation import similarity
+    from . import similarity
 
     alignments = similarity.align_events(
         detected_df=detected_df,
@@ -82,55 +82,17 @@ def build_comparison_annotations(
 ):
     """Construct :class:`mne.Annotations` describing blink comparisons."""
 
-    from pyblinker.utils.evaluation import reporting, similarity
+    from . import reporting
 
-    if alignments is None:
-        gt_df = pd.DataFrame({"start_blink": ground_truth_starts, "end_blink": ground_truth_ends})
-        det_df = pd.DataFrame({"start_blink": detected_starts, "end_blink": detected_ends})
-        alignments = similarity.align_events(det_df, gt_df, tolerance_samples)
-    else:
-        alignments = list(alignments)
-
-    onsets: list[float] = []
-    durations: list[float] = []
-    descriptions: list[str] = []
-
-    for alignment in alignments:
-        if alignment.ground_truth_idx is not None and alignment.detected_idx is not None:
-            gt_idx = alignment.ground_truth_idx
-            det_idx = alignment.detected_idx
-            gt_start = int(ground_truth_starts[gt_idx])
-            gt_end = int(ground_truth_ends[gt_idx])
-            det_start = int(detected_starts[det_idx])
-            det_end = int(detected_ends[det_idx])
-
-            gt_onset = reporting._to_seconds(gt_start, sampling_rate_hz)
-            det_onset = reporting._to_seconds(det_start, sampling_rate_hz)
-            gt_duration = reporting._duration_seconds(gt_start, gt_end, sampling_rate_hz)
-            det_duration = reporting._duration_seconds(det_start, det_end, sampling_rate_hz)
-
-            if alignment.is_match(tolerance_samples):
-                onsets.append(float(gt_onset + det_onset) / 2.0)
-                durations.append(float(gt_duration + det_duration) / 2.0)
-                descriptions.append("blink")
-            else:
-                onsets.extend([float(gt_onset), float(det_onset)])
-                durations.extend([float(gt_duration), float(det_duration)])
-                descriptions.extend(["blink_ground_truth", "blink_detected"])
-        elif alignment.ground_truth_idx is not None:
-            gt_idx = alignment.ground_truth_idx
-            gt_start = int(ground_truth_starts[gt_idx])
-            gt_end = int(ground_truth_ends[gt_idx])
-            onsets.append(float(reporting._to_seconds(gt_start, sampling_rate_hz)))
-            durations.append(float(reporting._duration_seconds(gt_start, gt_end, sampling_rate_hz)))
-            descriptions.append("blink_ground_truth")
-        elif alignment.detected_idx is not None:
-            det_idx = alignment.detected_idx
-            det_start = int(detected_starts[det_idx])
-            det_end = int(detected_ends[det_idx])
-            onsets.append(float(reporting._to_seconds(det_start, sampling_rate_hz)))
-            durations.append(float(reporting._duration_seconds(det_start, det_end, sampling_rate_hz)))
-            descriptions.append("blink_detected")
+    _, onsets, durations, descriptions = reporting._build_alignment_annotation_payload(
+        ground_truth_starts,
+        ground_truth_ends,
+        detected_starts,
+        detected_ends,
+        sampling_rate_hz,
+        tolerance_samples,
+        alignments,
+    )
 
     if onsets:
         return mne.Annotations(onset=onsets, duration=durations, description=descriptions)
@@ -149,7 +111,7 @@ def compare_detected_vs_ground_truth(
 ) -> mne.io.RawArray:
     """Compare detected events with ground truth and build diagnostic visuals."""
 
-    from pyblinker.utils.evaluation import reporting, similarity
+    from . import reporting, similarity
 
     detected_df = detected.events
     ground_truth_df = ground_truth_events.copy()

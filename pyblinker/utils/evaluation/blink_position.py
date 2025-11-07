@@ -1,4 +1,4 @@
-"""Helpers used by the blink-position comparison tutorials."""
+"""Helpers used by blink-position comparison tutorials."""
 
 from __future__ import annotations
 
@@ -40,7 +40,7 @@ def detect_blinks_from_edf(
             f"Expected {sampling_rate_hz} Hz after resample, got {srate}"
         )
 
-    picks = next(( [name] for name in preferred_channel_names if name in raw.ch_names ), None)
+    picks = next(([name] for name in preferred_channel_names if name in raw.ch_names), None)
     if picks is None:
         if len(raw.ch_names) < 3:
             raise RuntimeError("Need ≥3 channels to pick the representative EEG channel")

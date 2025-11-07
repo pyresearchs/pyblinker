@@ -54,7 +54,7 @@ from test.data_setup import ensure_mne_sample_edf
 from src.matlab_runner import execute_blinker
 import mne
 
-from tutorial.utils.dataframe_ops import pick_first_match
+from pyblinker.utils.evaluation.dataframe_ops import pick_first_match
 
 DEFAULT_EEGLAB_ROOT = Path(r"D:\code development\matlab_plugin\eeglab2025.1.0")
 

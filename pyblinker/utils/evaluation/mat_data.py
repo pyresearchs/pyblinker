@@ -1,4 +1,4 @@
-"""Utilities for working with MAT recordings in tutorials."""
+"""Utilities for working with MAT recordings in tutorials and evaluation flows."""
 
 from __future__ import annotations
 
@@ -117,7 +117,7 @@ def annotations_to_event_table(
 ) -> pd.DataFrame:
     """Convert onset/duration annotations into a 1-based blink interval table."""
 
-    from pyblinker.utils.evaluation import similarity
+    from . import similarity
 
     if sampling_rate_hz <= 0:
         raise ValueError("Sampling rate must be positive to build event table")

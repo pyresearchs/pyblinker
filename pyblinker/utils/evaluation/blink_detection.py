@@ -1,4 +1,4 @@
-"""Helpers for running PyBlinker inside tutorials."""
+"""High-level helpers for running PyBlinker detectors in tutorials and tests."""
 
 from __future__ import annotations
 
@@ -31,7 +31,8 @@ def run_pyblinker_detection(
     """Run :class:`BlinkDetector` on ``raw`` and return a structured result."""
 
     from pyblinker.blinker.pyblinker import BlinkDetector
-    from pyblinker.utils.evaluation import similarity
+
+    from . import similarity
 
     detector = BlinkDetector(
         raw.copy(),

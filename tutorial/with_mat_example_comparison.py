@@ -1,12 +1,15 @@
 #!/usr/bin/env python
+# ruff: noqa: E402  # allow sys.path adjustments before pyblinker imports
+
 """Compare PyBlinker detections against manual annotations from a MAT dataset.
 
 This tutorial mirrors the workflow used in
 ``tutorial/blinker/1_blink_position/understand_diff_in_blink_position.py`` but
 operates on the CLA subject MAT recording that ships with this repository.
 
-The heavy lifting now lives in :mod:`tutorial.utils`, leaving this file as a
-beginner-friendly walkthrough that wires together the individual steps:
+The heavy lifting now lives in :mod:`pyblinker.utils.evaluation`, leaving this
+file as a beginner-friendly walkthrough that wires together the individual
+steps:
 
 1. Download the MAT EEG recording (if necessary) and load it with MNE.
 2. Run :class:`pyblinker.blinker.pyblinker.BlinkDetector` on the channels of
@@ -16,6 +19,7 @@ beginner-friendly walkthrough that wires together the individual steps:
    differences.
 
 Adjust :data:`TOLERANCE_SAMPLES` to change how strict the comparison is.
+
 """
 
 
@@ -47,52 +51,43 @@ N_PREVIEW_ROWS = 10                      # how many preview rows to print in dif
 N_DIFF_ROWS = 30                         # how many differing rows to print in diff table
 # RAW_PLOT_SCALINGS = {"eeg": 0.5}       # optional MNE scaling (example)
 
-# 6) Ensure the repository root is on sys.path (so tutorial.utils imports work)
+# 6) Ensure the repository root is on sys.path (so pyblinker imports work)
 repo_root = Path(__file__).resolve().parents[1]
 if str(repo_root) not in sys.path:
     sys.path.insert(0, str(repo_root))
 
 # 7) Import helper utilities from this repository (kept top-level for clarity)
-from tutorial.utils.blink_comparison import (
-    build_comparison_annotations,
-    compare_detected_vs_ground_truth,
-    compute_alignments_and_metrics,
-    )
-from tutorial.utils.blink_detection import run_pyblinker_detection
-from tutorial.utils.mat_data import (
-    annotations_to_event_table,
-    ensure_mat_file,
-    load_manual_annotations_csv,
-    load_raw_from_mat,
-    pick_channels,
-    )
-from tutorial.utils.pathing import ensure_repo_on_path
+from pyblinker.utils.evaluation import (
+    blink_comparison,
+    blink_detection,
+    mat_data,
+)
 
 # 8) Make sure any additional repo-specific paths are configured
-ensure_repo_on_path()
+# (no additional configuration required once repo root is on sys.path)
 
 # 9) Ensure the MAT file exists (download if missing), then load it with MNE
-mat_path = ensure_mat_file(MAT_PATH, DATA_URL)
-raw_full = load_raw_from_mat(mat_path, SAMPLING_RATE_HZ)
+mat_path = mat_data.ensure_mat_file(MAT_PATH, DATA_URL)
+raw_full = mat_data.load_raw_from_mat(mat_path, SAMPLING_RATE_HZ)
 
 # 10) Keep only the channels of interest
-raw = pick_channels(raw_full, CHANNELS_TO_KEEP)
+raw = mat_data.pick_channels(raw_full, CHANNELS_TO_KEEP)
 print(f"[mne] Loaded MAT file with channels: {raw.ch_names}")
 
 # 11) Run PyBlinker detection on the selected channels
-detection = run_pyblinker_detection(raw, sampling_rate_hz=SAMPLING_RATE_HZ)
+detection = blink_detection.run_pyblinker_detection(raw, sampling_rate_hz=SAMPLING_RATE_HZ)
 print(f"[detector] Event table rows: {len(detection.events)}")
 
 # 12) Load manual annotations (CSV next to the MAT file) and convert to event table
-annotations_df = load_manual_annotations_csv(CSV_PATH)
-ground_truth_events = annotations_to_event_table(
+annotations_df = mat_data.load_manual_annotations_csv(CSV_PATH)
+ground_truth_events = mat_data.annotations_to_event_table(
     annotations_df,
     detection.sampling_rate_hz
     )
 print(f"[ground-truth] Loaded {len(ground_truth_events)} manual annotations")
 
 # 13) Compare detected vs ground-truth blink intervals (prints previews/diffs)
-_diagnostic_raw = compare_detected_vs_ground_truth(
+_diagnostic_raw = blink_comparison.compare_detected_vs_ground_truth(
     detection,
     ground_truth_events,
     tolerance_samples=TOLERANCE_SAMPLES,
@@ -101,14 +96,14 @@ _diagnostic_raw = compare_detected_vs_ground_truth(
     )
 
 # 14) Compute alignment table and summary metrics (matches, differences, etc.)
-alignments, metrics = compute_alignments_and_metrics(
+alignments, metrics = blink_comparison.compute_alignments_and_metrics(
     detected_df=detection.events,
     ground_truth_df=ground_truth_events,
     tolerance_samples=TOLERANCE_SAMPLES,
     )
 
 # 15) Build MNE Annotations to visualize comparisons in the Raw browser
-annotations = build_comparison_annotations(
+annotations = blink_comparison.build_comparison_annotations(
     ground_truth_starts=ground_truth_events["start_blink"].to_numpy(),
     ground_truth_ends=ground_truth_events["end_blink"].to_numpy(),
     detected_starts=detection.events["start_blink"].to_numpy(),

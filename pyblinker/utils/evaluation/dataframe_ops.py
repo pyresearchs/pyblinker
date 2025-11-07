@@ -1,4 +1,4 @@
-"""Small DataFrame helpers shared across tutorials."""
+"""Small DataFrame helpers shared across tutorials and evaluation utilities."""
 
 from __future__ import annotations
 
