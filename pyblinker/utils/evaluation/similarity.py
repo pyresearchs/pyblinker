@@ -414,6 +414,7 @@ def compute_alignment_metrics(
         "ground_truth_only": float(ground_truth_only),
         "detected_only": float(detected_only),
         "share_within_tolerance": _pct(matches_within_tolerance, unique_total),
+        "unique_total": float(unique_total),
     }
 
 
