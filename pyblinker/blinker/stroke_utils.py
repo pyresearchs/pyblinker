@@ -35,8 +35,15 @@ def max_pos_vel_frame(blink_velocity, max_blink, left_zero, right_zero):
 
     # Maximum negative velocity in the down_stroke region, if it exists
     if down_stroke.size > 0:
-        max_neg_vel_idx = np.argmin(blink_velocity[down_stroke])
-        max_neg_vel_frame = down_stroke[max_neg_vel_idx]
+        try:
+            max_neg_vel_idx = np.argmin(blink_velocity[down_stroke])
+            max_neg_vel_frame = down_stroke[max_neg_vel_idx]
+        except IndexError:
+            logger.debug(
+                "Down-stroke segment indexing failed; forcing NaN for max negative velocity",
+                extra={"down_stroke_size": int(down_stroke.size)},
+            )
+            max_neg_vel_frame = np.nan
     else:
         logger.warning(
             "Down-stroke segment empty; forcing NaN for max negative velocity",
