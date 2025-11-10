@@ -88,11 +88,13 @@ print(f"[ground-truth] Loaded {len(ground_truth_events)} manual annotations")
 
 # 13) Compare detected vs ground-truth blink intervals (prints previews/diffs)
 _diagnostic_raw = blink_comparison.compare_detected_vs_ground_truth(
-    detection,
+    detection.events,
     ground_truth_events,
+    detection.sampling_rate_hz,
     tolerance_samples=TOLERANCE_SAMPLES,
     n_preview_rows=N_PREVIEW_ROWS,
     n_diff_rows=N_DIFF_ROWS,
+    detected_signal=detection.signal
     )
 
 # 14) Compute alignment table and summary metrics (matches, differences, etc.)
