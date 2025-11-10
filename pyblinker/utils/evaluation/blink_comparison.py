@@ -100,8 +100,9 @@ def build_comparison_annotations(
 
 
 def compare_detected_vs_ground_truth(
-    detected: DetectionResult,
+    detected: pd.DataFrame,
     ground_truth_events: pd.DataFrame,
+    sampling_rate_hz: float,
     *,
     tolerance_samples: int,
     n_preview_rows: int,
@@ -113,7 +114,7 @@ def compare_detected_vs_ground_truth(
 
     from . import reporting, similarity
 
-    detected_df = detected.events
+    detected_df = detected.copy()
     ground_truth_df = ground_truth_events.copy()
 
     similarity.validate_event_table(detected_df)
@@ -151,7 +152,7 @@ def compare_detected_vs_ground_truth(
         alignments,
         tolerance_samples,
         n_diff_rows,
-        detected.sampling_rate_hz,
+        sampling_rate_hz,
     )
 
     if all_ok and diff_table.empty:
@@ -165,7 +166,7 @@ def compare_detected_vs_ground_truth(
 
     reporting.print_comparison_summary(metrics, tolerance_samples)
 
-    n_samples = int(len(detected_signal) if detected_signal is not None else len(detected.signal))
+    n_samples = int(len(detected_signal))
     gt_signal = (
         ground_truth_signal
         if ground_truth_signal is not None
@@ -186,7 +187,7 @@ def compare_detected_vs_ground_truth(
         ground_truth_ends=ground_truth_df["end_blink"].to_numpy(),
         detected_starts=detected_df["start_blink"].to_numpy(),
         detected_ends=detected_df["end_blink"].to_numpy(),
-        sampling_rate_hz=detected.sampling_rate_hz,
+        sampling_rate_hz=sampling_rate_hz,
         tolerance_samples=tolerance_samples,
         alignments=alignments,
     )
