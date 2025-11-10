@@ -45,7 +45,11 @@ CSV_PATH = SCRIPT_DIR / CSV_FILENAME
 
 # 5) Configuration parameters (tweak as needed)
 SAMPLING_RATE_HZ = 200.0                 # sampling rate for the loaded MAT data
-CHANNELS_TO_KEEP = ("CH1", "CH2", "CH3") # subset of channels for detection
+CHANNELS_TO_KEEP = (
+                    "CH1",
+                    # "CH2",
+                    # "CH3"
+        ) # subset of channels for detection
 TOLERANCE_SAMPLES = 20                   # blink start/end alignment tolerance
 N_PREVIEW_ROWS = 10                      # how many preview rows to print in diff table
 N_DIFF_ROWS = 30                         # how many differing rows to print in diff table
