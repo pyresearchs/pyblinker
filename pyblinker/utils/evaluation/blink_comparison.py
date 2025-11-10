@@ -8,9 +8,6 @@ import mne
 import numpy as np
 import pandas as pd
 
-from .blink_detection import DetectionResult
-
-
 def build_indicator_signal(n_samples: int, events: pd.DataFrame) -> np.ndarray:
     """Create a binary signal marking blink intervals."""
 
@@ -25,6 +22,28 @@ def build_indicator_signal(n_samples: int, events: pd.DataFrame) -> np.ndarray:
             continue
         signal[start_idx : end_idx + 1] = 1.0
     return signal
+
+
+def _max_amplitude_within_events(
+    events: pd.DataFrame, signal: np.ndarray | None
+) -> pd.Series:
+    """Return the maximum amplitude of ``signal`` within each blink interval."""
+
+    if signal is None or signal.size == 0:
+        return pd.Series(np.nan, index=events.index, dtype=float)
+
+    max_values = np.full(len(events), np.nan, dtype=float)
+    starts = events["start_blink"].to_numpy(dtype=int)
+    ends = events["end_blink"].to_numpy(dtype=int)
+
+    for idx, (start, end) in enumerate(zip(starts, ends, strict=False)):
+        start_idx = max(int(start), 0)
+        end_idx = min(int(end), signal.size - 1)
+        if end_idx < start_idx:
+            continue
+        max_values[idx] = float(np.max(signal[start_idx : end_idx + 1]))
+
+    return pd.Series(max_values, index=events.index, dtype=float, name="max_amplitude")
 
 
 def _print_indicator_diagnostics(
@@ -135,6 +154,13 @@ def compare_detected_vs_ground_truth(
         detected_df=detected_df,
         ground_truth_df=ground_truth_df,
         tolerance_samples=tolerance_samples,
+    )
+
+    detected_df["max_amplitude"] = _max_amplitude_within_events(
+        detected_df, detected_signal
+    )
+    ground_truth_df["max_amplitude"] = _max_amplitude_within_events(
+        ground_truth_df, detected_signal
     )
 
     start_diff, end_diff = similarity.compute_pairwise_differences(detected_df, ground_truth_df)
