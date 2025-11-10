@@ -58,7 +58,10 @@ def process_channel_data(detector, channel: str, verbose: bool = True) -> None:
         blink_stats["best_robust_std"],
         detector.params["z_thresholds"],
     )
-
+    # What happen if no good blinks are found or all blinks are bad?
+    if df.empty and verbose:
+        logger.warning("No good blinks found in channel: %s", channel)
+        return
     # STEP 5: Compute blink properties
     df = BlinkProperties(
         detector.raw_data.get_data(picks=channel)[0],
