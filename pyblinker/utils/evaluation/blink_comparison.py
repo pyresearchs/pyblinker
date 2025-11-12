@@ -150,18 +150,20 @@ def compare_detected_vs_ground_truth(
     print(f"\nFirst {nprev} rows (ground truth vs detected):")
     print(preview)
 
+    detected_df["max_amplitude"] = _max_amplitude_within_events(
+        detected_df, detected_signal
+        )
+    ground_truth_df["max_amplitude"] = _max_amplitude_within_events(
+        ground_truth_df, detected_signal
+        )
+
     alignments, metrics = compute_alignments_and_metrics(
         detected_df=detected_df,
         ground_truth_df=ground_truth_df,
         tolerance_samples=tolerance_samples,
     )
 
-    detected_df["max_amplitude"] = _max_amplitude_within_events(
-        detected_df, detected_signal
-    )
-    ground_truth_df["max_amplitude"] = _max_amplitude_within_events(
-        ground_truth_df, detected_signal
-    )
+
 
     start_diff, end_diff = similarity.compute_pairwise_differences(detected_df, ground_truth_df)
     ok_start = start_diff <= tolerance_samples if start_diff.size else np.array([], dtype=bool)
