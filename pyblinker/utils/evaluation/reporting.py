@@ -222,7 +222,7 @@ def make_diff_table(
         idx_gt = alignment.ground_truth_idx
         idx_det = alignment.detected_idx
         assert idx_gt is not None and idx_det is not None
-        midpoint_sample = (gt_start[idx_gt] + detected_start[idx_det]) / 2.0
+        start_sample = int(min(gt_start[idx_gt], detected_start[idx_det]))
         det_amp_val = (
             float(detected_amp[idx_det]) if idx_det < detected_amp.size else np.nan
         )
@@ -244,7 +244,7 @@ def make_diff_table(
                 "end_diff": float(alignment.end_diff),
                 "status": status,
                 "event_label": DIFF_EVENT_LABEL_MATCH,
-                "time_sec": _to_seconds(midpoint_sample, sampling_rate_hz),
+                "time_sec": _to_seconds(start_sample, sampling_rate_hz),
             }
         )
 
@@ -300,7 +300,11 @@ def annotations_from_diff_table(
         if end_sample < start_sample:
             continue
 
-        onset = float(_to_seconds(start_sample, sampling_rate_hz))
+        onset = (
+            float(row.time_sec)
+            if hasattr(row, "time_sec") and pd.notna(row.time_sec)
+            else float(_to_seconds(start_sample, sampling_rate_hz))
+        )
         duration = float(_duration_seconds(start_sample, end_sample, sampling_rate_hz))
 
         onsets.append(onset)
