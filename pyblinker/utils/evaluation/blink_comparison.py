@@ -75,15 +75,29 @@ def compute_alignments_and_metrics(
     detected_df: pd.DataFrame,
     ground_truth_df: pd.DataFrame,
     tolerance_samples: int,
+    *,
+    amplitude_rtol: float | None = None,
+    amplitude_atol: float | None = None,
+    require_both_conditions: bool | None = None,
 ):
     """Return alignments and metrics for two blink event tables."""
 
     from . import similarity
 
+    if amplitude_rtol is None:
+        amplitude_rtol = similarity.DEFAULT_AMPLITUDE_RTOL
+    if amplitude_atol is None:
+        amplitude_atol = similarity.DEFAULT_AMPLITUDE_ATOL
+    if require_both_conditions is None:
+        require_both_conditions = similarity.DEFAULT_REQUIRE_BOTH_CONDITIONS
+
     alignments = similarity.align_events(
         detected_df=detected_df,
         ground_truth_df=ground_truth_df,
         tolerance_samples=tolerance_samples,
+        amplitude_rtol=amplitude_rtol,
+        amplitude_atol=amplitude_atol,
+        require_both_conditions=require_both_conditions,
     )
     metrics = similarity.compute_alignment_metrics(alignments, tolerance_samples)
     return alignments, metrics
@@ -124,6 +138,9 @@ def compare_detected_vs_ground_truth(
     sampling_rate_hz: float,
     *,
     tolerance_samples: int,
+    amplitude_rtol: float | None = None,
+    amplitude_atol: float | None = None,
+    require_both_conditions: bool | None = None,
     n_preview_rows: int,
     n_diff_rows: int,
     ground_truth_signal: np.ndarray | None = None,
@@ -161,6 +178,9 @@ def compare_detected_vs_ground_truth(
         detected_df=detected_df,
         ground_truth_df=ground_truth_df,
         tolerance_samples=tolerance_samples,
+        amplitude_rtol=amplitude_rtol,
+        amplitude_atol=amplitude_atol,
+        require_both_conditions=require_both_conditions,
     )
 
 

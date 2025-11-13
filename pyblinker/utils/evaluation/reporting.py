@@ -226,6 +226,41 @@ def _build_alignment_annotation_payload(
     durations: list[float] = []
     descriptions: list[str] = []
 
+    last_gt_annotation: tuple[int, int, int] | None = None
+    last_det_annotation: tuple[int, int, int] | None = None
+
+    def _maybe_merge_interval(
+        *,
+        last_annotation: tuple[int, int, int] | None,
+        current_start: int,
+        current_end: int,
+        onset_list: list[float],
+        duration_list: list[float],
+        rate_hz: float,
+    ) -> tuple[int, int, int] | None:
+        """Merge overlapping annotations expanded by ``tolerance_samples``."""
+
+        if last_annotation is None:
+            return None
+
+        index, prev_start, prev_end = last_annotation
+        prev_expanded_start = prev_start - tolerance_samples
+        prev_expanded_end = prev_end + tolerance_samples
+        curr_expanded_start = current_start - tolerance_samples
+        curr_expanded_end = current_end + tolerance_samples
+
+        if max(prev_expanded_start, curr_expanded_start) <= min(
+            prev_expanded_end, curr_expanded_end
+        ):
+            merged_start = min(prev_start, current_start)
+            merged_end = max(prev_end, current_end)
+            onset_list[index] = float(_to_seconds(merged_start, rate_hz))
+            duration_list[index] = float(
+                _duration_seconds(merged_start, merged_end, rate_hz)
+            )
+            return (index, merged_start, merged_end)
+        return None
+
     for alignment in alignments_list:
         if alignment.ground_truth_idx is not None and alignment.detected_idx is not None:
             gt_idx = alignment.ground_truth_idx
@@ -244,24 +279,66 @@ def _build_alignment_annotation_payload(
                 onsets.append(float(gt_onset + det_onset) / 2.0)
                 durations.append(float(gt_duration + det_duration) / 2.0)
                 descriptions.append("blink")
+                last_gt_annotation = None
+                last_det_annotation = None
             else:
                 onsets.extend([float(gt_onset), float(det_onset)])
                 durations.extend([float(gt_duration), float(det_duration)])
                 descriptions.extend(["blink_ground_truth", "blink_detected"])
+                last_gt_annotation = (
+                    len(onsets) - 2,
+                    gt_start,
+                    gt_end,
+                )
+                last_det_annotation = (
+                    len(onsets) - 1,
+                    det_start,
+                    det_end,
+                )
         elif alignment.ground_truth_idx is not None:
             gt_idx = alignment.ground_truth_idx
             gt_start = int(ground_truth_starts[gt_idx])
             gt_end = int(ground_truth_ends[gt_idx])
-            onsets.append(float(_to_seconds(gt_start, sampling_rate_hz)))
-            durations.append(float(_duration_seconds(gt_start, gt_end, sampling_rate_hz)))
-            descriptions.append("blink_ground_truth")
+            merged = _maybe_merge_interval(
+                last_annotation=last_gt_annotation,
+                current_start=gt_start,
+                current_end=gt_end,
+                onset_list=onsets,
+                duration_list=durations,
+                rate_hz=sampling_rate_hz,
+            )
+            if merged is None:
+                onsets.append(float(_to_seconds(gt_start, sampling_rate_hz)))
+                durations.append(
+                    float(_duration_seconds(gt_start, gt_end, sampling_rate_hz))
+                )
+                descriptions.append("blink_ground_truth")
+                last_gt_annotation = (len(onsets) - 1, gt_start, gt_end)
+            else:
+                last_gt_annotation = merged
+            last_det_annotation = None
         elif alignment.detected_idx is not None:
             det_idx = alignment.detected_idx
             det_start = int(detected_starts[det_idx])
             det_end = int(detected_ends[det_idx])
-            onsets.append(float(_to_seconds(det_start, sampling_rate_hz)))
-            durations.append(float(_duration_seconds(det_start, det_end, sampling_rate_hz)))
-            descriptions.append("blink_detected")
+            merged = _maybe_merge_interval(
+                last_annotation=last_det_annotation,
+                current_start=det_start,
+                current_end=det_end,
+                onset_list=onsets,
+                duration_list=durations,
+                rate_hz=sampling_rate_hz,
+            )
+            if merged is None:
+                onsets.append(float(_to_seconds(det_start, sampling_rate_hz)))
+                durations.append(
+                    float(_duration_seconds(det_start, det_end, sampling_rate_hz))
+                )
+                descriptions.append("blink_detected")
+                last_det_annotation = (len(onsets) - 1, det_start, det_end)
+            else:
+                last_det_annotation = merged
+            last_gt_annotation = None
 
     return alignments_list, onsets, durations, descriptions
 

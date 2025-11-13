@@ -16,6 +16,11 @@ import pandas as pd
 
 REQUIRED_COLUMNS = ("start_blink", "end_blink")
 
+DEFAULT_TOLERANCE_SAMPLES = 1
+DEFAULT_AMPLITUDE_RTOL = 1e-6
+DEFAULT_AMPLITUDE_ATOL = 1e-12
+DEFAULT_REQUIRE_BOTH_CONDITIONS = True
+
 
 @dataclass(slots=True)
 class Alignment:
@@ -25,13 +30,13 @@ class Alignment:
     detected_idx: Optional[int]
     start_diff: Optional[float]
     end_diff: Optional[float]
+    overlap_samples: int = 0
+    conditions_satisfied: bool = False
 
-    def is_match(self, tolerance_samples: int) -> bool:
-        """Return ``True`` when both start and end diffs are within tolerance."""
+    def is_match(self, tolerance_samples: int) -> bool:  # noqa: ARG002 - signature retained for compatibility
+        """Return ``True`` when amplitude and overlap conditions were satisfied."""
 
-        if self.start_diff is None or self.end_diff is None:
-            return False
-        return abs(self.start_diff) <= tolerance_samples and abs(self.end_diff) <= tolerance_samples
+        return bool(self.conditions_satisfied)
 
 
 def coerce_to_one_based(df_or_array_like: Iterable) -> pd.DataFrame:
@@ -117,164 +122,168 @@ def validate_event_table(df: pd.DataFrame) -> None:
         raise ValueError("Blink events must be sorted by start_blink in ascending order.")
 
 
+@dataclass(slots=True)
+class _CandidateMatch:
+    """Container for ranking admissible detected/ground-truth pairs."""
+
+    sort_key: tuple[float, int, float, int, int]
+    detected_idx: int
+    ground_truth_idx: int
+    overlap_length: int
+    amplitude_similar: bool
+    has_overlap: bool
+    conditions_satisfied: bool
+
+
+def _expanded_interval(start: int, end: int, tolerance: int) -> tuple[int, int]:
+    """Return a tolerance-expanded interval inclusive of both endpoints."""
+
+    expanded_start = int(start) - tolerance
+    expanded_end = int(end) + tolerance
+    if expanded_start > expanded_end:
+        expanded_start, expanded_end = expanded_end, expanded_start
+    return expanded_start, expanded_end
+
+
+def _overlap_length(
+    detected_start: int,
+    detected_end: int,
+    ground_truth_start: int,
+    ground_truth_end: int,
+    tolerance_samples: int,
+) -> int:
+    """Return the number of samples of overlap after tolerance expansion."""
+
+    det_start_exp, det_end_exp = _expanded_interval(
+        detected_start, detected_end, tolerance_samples
+    )
+    gt_start_exp, gt_end_exp = _expanded_interval(
+        ground_truth_start, ground_truth_end, tolerance_samples
+    )
+
+    overlap_start = max(det_start_exp, gt_start_exp)
+    overlap_end = min(det_end_exp, gt_end_exp)
+    if overlap_end < overlap_start:
+        return 0
+    return int(overlap_end - overlap_start + 1)
+
+
+def _amplitudes_are_similar(
+    detected_value: float,
+    ground_truth_value: float,
+    *,
+    rtol: float,
+    atol: float,
+) -> bool:
+    """Return ``True`` when both amplitudes are finite and ``numpy.isclose``."""
+
+    if not (np.isfinite(detected_value) and np.isfinite(ground_truth_value)):
+        return False
+    return bool(np.isclose(detected_value, ground_truth_value, rtol=rtol, atol=atol))
+
+
+def _build_candidate_matches(
+    detected_start: np.ndarray,
+    detected_end: np.ndarray,
+    ground_truth_start: np.ndarray,
+    ground_truth_end: np.ndarray,
+    detected_amplitude: Optional[np.ndarray],
+    ground_truth_amplitude: Optional[np.ndarray],
+    *,
+    tolerance_samples: int,
+    amplitude_rtol: float,
+    amplitude_atol: float,
+    require_both_conditions: bool,
+) -> list[_CandidateMatch]:
+    """Return all admissible candidate matches obeying configured criteria."""
+
+    candidates: list[_CandidateMatch] = []
+
+    amplitude_available = detected_amplitude is not None and ground_truth_amplitude is not None
+
+    for det_idx in range(detected_start.size):
+        det_s = int(detected_start[det_idx])
+        det_e = int(detected_end[det_idx])
+        det_amp = float(detected_amplitude[det_idx]) if detected_amplitude is not None else None
+
+        for gt_idx in range(ground_truth_start.size):
+            gt_s = int(ground_truth_start[gt_idx])
+            gt_e = int(ground_truth_end[gt_idx])
+            gt_amp = (
+                float(ground_truth_amplitude[gt_idx])
+                if ground_truth_amplitude is not None
+                else None
+            )
+
+            overlap = _overlap_length(det_s, det_e, gt_s, gt_e, tolerance_samples)
+            has_overlap = overlap > 0
+
+            amplitude_similar = True
+            amplitude_diff = 0.0
+            if amplitude_available:
+                amplitude_similar = False
+                amplitude_diff = float("inf")
+                if det_amp is not None and gt_amp is not None:
+                    amplitude_similar = _amplitudes_are_similar(
+                        det_amp,
+                        gt_amp,
+                        rtol=amplitude_rtol,
+                        atol=amplitude_atol,
+                    )
+                    if amplitude_similar:
+                        amplitude_diff = abs(det_amp - gt_amp)
+
+            if require_both_conditions:
+                meets_criteria = amplitude_similar and has_overlap
+            else:
+                meets_criteria = amplitude_similar or has_overlap
+
+            if not meets_criteria:
+                continue
+
+            boundary_diff = abs(det_s - gt_s) + abs(det_e - gt_e)
+            amplitude_diff_value = float(amplitude_diff)
+
+            sort_key = (
+                -float(overlap),
+                int(boundary_diff),
+                amplitude_diff_value,
+                int(det_idx),
+                int(gt_idx),
+            )
+
+            candidates.append(
+                _CandidateMatch(
+                    sort_key=sort_key,
+                    detected_idx=int(det_idx),
+                    ground_truth_idx=int(gt_idx),
+                    overlap_length=int(overlap),
+                    amplitude_similar=bool(amplitude_similar),
+                    has_overlap=bool(has_overlap),
+                    conditions_satisfied=bool(meets_criteria),
+                )
+            )
+
+    return candidates
+
+
 def align_events(
     detected_df: pd.DataFrame,
     ground_truth_df: pd.DataFrame,
     tolerance_samples: int,
+    *,
+    amplitude_rtol: float = DEFAULT_AMPLITUDE_RTOL,
+    amplitude_atol: float = DEFAULT_AMPLITUDE_ATOL,
+    require_both_conditions: bool = DEFAULT_REQUIRE_BOTH_CONDITIONS,
 ) -> list[Alignment]:
-    """
-    Greedily align detected and ground truth blink events by sample index.
+    """Align detected and ground truth blink events using overlap and amplitude.
 
-    The routine walks both event lists once (O(n)) and tries to pair each
-    ground-truth (GT) blink with the earliest *eligible* detected blink.
-    A pair is considered a **match** when **both** the start and end deltas
-    (detected − ground truth, in samples) are within `tolerance_samples`.
-    All indices are **1-based** and inputs must be sorted by ``start_blink``.
-
-    The algorithm is intentionally simple and local (no backtracking):
-    it compares the "current" GT blink and "current" detected blink and then:
-      1) records a **match** if both deltas are within tolerance, or
-      2) records an **unpaired GT** if the GT starts earlier, or
-      3) records an **unpaired detection** if the detection starts earlier, or
-      4) if starts are equal but outside tolerance, records a **paired-but-out-of-tolerance**
-         entry (useful for error analysis) and advances both.
-
-    Parameters
-    ----------
-    detected_df : pd.DataFrame
-        Detected blink events with columns:
-          - ``start_blink`` (int): 1-based start index
-          - ``end_blink``   (int): 1-based end index
-        Must be sorted by ``start_blink``.
-    ground_truth_df : pd.DataFrame
-        Ground-truth blink events with the same schema and sort order.
-    tolerance_samples : int
-        Maximum allowed absolute difference (in samples) for both start and end
-        to count as a match. Must be non-negative.
-
-    Returns
-    -------
-    list[Alignment]
-        A list of Alignment objects with fields:
-          - ``ground_truth_idx`` : int | None
-          - ``detected_idx``     : int | None
-          - ``start_diff``       : float | None   (detected − GT; None if unpaired)
-          - ``end_diff``         : float | None   (detected − GT; None if unpaired)
-
-        Semantics:
-          - **Matched pair** → both indices are ints; diffs are floats within tolerance.
-          - **Unpaired GT** → ``detected_idx`` is None; diffs are None.
-          - **Unpaired detection** → ``ground_truth_idx`` is None; diffs are None.
-          - **Paired-but-out-of-tolerance** → both indices are ints; diffs present,
-            at least one exceeds tolerance. This captures "near misses" when starts
-            are equal but timing is off.
-
-    Notes
-    -----
-    • Greedy, single-pass alignment favors *earliest plausible* pairings.
-      If two detected events are both close to a GT event, only the first can match.
-    • Use the presence/absence of diffs to separate *matching quality* (tolerance)
-      from *coverage* (paired vs unpaired).
-
-    Flowchart (decision per pair)
-    -----------------------------
-        +-----------------------------+
-        | Compute start_delta,        |
-        |         end_delta           |
-        +--------------+--------------+
-                       |
-                       v
-        +-----------------------------+
-        | |start_delta| <= tol AND    |
-        | |end_delta|   <= tol ?      |
-        +--------------+--------------+
-                       | Yes
-                       v
-             [Record MATCH; advance both]
-                       |
-                     (done)
-                       |
-                       No
-                       v
-        +-----------------------------+
-        | gt_start < det_start ?      |
-        +--------------+--------------+
-           Yes                        No
-           v                          v
-    [Record UNPAIRED GT;        +------------------------+
-     advance GT only]           | det_start < gt_start ? |
-                                +-----------+------------+
-                                            | Yes
-                                            v
-                                   [Record UNPAIRED DET;
-                                    advance Det only]
-                                            |
-                                           No  (starts equal)
-                                            v
-                       [Record PAIRED-BUT-OUT-OF-TOLERANCE;
-                                    advance both]
-
-    Example A — Standard matching, misses, and false positives
-    ----------------------------------------------------------
-    >>> import pandas as pd
-    >>> detected = pd.DataFrame({
-    ...     "start_blink": [100, 310, 600],
-    ...     "end_blink":   [150, 360, 650],
-    ... })
-    >>> ground_truth = pd.DataFrame({
-    ...     "start_blink": [ 95, 300, 700],
-    ...     "end_blink":   [145, 350, 750],
-    ... })
-    >>> alignments = align_events(detected, ground_truth, tolerance_samples=20)
-    >>> for a in alignments:
-    ...     print(a)
-    Alignment(ground_truth_idx=0, detected_idx=0, start_diff=5.0, end_diff=5.0)
-    Alignment(ground_truth_idx=1, detected_idx=1, start_diff=10.0, end_diff=10.0)
-    Alignment(ground_truth_idx=2, detected_idx=None, start_diff=None, end_diff=None)
-    Alignment(ground_truth_idx=None, detected_idx=2, start_diff=None, end_diff=None)
-
-    Walk-through:
-      • GT[0] (95–145) vs Det[0] (100–150): deltas = (+5, +5) → within tol → MATCH.
-      • GT[1] (300–350) vs Det[1] (310–360): deltas = (+10, +10) → within tol → MATCH.
-      • GT[2] (700–750) vs Det[2] (600–650):
-            starts: 700 > 600 → Det starts earlier → UNPAIRED Det[2], advance Det.
-            (No detections left) → remaining GT[2] becomes UNPAIRED GT.
-
-    Timeline (1-based samples; ≈ = within tol)
-      GT:      [95---------145]   [300--------350]                 [700--------750]
-      Det:         [100---------150]   [310--------360]   [600----650]
-                 ≈ match #0            ≈ match #1             false positive
-                                                               (then GT miss)
-
-    Example B — Starts equal but end outside tolerance → paired-but-out-of-tolerance
-    --------------------------------------------------------------------------------
-    >>> detected = pd.DataFrame({
-    ...     "start_blink": [200],
-    ...     "end_blink":   [260],      # ends 30 samples later
-    ... })
-    >>> ground_truth = pd.DataFrame({
-    ...     "start_blink": [200],
-    ...     "end_blink":   [230],
-    ... })
-    >>> align_events(detected, ground_truth, tolerance_samples=20)[0]
-    Alignment(ground_truth_idx=0, detected_idx=0, start_diff=0.0, end_diff=30.0)
-
-    Because starts are equal but |end_diff| = 30 > tol, the algorithm records a
-    **paired-but-out-of-tolerance** entry and advances both. This preserves the
-    near-miss information (useful for bias/latency analysis).
-
-    Example C — Tolerance = 0 (exact matching only)
-    -----------------------------------------------
-    >>> detected = pd.DataFrame({"start_blink":[100], "end_blink":[150]})
-    >>> ground_truth = pd.DataFrame({"start_blink":[101], "end_blink":[151]})
-    >>> align_events(detected, ground_truth, tolerance_samples=0)
-    [
-      Alignment(ground_truth_idx=None, detected_idx=0, start_diff=None, end_diff=None),
-      Alignment(ground_truth_idx=0, detected_idx=None, start_diff=None, end_diff=None),
-    ]
-
-    With exact matching, any offset produces two unpaired entries (a false positive
-    and a miss) unless the indices are identical.
+    The procedure enumerates all detected/ground-truth combinations whose
+    tolerance-expanded intervals overlap and, when amplitude information is
+    available, whose ``max_amplitude`` values are similar within the configured
+    tolerances. Candidate pairs are greedily selected using deterministic
+    tie-breaking (largest overlap, then smallest boundary difference, then
+    smallest amplitude difference) to ensure a one-to-one mapping.
     """
 
     if tolerance_samples < 0:
@@ -288,79 +297,85 @@ def align_events(
     gt_start = ground_truth_df["start_blink"].to_numpy(dtype=int)
     gt_end = ground_truth_df["end_blink"].to_numpy(dtype=int)
 
-    alignments: list[Alignment] = []
-    det_idx = gt_idx = 0
+    det_amp_series = detected_df.get("max_amplitude")
+    gt_amp_series = ground_truth_df.get("max_amplitude")
 
-    while gt_idx < len(gt_start) and det_idx < len(det_start):
-        start_delta = int(det_start[det_idx]) - int(gt_start[gt_idx])
-        end_delta = int(det_end[det_idx]) - int(gt_end[gt_idx])
+    det_amp = None
+    gt_amp = None
+    if det_amp_series is not None and gt_amp_series is not None:
+        det_amp = det_amp_series.to_numpy(dtype=np.float64)
+        gt_amp = gt_amp_series.to_numpy(dtype=np.float64)
 
-        if abs(start_delta) <= tolerance_samples and abs(end_delta) <= tolerance_samples:
-            alignments.append(
-                Alignment(
-                    ground_truth_idx=gt_idx,
-                    detected_idx=det_idx,
-                    start_diff=float(start_delta),
-                    end_diff=float(end_delta),
-                )
-            )
-            gt_idx += 1
-            det_idx += 1
+    candidates = _build_candidate_matches(
+        det_start,
+        det_end,
+        gt_start,
+        gt_end,
+        det_amp,
+        gt_amp,
+        tolerance_samples=tolerance_samples,
+        amplitude_rtol=amplitude_rtol,
+        amplitude_atol=amplitude_atol,
+        require_both_conditions=require_both_conditions,
+    )
+
+    matches: dict[int, int] = {}
+    matched_detections: set[int] = set()
+    selected_candidates: dict[tuple[int, int], _CandidateMatch] = {}
+
+    for candidate in sorted(candidates, key=lambda c: c.sort_key):
+        gt_idx = candidate.ground_truth_idx
+        det_idx = candidate.detected_idx
+        if gt_idx in matches or det_idx in matched_detections:
             continue
+        matches[gt_idx] = det_idx
+        matched_detections.add(det_idx)
+        selected_candidates[(gt_idx, det_idx)] = candidate
 
-        if gt_start[gt_idx] < det_start[det_idx]:
+    alignments: list[Alignment] = []
+    for gt_idx in range(gt_start.size):
+        det_idx = matches.get(gt_idx)
+        if det_idx is None:
             alignments.append(
                 Alignment(
                     ground_truth_idx=gt_idx,
                     detected_idx=None,
                     start_diff=None,
                     end_diff=None,
+                    overlap_samples=0,
+                    conditions_satisfied=False,
                 )
             )
-            gt_idx += 1
-        elif det_start[det_idx] < gt_start[gt_idx]:
-            alignments.append(
-                Alignment(
-                    ground_truth_idx=None,
-                    detected_idx=det_idx,
-                    start_diff=None,
-                    end_diff=None,
-                )
-            )
-            det_idx += 1
-        else:
-            alignments.append(
-                Alignment(
-                    ground_truth_idx=gt_idx,
-                    detected_idx=det_idx,
-                    start_diff=float(start_delta),
-                    end_diff=float(end_delta),
-                )
-            )
-            gt_idx += 1
-            det_idx += 1
+            continue
 
-    while gt_idx < len(gt_start):
+        candidate = selected_candidates.get((gt_idx, det_idx))
+        overlap_samples = candidate.overlap_length if candidate else 0
+        conditions_satisfied = candidate.conditions_satisfied if candidate else False
+
         alignments.append(
             Alignment(
                 ground_truth_idx=gt_idx,
-                detected_idx=None,
-                start_diff=None,
-                end_diff=None,
+                detected_idx=det_idx,
+                start_diff=float(int(det_start[det_idx]) - int(gt_start[gt_idx])),
+                end_diff=float(int(det_end[det_idx]) - int(gt_end[gt_idx])),
+                overlap_samples=int(overlap_samples),
+                conditions_satisfied=bool(conditions_satisfied),
             )
         )
-        gt_idx += 1
 
-    while det_idx < len(det_start):
+    for det_idx in range(det_start.size):
+        if det_idx in matched_detections:
+            continue
         alignments.append(
             Alignment(
                 ground_truth_idx=None,
                 detected_idx=det_idx,
                 start_diff=None,
                 end_diff=None,
+                overlap_samples=0,
+                conditions_satisfied=False,
             )
         )
-        det_idx += 1
 
     return alignments
 
@@ -377,17 +392,17 @@ def compute_alignment_metrics(
     ``total_detected``
         Number of detected events.
     ``paired_events``
-        Count of alignments containing both detected and ground truth events.
+        Count of alignments satisfying the amplitude/overlap criteria.
     ``matches_within_tolerance``
-        Number of paired events whose start and end differences are within tolerance.
+        Number of paired events whose start and end differences fall within ``tolerance_samples``.
     ``pairs_outside_tolerance``
-        Number of paired events outside tolerance.
+        Number of paired events that violate the boundary tolerance.
     ``ground_truth_only``
         Ground truth events without a detected counterpart.
     ``detected_only``
         Detected events without a ground truth counterpart.
     ``share_within_tolerance``
-        Percentage of all unique events that fall within tolerance.
+        Percentage of all unique events that fall within the boundary tolerance window.
     """
 
     if tolerance_samples < 0:
@@ -395,12 +410,23 @@ def compute_alignment_metrics(
 
     total_ground_truth = sum(a.ground_truth_idx is not None for a in alignments)
     total_detected = sum(a.detected_idx is not None for a in alignments)
-    paired_events = [a for a in alignments if a.ground_truth_idx is not None and a.detected_idx is not None]
-    matches_within_tolerance = sum(a.is_match(tolerance_samples) for a in paired_events)
-    pairs_outside_tolerance = len(paired_events) - matches_within_tolerance
+    paired_events = [
+        a for a in alignments if a.ground_truth_idx is not None and a.detected_idx is not None
+    ]
+
+    boundary_matches = sum(
+        (
+            a.start_diff is not None
+            and a.end_diff is not None
+            and abs(float(a.start_diff)) <= tolerance_samples
+            and abs(float(a.end_diff)) <= tolerance_samples
+        )
+        for a in paired_events
+    )
+    pairs_outside_tolerance = len(paired_events) - boundary_matches
     ground_truth_only = sum(a.ground_truth_idx is not None and a.detected_idx is None for a in alignments)
     detected_only = sum(a.detected_idx is not None and a.ground_truth_idx is None for a in alignments)
-    unique_total = matches_within_tolerance + pairs_outside_tolerance + ground_truth_only + detected_only
+    unique_total = boundary_matches + pairs_outside_tolerance + ground_truth_only + detected_only
 
     def _pct(n: int, d: int) -> float:
         return (n / d) * 100.0 if d else float("nan")
@@ -409,11 +435,11 @@ def compute_alignment_metrics(
         "total_ground_truth": float(total_ground_truth),
         "total_detected": float(total_detected),
         "paired_events": float(len(paired_events)),
-        "matches_within_tolerance": float(matches_within_tolerance),
+        "matches_within_tolerance": float(boundary_matches),
         "pairs_outside_tolerance": float(pairs_outside_tolerance),
         "ground_truth_only": float(ground_truth_only),
         "detected_only": float(detected_only),
-        "share_within_tolerance": _pct(matches_within_tolerance, unique_total),
+        "share_within_tolerance": _pct(boundary_matches, unique_total),
         "unique_total": float(unique_total),
     }
 

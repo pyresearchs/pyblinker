@@ -96,14 +96,23 @@ signal=raw.get_data(picks=CHANNELS_TO_KEEP[0])[0]
 sampling_rate_hz=200
 # # 13) Compare detected vs ground-truth blink intervals (prints previews/diffs)
 _diagnostic_raw = blink_comparison.compare_detected_vs_ground_truth(
-	detection,
-	ground_truth_events,
-	sampling_rate_hz,
-	tolerance_samples=TOLERANCE_SAMPLES,
-	n_preview_rows=N_PREVIEW_ROWS,
-	n_diff_rows=N_DIFF_ROWS,
-	detected_signal=signal
-	)
+        detection,
+        ground_truth_events,
+        sampling_rate_hz,
+        tolerance_samples=TOLERANCE_SAMPLES,
+        n_preview_rows=N_PREVIEW_ROWS,
+        n_diff_rows=N_DIFF_ROWS,
+        detected_signal=signal
+        )
+
+annotations = _diagnostic_raw.annotations
+if annotations is not None:
+        assert len(annotations) == 6, f"Expected 6 annotations, found {len(annotations)}"
+        print(f"[mne] Applying {len(annotations)} comparison annotations to the EEG raw")
+        raw.set_annotations(annotations)
+else:
+        print("[mne] No blink annotations generated; clearing annotations on the EEG raw")
+        raw.set_annotations(None)
 #
 # # # 14) Compute alignment table and summary metrics (matches, differences, etc.)
 # alignments, metrics = blink_comparison.compute_alignments_and_metrics(
