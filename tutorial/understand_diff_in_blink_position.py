@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 import mne
+import numpy as np
 
 
 BASE_DIR = Path(__file__).resolve().parents[1]
@@ -56,7 +57,31 @@ def main() -> mne.io.Raw:
         detected_signal=detected_signal,
     )
 
-    diagnostic_raw = comparison.diagnostic_raw
+    annotations = comparison.annotations
+
+    min_len = min(len(ground_truth_signal), len(detected_signal))
+    if min_len == 0:
+        raise RuntimeError("Cannot build diagnostic RawArray without blink signals")
+
+    gt_norm = ground_truth_signal.astype(float, copy=True)
+    det_norm = detected_signal.astype(float, copy=True)
+    for signal in (gt_norm, det_norm):
+        max_val = float(abs(signal).max()) if signal.size else 0.0
+        if max_val > 0:
+            signal /= max_val
+
+    data = np.vstack([gt_norm[:min_len], det_norm[:min_len]])
+    info = mne.create_info(
+        ch_names=["ground_truth_blink_signal", "detected_blink_signal"],
+        sfreq=float(SAMPLING_RATE_HZ),
+        ch_types="eeg",
+    )
+    diagnostic_raw = mne.io.RawArray(data, info, verbose="ERROR")
+
+    if annotations is not None:
+        diagnostic_raw.set_annotations(annotations)
+    else:
+        diagnostic_raw.set_annotations(None)
 
     if os.environ.get("PYBLINKER_SKIP_PLOT") == "1":
         print("[info] Skipping raw.plot() because PYBLINKER_SKIP_PLOT=1")

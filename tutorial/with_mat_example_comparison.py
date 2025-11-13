@@ -101,20 +101,21 @@ comparison = blink_comparison.compare_detected_vs_ground_truth(
     detected_signal=detection.signal
     )
 
-_diagnostic_raw = comparison.diagnostic_raw
 alignments = comparison.alignments or []
 metrics = comparison.metrics
+annotations = comparison.annotations
 
 # 15) Build MNE Annotations to visualize comparisons in the Raw browser
-annotations = blink_comparison.build_comparison_annotations(
-    ground_truth_starts=ground_truth_events["start_blink"].to_numpy(),
-    ground_truth_ends=ground_truth_events["end_blink"].to_numpy(),
-    detected_starts=detection.events["start_blink"].to_numpy(),
-    detected_ends=detection.events["end_blink"].to_numpy(),
-    sampling_rate_hz=detection.sampling_rate_hz,
-    tolerance_samples=TOLERANCE_SAMPLES,
-    alignments=alignments,
-    )
+if annotations is None:
+    annotations = blink_comparison.build_comparison_annotations(
+        ground_truth_starts=ground_truth_events["start_blink"].to_numpy(),
+        ground_truth_ends=ground_truth_events["end_blink"].to_numpy(),
+        detected_starts=detection.events["start_blink"].to_numpy(),
+        detected_ends=detection.events["end_blink"].to_numpy(),
+        sampling_rate_hz=detection.sampling_rate_hz,
+        tolerance_samples=TOLERANCE_SAMPLES,
+        alignments=alignments,
+        )
 
 # 16) Apply annotations (or clear if none)
 if annotations is not None:

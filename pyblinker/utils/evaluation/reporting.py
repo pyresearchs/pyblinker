@@ -260,244 +260,66 @@ def make_diff_table(
     return diff_df
 
 
-def _build_alignment_annotation_payload(
-    ground_truth_starts: np.ndarray,
-    ground_truth_ends: np.ndarray,
-    detected_starts: np.ndarray,
-    detected_ends: np.ndarray,
-    sampling_rate_hz: float,
-    tolerance_samples: int,
-    alignments: Optional[Iterable[Alignment]] = None,
-) -> tuple[list[Alignment], list[float], list[float], list[str]]:
-    """Return alignments alongside onset/duration/description lists for annotations."""
+def annotations_from_diff_table(
+    diff_table: pd.DataFrame, sampling_rate_hz: float
+) -> mne.Annotations | None:
+    """Create :class:`mne.Annotations` from the diff table rows."""
 
-    if alignments is None:
-        gt_df = pd.DataFrame({"start_blink": ground_truth_starts, "end_blink": ground_truth_ends})
-        det_df = pd.DataFrame({"start_blink": detected_starts, "end_blink": detected_ends})
-        alignments_list = similarity.align_events(det_df, gt_df, tolerance_samples)
-    else:
-        alignments_list = list(alignments)
+    if diff_table.empty:
+        return None
+
+    label_to_description = {
+        DIFF_EVENT_LABEL_MATCH: ANN_DESCRIPTION_MATCH,
+        DIFF_EVENT_LABEL_DETECTED: ANN_DESCRIPTION_DETECTED,
+        DIFF_EVENT_LABEL_GROUND_TRUTH: ANN_DESCRIPTION_GROUND_TRUTH,
+    }
 
     onsets: list[float] = []
     durations: list[float] = []
     descriptions: list[str] = []
 
-    last_gt_annotation: tuple[int, int, int] | None = None
-    last_det_annotation: tuple[int, int, int] | None = None
+    for row in diff_table.itertuples(index=False):
+        description = label_to_description.get(row.event_label)
+        if description is None:
+            continue
 
-    def _maybe_merge_interval(
-        *,
-        last_annotation: tuple[int, int, int] | None,
-        current_start: int,
-        current_end: int,
-        onset_list: list[float],
-        duration_list: list[float],
-        rate_hz: float,
-    ) -> tuple[int, int, int] | None:
-        """Merge overlapping annotations expanded by ``tolerance_samples``."""
+        start_candidates = [
+            value
+            for value in (row.ground_truth_start, row.detected_start)
+            if pd.notna(value)
+        ]
+        end_candidates = [
+            value for value in (row.ground_truth_end, row.detected_end) if pd.notna(value)
+        ]
 
-        if last_annotation is None:
-            return None
+        if not start_candidates or not end_candidates:
+            continue
 
-        index, prev_start, prev_end = last_annotation
-        prev_expanded_start = prev_start - tolerance_samples
-        prev_expanded_end = prev_end + tolerance_samples
-        curr_expanded_start = current_start - tolerance_samples
-        curr_expanded_end = current_end + tolerance_samples
+        start_sample = int(min(start_candidates))
+        end_sample = int(max(end_candidates))
+        if end_sample < start_sample:
+            continue
 
-        if max(prev_expanded_start, curr_expanded_start) <= min(
-            prev_expanded_end, curr_expanded_end
-        ):
-            merged_start = min(prev_start, current_start)
-            merged_end = max(prev_end, current_end)
-            onset_list[index] = float(_to_seconds(merged_start, rate_hz))
-            duration_list[index] = float(
-                _duration_seconds(merged_start, merged_end, rate_hz)
-            )
-            return (index, merged_start, merged_end)
+        onset = float(_to_seconds(start_sample, sampling_rate_hz))
+        duration = float(_duration_seconds(start_sample, end_sample, sampling_rate_hz))
+
+        onsets.append(onset)
+        durations.append(duration)
+        descriptions.append(description)
+
+    if not onsets:
         return None
 
-    for alignment in alignments_list:
-        if alignment.ground_truth_idx is not None and alignment.detected_idx is not None:
-            gt_idx = alignment.ground_truth_idx
-            det_idx = alignment.detected_idx
-            gt_start = int(ground_truth_starts[gt_idx])
-            gt_end = int(ground_truth_ends[gt_idx])
-            det_start = int(detected_starts[det_idx])
-            det_end = int(detected_ends[det_idx])
+    order = np.argsort(onsets)
+    ordered_onsets = [onsets[idx] for idx in order]
+    ordered_durations = [durations[idx] for idx in order]
+    ordered_descriptions = [descriptions[idx] for idx in order]
 
-            gt_onset = _to_seconds(gt_start, sampling_rate_hz)
-            det_onset = _to_seconds(det_start, sampling_rate_hz)
-            gt_duration = _duration_seconds(gt_start, gt_end, sampling_rate_hz)
-            det_duration = _duration_seconds(det_start, det_end, sampling_rate_hz)
-
-            if alignment.is_match(tolerance_samples):
-                onsets.append(float(gt_onset + det_onset) / 2.0)
-                durations.append(float(gt_duration + det_duration) / 2.0)
-                descriptions.append(ANN_DESCRIPTION_MATCH)
-                last_gt_annotation = None
-                last_det_annotation = None
-            else:
-                onsets.extend([float(gt_onset), float(det_onset)])
-                durations.extend([float(gt_duration), float(det_duration)])
-                descriptions.extend(
-                    [ANN_DESCRIPTION_GROUND_TRUTH, ANN_DESCRIPTION_DETECTED]
-                )
-                last_gt_annotation = (
-                    len(onsets) - 2,
-                    gt_start,
-                    gt_end,
-                )
-                last_det_annotation = (
-                    len(onsets) - 1,
-                    det_start,
-                    det_end,
-                )
-        elif alignment.ground_truth_idx is not None:
-            gt_idx = alignment.ground_truth_idx
-            gt_start = int(ground_truth_starts[gt_idx])
-            gt_end = int(ground_truth_ends[gt_idx])
-            merged = _maybe_merge_interval(
-                last_annotation=last_gt_annotation,
-                current_start=gt_start,
-                current_end=gt_end,
-                onset_list=onsets,
-                duration_list=durations,
-                rate_hz=sampling_rate_hz,
-            )
-            if merged is None:
-                onsets.append(float(_to_seconds(gt_start, sampling_rate_hz)))
-                durations.append(
-                    float(_duration_seconds(gt_start, gt_end, sampling_rate_hz))
-                )
-                descriptions.append(ANN_DESCRIPTION_GROUND_TRUTH)
-                last_gt_annotation = (len(onsets) - 1, gt_start, gt_end)
-            else:
-                last_gt_annotation = merged
-            last_det_annotation = None
-        elif alignment.detected_idx is not None:
-            det_idx = alignment.detected_idx
-            det_start = int(detected_starts[det_idx])
-            det_end = int(detected_ends[det_idx])
-            merged = _maybe_merge_interval(
-                last_annotation=last_det_annotation,
-                current_start=det_start,
-                current_end=det_end,
-                onset_list=onsets,
-                duration_list=durations,
-                rate_hz=sampling_rate_hz,
-            )
-            if merged is None:
-                onsets.append(float(_to_seconds(det_start, sampling_rate_hz)))
-                durations.append(
-                    float(_duration_seconds(det_start, det_end, sampling_rate_hz))
-                )
-                descriptions.append(ANN_DESCRIPTION_DETECTED)
-                last_det_annotation = (len(onsets) - 1, det_start, det_end)
-            else:
-                last_det_annotation = merged
-            last_gt_annotation = None
-
-    return alignments_list, onsets, durations, descriptions
-
-
-def build_diagnostic_raw(
-    ground_truth_signal: np.ndarray,
-    detected_signal: np.ndarray,
-    ground_truth_starts: np.ndarray,
-    ground_truth_ends: np.ndarray,
-    detected_starts: np.ndarray,
-    detected_ends: np.ndarray,
-    sampling_rate_hz: float,
-    tolerance_samples: int,
-    alignments: Optional[Iterable[Alignment]] = None,
-) -> mne.io.RawArray:
-    """Create an annotated two-channel :class:`mne.io.RawArray` for inspection.
-
-    Annotations are labeled using short descriptions:
-    ``"B"``
-        Detected/ground-truth pairs whose start and end differences are within tolerance.
-    ``"BG"``
-        Events present only in the ground truth table.
-    ``"BD"``
-        Events present only in the detected table or outside tolerance.
-
-    All comparisons and tolerance checks are performed in sample index units (1-based).
-    """
-
-    ground_truth_signal = np.array(ground_truth_signal, dtype=float, copy=True)
-    detected_signal = np.array(detected_signal, dtype=float, copy=True)
-
-    for signal in (ground_truth_signal, detected_signal):
-        max_val = np.max(np.abs(signal)) if signal.size else 0.0
-        if max_val > 0:
-            signal /= max_val
-
-    n_samples = min(len(ground_truth_signal), len(detected_signal))
-    if n_samples == 0:
-        raise ValueError("Signals must contain at least one sample to create RawArray.")
-
-    logger.warning(
-        "Assuming ground truth and detected blink signals are sampled at the same "
-        "rate of %.3f Hz for diagnostic visualization.",
-        float(sampling_rate_hz),
+    return mne.Annotations(
+        onset=ordered_onsets,
+        duration=ordered_durations,
+        description=ordered_descriptions,
     )
 
-    if len(ground_truth_signal) != len(detected_signal):
-        logger.warning(
-            "Signal lengths differ (%d vs %d samples); truncating to the overlapping "
-            "window under the shared sampling-rate assumption.",
-            len(ground_truth_signal),
-            len(detected_signal),
-        )
 
-    data = np.vstack([ground_truth_signal[:n_samples], detected_signal[:n_samples]])
-    info = mne.create_info(
-        ch_names=["ground_truth_blink_signal", "detected_blink_signal"],
-        sfreq=float(sampling_rate_hz),
-        ch_types="eeg",
-    )
-    raw = mne.io.RawArray(data, info, verbose="ERROR")
 
-    (
-        alignments_list,
-        onsets,
-        durations,
-        descriptions,
-    ) = _build_alignment_annotation_payload(
-        ground_truth_starts,
-        ground_truth_ends,
-        detected_starts,
-        detected_ends,
-        sampling_rate_hz,
-        tolerance_samples,
-        alignments,
-    )
-
-    if onsets:
-        annotations = mne.Annotations(onset=onsets, duration=durations, description=descriptions)
-        raw.set_annotations(annotations)
-    else:
-        raw.set_annotations(None)
-
-    logger.info(
-        "[mne] Created synthetic Raw with %d blink annotations (matched: %d, ground truth-only: %d, detected-only: %d)",
-        len(onsets),
-        sum(
-            1
-            for a in alignments_list
-            if a.ground_truth_idx is not None and a.detected_idx is not None
-        ),
-        sum(
-            1
-            for a in alignments_list
-            if a.ground_truth_idx is not None and a.detected_idx is None
-        ),
-        sum(
-            1
-            for a in alignments_list
-            if a.detected_idx is not None and a.ground_truth_idx is None
-        ),
-    )
-
-    return raw

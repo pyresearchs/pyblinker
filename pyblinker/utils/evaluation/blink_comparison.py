@@ -14,7 +14,7 @@ import pandas as pd
 class ComparisonResult:
     """Bundle containing comparison artifacts (metrics, diff table, alignments)."""
 
-    diagnostic_raw: mne.io.RawArray | None
+    annotations: mne.Annotations | None
     alignments: list | None
     metrics: dict[str, float]
     diff_table: pd.DataFrame
@@ -138,19 +138,37 @@ def build_comparison_annotations(
 
     from . import reporting
 
-    _, onsets, durations, descriptions = reporting._build_alignment_annotation_payload(
-        ground_truth_starts,
-        ground_truth_ends,
-        detected_starts,
-        detected_ends,
-        sampling_rate_hz,
-        tolerance_samples,
-        alignments,
+    ground_truth_df = pd.DataFrame(
+        {"start_blink": ground_truth_starts, "end_blink": ground_truth_ends}
+    )
+    detected_df = pd.DataFrame(
+        {"start_blink": detected_starts, "end_blink": detected_ends}
     )
 
-    if onsets:
-        return mne.Annotations(onset=onsets, duration=durations, description=descriptions)
-    return None
+    ground_truth_df["max_amplitude"] = np.nan
+    detected_df["max_amplitude"] = np.nan
+
+    if alignments is None:
+        from . import similarity
+
+        alignments = similarity.align_events(
+            detected_df=detected_df,
+            ground_truth_df=ground_truth_df,
+            tolerance_samples=tolerance_samples,
+        )
+
+    alignments_list = list(alignments)
+
+    diff_table = reporting.make_diff_table(
+        detected_df,
+        ground_truth_df,
+        alignments_list,
+        tolerance_samples,
+        max_rows=len(ground_truth_df) + len(detected_df),
+        sampling_rate_hz=sampling_rate_hz,
+    )
+
+    return reporting.annotations_from_diff_table(diff_table, sampling_rate_hz)
 
 
 def compare_detected_vs_ground_truth(
@@ -282,20 +300,10 @@ def compare_detected_vs_ground_truth(
 
     _print_indicator_diagnostics(gt_signal, det_signal)
 
-    diagnostic_raw = reporting.build_diagnostic_raw(
-        ground_truth_signal=gt_signal,
-        detected_signal=det_signal,
-        ground_truth_starts=ground_truth_df["start_blink"].to_numpy(),
-        ground_truth_ends=ground_truth_df["end_blink"].to_numpy(),
-        detected_starts=detected_df["start_blink"].to_numpy(),
-        detected_ends=detected_df["end_blink"].to_numpy(),
-        sampling_rate_hz=sampling_rate_hz,
-        tolerance_samples=tolerance_samples,
-        alignments=alignments,
-    )
+    annotations = reporting.annotations_from_diff_table(diff_table, sampling_rate_hz)
 
     return ComparisonResult(
-        diagnostic_raw=diagnostic_raw,
+        annotations=annotations,
         alignments=alignments,
         metrics=metrics,
         diff_table=diff_table,

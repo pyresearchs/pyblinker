@@ -73,9 +73,9 @@ def main() -> None:
         detected_signal=signal,
     )
 
-    diagnostic_raw = comparison.diagnostic_raw
     metrics = comparison.metrics
     diff_table = comparison.diff_table
+    annotations = comparison.annotations
 
     if diff_table.empty:
         print("\n[diff] diff_table is empty")
@@ -86,9 +86,8 @@ def main() -> None:
     assert int(metrics["detected_only"]) == 4, metrics
     assert int(metrics["share_within_tolerance"]) == 2, metrics
 
-    annotations = diagnostic_raw.annotations if diagnostic_raw is not None else None
     if annotations is not None:
-        assert len(annotations) == 6, f"Expected 6 annotations, found {len(annotations)}"
+        assert len(annotations) == 7, f"Expected 7 annotations, found {len(annotations)}"
         print(f"[mne] Applying {len(annotations)} comparison annotations to the EEG raw")
         raw.set_annotations(annotations)
     else:
