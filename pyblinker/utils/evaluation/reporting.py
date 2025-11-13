@@ -131,15 +131,32 @@ def make_diff_table(
     gt_start = ground_truth_df["start_blink"].astype(int).to_numpy()
     gt_end = ground_truth_df["end_blink"].astype(int).to_numpy()
 
-    rows: list[dict[str, Optional[float]]] = []
+    detected_amp_series = detected_df.get("max_amplitude")
+    if detected_amp_series is not None:
+        detected_amp = detected_amp_series.to_numpy(dtype=np.float64)
+    else:
+        detected_amp = np.full(detected_start.shape, np.nan, dtype=float)
+
+    gt_amp_series = ground_truth_df.get("max_amplitude")
+    if gt_amp_series is not None:
+        gt_amp = gt_amp_series.to_numpy(dtype=np.float64)
+    else:
+        gt_amp = np.full(gt_start.shape, np.nan, dtype=float)
+
+    rows: list[dict[str, object]] = []
 
     for alignment in alignments:
         if alignment.ground_truth_idx is None and alignment.detected_idx is None:
             continue
 
+        status = "overlap" if alignment.overlap_samples > 0 else "no_overlap"
+
         if alignment.ground_truth_idx is None:
             idx = alignment.detected_idx
             assert idx is not None
+            det_amp_val = (
+                float(detected_amp[idx]) if idx < detected_amp.size else np.nan
+            )
             rows.append(
                 {
                     "ground_truth_idx": np.nan,
@@ -148,8 +165,12 @@ def make_diff_table(
                     "ground_truth_end": np.nan,
                     "detected_start": float(detected_start[idx]),
                     "detected_end": float(detected_end[idx]),
+                    "detected_max_amplitude": det_amp_val,
+                    "ground_truth_max_amplitude": np.nan,
+                    "max_amplitude": det_amp_val,
                     "start_diff": np.nan,
                     "end_diff": np.nan,
+                    "status": status,
                     "time_sec": _to_seconds(detected_start[idx], sampling_rate_hz),
                 }
             )
@@ -157,6 +178,8 @@ def make_diff_table(
 
         if alignment.detected_idx is None:
             idx = alignment.ground_truth_idx
+            assert idx is not None
+            gt_amp_val = float(gt_amp[idx]) if idx < gt_amp.size else np.nan
             rows.append(
                 {
                     "ground_truth_idx": float(idx),
@@ -165,8 +188,12 @@ def make_diff_table(
                     "ground_truth_end": float(gt_end[idx]),
                     "detected_start": np.nan,
                     "detected_end": np.nan,
+                    "detected_max_amplitude": np.nan,
+                    "ground_truth_max_amplitude": gt_amp_val,
+                    "max_amplitude": gt_amp_val,
                     "start_diff": np.nan,
                     "end_diff": np.nan,
+                    "status": status,
                     "time_sec": _to_seconds(gt_start[idx], sampling_rate_hz),
                 }
             )
@@ -185,6 +212,12 @@ def make_diff_table(
         idx_det = alignment.detected_idx
         assert idx_gt is not None and idx_det is not None
         midpoint_sample = (gt_start[idx_gt] + detected_start[idx_det]) / 2.0
+        det_amp_val = (
+            float(detected_amp[idx_det]) if idx_det < detected_amp.size else np.nan
+        )
+        gt_amp_val = float(gt_amp[idx_gt]) if idx_gt < gt_amp.size else np.nan
+        amp_values = [val for val in (gt_amp_val, det_amp_val) if np.isfinite(val)]
+        avg_amp = float(np.mean(amp_values)) if amp_values else np.nan
         rows.append(
             {
                 "ground_truth_idx": float(idx_gt),
@@ -193,8 +226,12 @@ def make_diff_table(
                 "ground_truth_end": float(gt_end[idx_gt]),
                 "detected_start": float(detected_start[idx_det]),
                 "detected_end": float(detected_end[idx_det]),
+                "detected_max_amplitude": det_amp_val,
+                "ground_truth_max_amplitude": gt_amp_val,
+                "max_amplitude": avg_amp,
                 "start_diff": float(alignment.start_diff),
                 "end_diff": float(alignment.end_diff),
+                "status": status,
                 "time_sec": _to_seconds(midpoint_sample, sampling_rate_hz),
             }
         )

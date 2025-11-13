@@ -12,11 +12,12 @@ import pandas as pd
 
 @dataclass(slots=True)
 class ComparisonResult:
-    """Bundle containing comparison artifacts."""
+    """Bundle containing comparison artifacts (metrics, diff table, alignments)."""
 
     diagnostic_raw: mne.io.RawArray | None
     alignments: list | None
     metrics: dict[str, float]
+    diff_table: pd.DataFrame
 
 
 def build_indicator_signal(n_samples: int, events: pd.DataFrame) -> np.ndarray:
@@ -297,4 +298,5 @@ def compare_detected_vs_ground_truth(
         diagnostic_raw=diagnostic_raw,
         alignments=alignments,
         metrics=metrics,
+        diff_table=diff_table,
     )

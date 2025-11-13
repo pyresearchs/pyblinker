@@ -75,6 +75,13 @@ def main() -> None:
 
     diagnostic_raw = comparison.diagnostic_raw
     metrics = comparison.metrics
+    diff_table = comparison.diff_table
+
+    if diff_table.empty:
+        print("\n[diff] diff_table is empty")
+    else:
+        print("\n[diff] Full diff_table:")
+        print(diff_table)
 
     assert int(metrics["detected_only"]) == 4, metrics
     assert int(metrics["share_within_tolerance"]) == 2, metrics
