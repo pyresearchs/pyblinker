@@ -91,7 +91,7 @@ ground_truth_events = mat_data.annotations_to_event_table(
 print(f"[ground-truth] Loaded {len(ground_truth_events)} manual annotations")
 
 # 13) Compare detected vs ground-truth blink intervals (prints previews/diffs)
-_diagnostic_raw = blink_comparison.compare_detected_vs_ground_truth(
+comparison = blink_comparison.compare_detected_vs_ground_truth(
     detection.events,
     ground_truth_events,
     detection.sampling_rate_hz,
@@ -101,12 +101,9 @@ _diagnostic_raw = blink_comparison.compare_detected_vs_ground_truth(
     detected_signal=detection.signal
     )
 
-# 14) Compute alignment table and summary metrics (matches, differences, etc.)
-alignments, metrics = blink_comparison.compute_alignments_and_metrics(
-    detected_df=detection.events,
-    ground_truth_df=ground_truth_events,
-    tolerance_samples=TOLERANCE_SAMPLES,
-    )
+_diagnostic_raw = comparison.diagnostic_raw
+alignments = comparison.alignments or []
+metrics = comparison.metrics
 
 # 15) Build MNE Annotations to visualize comparisons in the Raw browser
 annotations = blink_comparison.build_comparison_annotations(

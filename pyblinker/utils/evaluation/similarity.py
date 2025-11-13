@@ -402,7 +402,11 @@ def compute_alignment_metrics(
     ``detected_only``
         Detected events without a ground truth counterpart.
     ``share_within_tolerance``
-        Percentage of all unique events that fall within the boundary tolerance window.
+        Count of unique events (detected plus ground truth) participating in
+        amplitude- and overlap-satisfying pairs.
+    ``share_within_tolerance_percent``
+        Percentage of unique events that participate in amplitude- and overlap-
+        satisfying pairs.
     """
 
     if tolerance_samples < 0:
@@ -423,10 +427,16 @@ def compute_alignment_metrics(
         )
         for a in paired_events
     )
+    satisfied_pairs = [
+        a
+        for a in paired_events
+        if getattr(a, "conditions_satisfied", False)
+    ]
+    share_count = 2 * len(satisfied_pairs)
     pairs_outside_tolerance = len(paired_events) - boundary_matches
     ground_truth_only = sum(a.ground_truth_idx is not None and a.detected_idx is None for a in alignments)
     detected_only = sum(a.detected_idx is not None and a.ground_truth_idx is None for a in alignments)
-    unique_total = boundary_matches + pairs_outside_tolerance + ground_truth_only + detected_only
+    unique_total = share_count + ground_truth_only + detected_only
 
     def _pct(n: int, d: int) -> float:
         return (n / d) * 100.0 if d else float("nan")
@@ -439,7 +449,8 @@ def compute_alignment_metrics(
         "pairs_outside_tolerance": float(pairs_outside_tolerance),
         "ground_truth_only": float(ground_truth_only),
         "detected_only": float(detected_only),
-        "share_within_tolerance": _pct(boundary_matches, unique_total),
+        "share_within_tolerance": float(share_count),
+        "share_within_tolerance_percent": _pct(share_count, unique_total),
         "unique_total": float(unique_total),
     }
 

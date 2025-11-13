@@ -77,7 +77,8 @@ def print_comparison_summary(metrics_dict: dict[str, float], tolerance_samples: 
     outside = int(metrics_dict.get("pairs_outside_tolerance", 0))
     gt_only = int(metrics_dict.get("ground_truth_only", 0))
     det_only = int(metrics_dict.get("detected_only", 0))
-    share = metrics_dict.get("share_within_tolerance", float("nan"))
+    share_count = int(metrics_dict.get("share_within_tolerance", 0))
+    share_percent = metrics_dict.get("share_within_tolerance_percent", float("nan"))
 
     if paired:
         pct_pairs = (matches / paired) * 100.0
@@ -95,12 +96,13 @@ def print_comparison_summary(metrics_dict: dict[str, float], tolerance_samples: 
 
     logger.info("  • Ground truth-only events: %d", gt_only)
     logger.info("  • Detected-only events: %d", det_only)
-    if np.isfinite(share):
+    total_unique = share_count + gt_only + det_only
+    if np.isfinite(share_percent) and total_unique:
         logger.info(
             "  • Share of total unique events within tolerance: %d/%d (%.2f%%)",
-            matches,
-            matches + outside + gt_only + det_only,
-            share,
+            share_count,
+            total_unique,
+            share_percent,
         )
     else:
         logger.info("  • Share of total unique events within tolerance: n/a")

@@ -46,7 +46,7 @@ def main() -> mne.io.Raw:
     ground_truth_signal = matlab_blink_signal[:aligned_samples]
     detected_signal = detection.signal[:aligned_samples]
 
-    diagnostic_raw = blink_comparison.compare_detected_vs_ground_truth(
+    comparison = blink_comparison.compare_detected_vs_ground_truth(
         detection,
         ground_truth_df,
         tolerance_samples=TOLERANCE_SAMPLES,
@@ -55,6 +55,8 @@ def main() -> mne.io.Raw:
         ground_truth_signal=ground_truth_signal,
         detected_signal=detected_signal,
     )
+
+    diagnostic_raw = comparison.diagnostic_raw
 
     if os.environ.get("PYBLINKER_SKIP_PLOT") == "1":
         print("[info] Skipping raw.plot() because PYBLINKER_SKIP_PLOT=1")

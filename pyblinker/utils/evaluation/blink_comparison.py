@@ -2,11 +2,22 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Iterable, Sequence
 
 import mne
 import numpy as np
 import pandas as pd
+
+
+@dataclass(slots=True)
+class ComparisonResult:
+    """Bundle containing comparison artifacts."""
+
+    diagnostic_raw: mne.io.RawArray | None
+    alignments: list | None
+    metrics: dict[str, float]
+
 
 def build_indicator_signal(n_samples: int, events: pd.DataFrame) -> np.ndarray:
     """Create a binary signal marking blink intervals."""
@@ -69,6 +80,15 @@ def _print_indicator_diagnostics(
     print(f"  • RMS difference: {rms_diff:.6f}")
     print(f"  • Max absolute difference: {max_abs_diff:.6f}")
     print(f"  • Pearson correlation: {corr:.6f}")
+
+
+def _filter_events_to_sample_window(
+    events: pd.DataFrame, *, min_sample: int, max_sample: int
+) -> pd.DataFrame:
+    """Return a copy of ``events`` limited to blinks overlapping the sample window."""
+
+    mask = (events["end_blink"] >= min_sample) & (events["start_blink"] <= max_sample)
+    return events.loc[mask].copy()
 
 
 def compute_alignments_and_metrics(
@@ -145,7 +165,7 @@ def compare_detected_vs_ground_truth(
     n_diff_rows: int,
     ground_truth_signal: np.ndarray | None = None,
     detected_signal: np.ndarray | None = None,
-) -> mne.io.RawArray:
+) -> ComparisonResult:
     """Compare detected events with ground truth and build diagnostic visuals."""
 
     from . import reporting, similarity
@@ -155,6 +175,31 @@ def compare_detected_vs_ground_truth(
 
     similarity.validate_event_table(detected_df)
     similarity.validate_event_table(ground_truth_df)
+
+    sample_window: tuple[int, int] | None = None
+    if detected_signal is not None and len(detected_signal) > 0:
+        sample_window = (1, int(len(detected_signal)))
+    elif ground_truth_signal is not None and len(ground_truth_signal) > 0:
+        sample_window = (1, int(len(ground_truth_signal)))
+
+    if sample_window is not None:
+        min_sample, max_sample = sample_window
+        detected_before = len(detected_df)
+        ground_truth_before = len(ground_truth_df)
+        detected_df = _filter_events_to_sample_window(
+            detected_df, min_sample=min_sample, max_sample=max_sample
+        )
+        ground_truth_df = _filter_events_to_sample_window(
+            ground_truth_df, min_sample=min_sample, max_sample=max_sample
+        )
+        removed_detected = detected_before - len(detected_df)
+        removed_ground_truth = ground_truth_before - len(ground_truth_df)
+        if removed_detected or removed_ground_truth:
+            print(
+                "\n[filter] Ignoring blink events outside the available sample window "
+                f"[{min_sample}, {max_sample}] -> removed {removed_detected} detected / "
+                f"{removed_ground_truth} ground truth"
+            )
 
     print("\n================ COMPARISON: Detected vs Ground Truth ================")
     print(f"Tolerance allowed: ±{tolerance_samples} samples")
@@ -169,10 +214,10 @@ def compare_detected_vs_ground_truth(
 
     detected_df["max_amplitude"] = _max_amplitude_within_events(
         detected_df, detected_signal
-        )
+    )
     ground_truth_df["max_amplitude"] = _max_amplitude_within_events(
         ground_truth_df, detected_signal
-        )
+    )
 
     alignments, metrics = compute_alignments_and_metrics(
         detected_df=detected_df,
@@ -183,9 +228,9 @@ def compare_detected_vs_ground_truth(
         require_both_conditions=require_both_conditions,
     )
 
-
-
-    start_diff, end_diff = similarity.compute_pairwise_differences(detected_df, ground_truth_df)
+    start_diff, end_diff = similarity.compute_pairwise_differences(
+        detected_df, ground_truth_df
+    )
     ok_start = start_diff <= tolerance_samples if start_diff.size else np.array([], dtype=bool)
     ok_end = end_diff <= tolerance_samples if end_diff.size else np.array([], dtype=bool)
     all_ok = (
@@ -214,7 +259,15 @@ def compare_detected_vs_ground_truth(
 
     reporting.print_comparison_summary(metrics, tolerance_samples)
 
-    n_samples = int(len(detected_signal))
+    if sample_window is not None:
+        n_samples = int(sample_window[1])
+    else:
+        detected_max = int(detected_df["end_blink"].max()) if not detected_df.empty else 0
+        ground_truth_max = (
+            int(ground_truth_df["end_blink"].max()) if not ground_truth_df.empty else 0
+        )
+        n_samples = max(detected_max, ground_truth_max)
+
     gt_signal = (
         ground_truth_signal
         if ground_truth_signal is not None
@@ -240,4 +293,8 @@ def compare_detected_vs_ground_truth(
         alignments=alignments,
     )
 
-    return diagnostic_raw
+    return ComparisonResult(
+        diagnostic_raw=diagnostic_raw,
+        alignments=alignments,
+        metrics=metrics,
+    )
