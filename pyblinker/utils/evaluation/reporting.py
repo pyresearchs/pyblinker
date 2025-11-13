@@ -19,6 +19,15 @@ from . import similarity
 from .similarity import Alignment
 
 
+DIFF_EVENT_LABEL_MATCH = "blink"
+DIFF_EVENT_LABEL_DETECTED = "blink detect"
+DIFF_EVENT_LABEL_GROUND_TRUTH = "blink ground truth"
+
+ANN_DESCRIPTION_MATCH = "B"
+ANN_DESCRIPTION_DETECTED = "BD"
+ANN_DESCRIPTION_GROUND_TRUTH = "BG"
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -171,6 +180,7 @@ def make_diff_table(
                     "start_diff": np.nan,
                     "end_diff": np.nan,
                     "status": status,
+                    "event_label": DIFF_EVENT_LABEL_DETECTED,
                     "time_sec": _to_seconds(detected_start[idx], sampling_rate_hz),
                 }
             )
@@ -194,6 +204,7 @@ def make_diff_table(
                     "start_diff": np.nan,
                     "end_diff": np.nan,
                     "status": status,
+                    "event_label": DIFF_EVENT_LABEL_GROUND_TRUTH,
                     "time_sec": _to_seconds(gt_start[idx], sampling_rate_hz),
                 }
             )
@@ -232,12 +243,18 @@ def make_diff_table(
                 "start_diff": float(alignment.start_diff),
                 "end_diff": float(alignment.end_diff),
                 "status": status,
+                "event_label": DIFF_EVENT_LABEL_MATCH,
                 "time_sec": _to_seconds(midpoint_sample, sampling_rate_hz),
             }
         )
 
     diff_df = pd.DataFrame(rows)
     if not diff_df.empty:
+        diff_df = diff_df.sort_values(
+            by=["time_sec", "ground_truth_idx", "detected_idx"],
+            kind="mergesort",
+            na_position="last",
+        )
         diff_df = diff_df.head(max_rows).copy()
         diff_df["time_sec"] = diff_df["time_sec"].round(6)
     return diff_df
@@ -317,13 +334,15 @@ def _build_alignment_annotation_payload(
             if alignment.is_match(tolerance_samples):
                 onsets.append(float(gt_onset + det_onset) / 2.0)
                 durations.append(float(gt_duration + det_duration) / 2.0)
-                descriptions.append("blink")
+                descriptions.append(ANN_DESCRIPTION_MATCH)
                 last_gt_annotation = None
                 last_det_annotation = None
             else:
                 onsets.extend([float(gt_onset), float(det_onset)])
                 durations.extend([float(gt_duration), float(det_duration)])
-                descriptions.extend(["blink_ground_truth", "blink_detected"])
+                descriptions.extend(
+                    [ANN_DESCRIPTION_GROUND_TRUTH, ANN_DESCRIPTION_DETECTED]
+                )
                 last_gt_annotation = (
                     len(onsets) - 2,
                     gt_start,
@@ -351,7 +370,7 @@ def _build_alignment_annotation_payload(
                 durations.append(
                     float(_duration_seconds(gt_start, gt_end, sampling_rate_hz))
                 )
-                descriptions.append("blink_ground_truth")
+                descriptions.append(ANN_DESCRIPTION_GROUND_TRUTH)
                 last_gt_annotation = (len(onsets) - 1, gt_start, gt_end)
             else:
                 last_gt_annotation = merged
@@ -373,7 +392,7 @@ def _build_alignment_annotation_payload(
                 durations.append(
                     float(_duration_seconds(det_start, det_end, sampling_rate_hz))
                 )
-                descriptions.append("blink_detected")
+                descriptions.append(ANN_DESCRIPTION_DETECTED)
                 last_det_annotation = (len(onsets) - 1, det_start, det_end)
             else:
                 last_det_annotation = merged
@@ -395,12 +414,12 @@ def build_diagnostic_raw(
 ) -> mne.io.RawArray:
     """Create an annotated two-channel :class:`mne.io.RawArray` for inspection.
 
-    Annotations are labeled as:
-    ``"blink"``
+    Annotations are labeled using short descriptions:
+    ``"B"``
         Detected/ground-truth pairs whose start and end differences are within tolerance.
-    ``"blink_ground_truth"``
+    ``"BG"``
         Events present only in the ground truth table.
-    ``"blink_detected"``
+    ``"BD"``
         Events present only in the detected table or outside tolerance.
 
     All comparisons and tolerance checks are performed in sample index units (1-based).
