@@ -2,14 +2,33 @@
 
 from __future__ import annotations
 
-from typing import Iterable
+from typing import Iterable, Optional
 
+import numpy as np
 import mne
 import pandas as pd
 
 from pyblinker.logging import get_logger
 
 logger = get_logger(__name__)
+
+DIFF_EVENT_LABEL_MATCH = "blink"
+DIFF_EVENT_LABEL_DETECTED = "blink detect"
+DIFF_EVENT_LABEL_GROUND_TRUTH = "blink ground truth"
+
+ANN_DESCRIPTION_MATCH = "B"
+ANN_DESCRIPTION_DETECTED = "BD"
+ANN_DESCRIPTION_GROUND_TRUTH = "BG"
+
+
+def _to_seconds(sample_index: Optional[float], sampling_rate_hz: float) -> Optional[float]:
+    if sample_index is None:
+        return None
+    return (float(sample_index) - 1.0) / sampling_rate_hz
+
+
+def _duration_seconds(start_sample: int, end_sample: int, sampling_rate_hz: float) -> float:
+    return (float(end_sample) - float(start_sample) + 1.0) / sampling_rate_hz
 
 
 def create_annotation(
@@ -75,4 +94,87 @@ def create_annotation(
     return annot
 
 
-__all__ = ["create_annotation"]
+def annotations_from_diff_table(
+    diff_table: pd.DataFrame, sampling_rate_hz: float
+) -> mne.Annotations | None:
+    """Create :class:`mne.Annotations` from diff table rows.
+
+    The diff table is expected to contain ``event_label`` columns matching the
+    ``DIFF_EVENT_LABEL_*`` constants along with ``ground_truth_start``/
+    ``ground_truth_end`` and ``detected_start``/``detected_end`` values. When a
+    ``time_sec`` column is available it is used directly as the annotation
+    onset; otherwise onsets are derived from the earliest available sample
+    index.
+    """
+
+    if diff_table.empty:
+        return None
+
+    label_to_description = {
+        DIFF_EVENT_LABEL_MATCH: ANN_DESCRIPTION_MATCH,
+        DIFF_EVENT_LABEL_DETECTED: ANN_DESCRIPTION_DETECTED,
+        DIFF_EVENT_LABEL_GROUND_TRUTH: ANN_DESCRIPTION_GROUND_TRUTH,
+    }
+
+    onsets: list[float] = []
+    durations: list[float] = []
+    descriptions: list[str] = []
+
+    for row in diff_table.itertuples(index=False):
+        description = label_to_description.get(row.event_label)
+        if description is None:
+            continue
+
+        start_candidates = [
+            value
+            for value in (row.ground_truth_start, row.detected_start)
+            if pd.notna(value)
+        ]
+        end_candidates = [
+            value for value in (row.ground_truth_end, row.detected_end) if pd.notna(value)
+        ]
+
+        if not start_candidates or not end_candidates:
+            continue
+
+        start_sample = int(min(start_candidates))
+        end_sample = int(max(end_candidates))
+        if end_sample < start_sample:
+            continue
+
+        onset = (
+            float(row.time_sec)
+            if hasattr(row, "time_sec") and pd.notna(row.time_sec)
+            else float(_to_seconds(start_sample, sampling_rate_hz))
+        )
+        duration = float(_duration_seconds(start_sample, end_sample, sampling_rate_hz))
+
+        onsets.append(onset)
+        durations.append(duration)
+        descriptions.append(description)
+
+    if not onsets:
+        return None
+
+    order = np.argsort(onsets)
+    ordered_onsets = [onsets[idx] for idx in order]
+    ordered_durations = [durations[idx] for idx in order]
+    ordered_descriptions = [descriptions[idx] for idx in order]
+
+    return mne.Annotations(
+        onset=ordered_onsets,
+        duration=ordered_durations,
+        description=ordered_descriptions,
+    )
+
+
+__all__ = [
+    "ANN_DESCRIPTION_DETECTED",
+    "ANN_DESCRIPTION_GROUND_TRUTH",
+    "ANN_DESCRIPTION_MATCH",
+    "DIFF_EVENT_LABEL_DETECTED",
+    "DIFF_EVENT_LABEL_GROUND_TRUTH",
+    "DIFF_EVENT_LABEL_MATCH",
+    "annotations_from_diff_table",
+    "create_annotation",
+]

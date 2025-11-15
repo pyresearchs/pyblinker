@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 
 from pyblinker.logging import get_logger
+from pyblinker.utils.annotation_utils import annotations_from_diff_table
 
 logger = get_logger(__name__)
 
@@ -204,7 +205,7 @@ def build_comparison_annotations(
         sampling_rate_hz=sampling_rate_hz,
     )
 
-    return reporting.annotations_from_diff_table(diff_table, sampling_rate_hz)
+    return annotations_from_diff_table(diff_table, sampling_rate_hz)
 
 
 def compare_detected_vs_ground_truth(
@@ -259,15 +260,7 @@ def compare_detected_vs_ground_truth(
                 removed_ground_truth,
             )
 
-    logger.info("================ COMPARISON: Detected vs Ground Truth ================")
-    logger.info("Tolerance allowed: ±%d samples", tolerance_samples)
-    logger.info("Detected rows    : %d", len(detected_df))
-    logger.info("Ground truth rows: %d", len(ground_truth_df))
-    logger.info("Row count matches? -> %s", len(detected_df) == len(ground_truth_df))
-
     nprev = min(n_preview_rows, len(detected_df), len(ground_truth_df))
-    preview = reporting.preview_side_by_side(detected_df, ground_truth_df, nprev)
-    logger.info("First %d rows (ground truth vs detected):\n%s", nprev, preview)
 
     detected_df["max_amplitude"] = _max_amplitude_within_events(
         detected_df, detected_signal
@@ -341,7 +334,18 @@ def compare_detected_vs_ground_truth(
             }
         )
 
-    annotations = reporting.annotations_from_diff_table(diff_table, sampling_rate_hz)
+    annotations = annotations_from_diff_table(diff_table, sampling_rate_hz)
+
+    metrics.update(
+        {
+            "input_tolerance_samples": float(tolerance_samples),
+            "input_detected_rows": float(len(detected_df)),
+            "input_ground_truth_rows": float(len(ground_truth_df)),
+            "input_row_count_matches": float(len(detected_df) == len(ground_truth_df)),
+            "input_row_count_delta": float(len(detected_df) - len(ground_truth_df)),
+            "input_preview_rows": float(nprev),
+        }
+    )
 
     return ComparisonResult(
         annotations=annotations,
