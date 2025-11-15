@@ -1,134 +1,104 @@
-# 5) Configuration parameters (tweak as needed)
-SAMPLING_RATE_HZ = 200.0                 # sampling rate for the loaded MAT data
-CHANNELS_TO_KEEP = (
-		"CH1",
-		# "CH2",
-		# "CH3"
-		) # subset of channels for detection
-TOLERANCE_SAMPLES = 1                   # blink start/end alignment tolerance
-N_PREVIEW_ROWS = 10                      # how many preview rows to print in diff table
-N_DIFF_ROWS = 20                      # how many differing rows to print in diff table
-# RAW_PLOT_SCALINGS = {"eeg": 0.5}       # optional MNE scaling (example)
+"""Development helper script for comparing PyBlinker detections to ground truth."""
 
+from __future__ import annotations
 
-# 7) Import helper utilities from this repository (kept top-level for clarity)
-from pyblinker.utils.evaluation import (
-	blink_comparison
-	)
-import pandas as pd
+import os
+from pathlib import Path
+
 import mne
-ground_truth_events = pd.read_pickle("../development_data/blinker_results.pkl")['frames']['blinkFits']
-detection = pd.read_pickle("../development_data/pyblinker_results.pkl")['events']
-raw = mne.io.read_raw_fif("../development_data/9636511.fif", preload=True)
-# crop raw to 13 seconds for faster testing
-raw.crop(0, 12.0)
-#
-# # Extract relevant columns from ground truth
-# --- Process Ground Truth Events ---
-ground_truth_events = (
-		ground_truth_events[['leftZero', 'rightZero', 'maxValue']]
-		.rename(columns={
-				'leftZero': 'start_blink',
-				'rightZero': 'end_blink'
-				})
-)
+import pandas as pd
 
-# Add a new ground truth blink event
-ground_truth_events.loc[len(ground_truth_events)] = {
-		'start_blink': 1940,
-		'end_blink': 2005,
-		'maxValue': None
-		}
-
-# Sort and crop to first 10 events
-ground_truth_events = (
-		ground_truth_events
-		.sort_values(by='start_blink')
-		.reset_index(drop=True)
-		.head(10)
-)
+from pyblinker.utils.evaluation import blink_comparison
 
 
-# --- Process Detection Events ---
-detection = (
-		detection[['left_zero', 'right_zero', 'max_value']]
-		.rename(columns={
-				'left_zero': 'start_blink',
-				'right_zero': 'end_blink',
-				'max_value': 'maxValue'
-				})
-)
+SAMPLING_RATE_HZ = 200.0
+CHANNELS_TO_KEEP = ("CH1",)
+TOLERANCE_SAMPLES = 1
+N_PREVIEW_ROWS = 10
+N_DIFF_ROWS = 20
 
-# Add a new detection blink event
-detection.loc[len(detection)] = {
-		'start_blink': 1918,
-		'end_blink': 2042,
-		'maxValue': None
-		}
+DATA_DIR = Path(__file__).resolve().parent
 
-# Sort and crop to first 10 events
-detection = (
-		detection
-		.sort_values(by='start_blink')
-		.reset_index(drop=True)
-		.head(10)
-)
-signal=raw.get_data(picks=CHANNELS_TO_KEEP[0])[0]
-# plot signal
-# import matplotlib.pyplot as plt
-# import numpy as np
-# # Extract the signal (first channel)
-# signal = raw.get_data(picks=CHANNELS_TO_KEEP[0])[0]
-#
-# # Get the sampling frequency to build a time axis
-# sfreq = raw.info['sfreq']
-# time = np.arange(signal.size) / sfreq
-#
-# # Plot
-# plt.figure(figsize=(12, 4))
-# plt.plot(time, signal, linewidth=1)
-# plt.title(f"Signal from channel: {CHANNELS_TO_KEEP[0]}")
-# plt.xlabel("Time (s)")
-# plt.ylabel("Amplitude (µV)")
-# plt.grid(True)
-# plt.show()
 
-sampling_rate_hz=200
-# # 13) Compare detected vs ground-truth blink intervals (prints previews/diffs)
-_diagnostic_raw = blink_comparison.compare_detected_vs_ground_truth(
-	detection,
-	ground_truth_events,
-	sampling_rate_hz,
-	tolerance_samples=TOLERANCE_SAMPLES,
-	n_preview_rows=N_PREVIEW_ROWS,
-	n_diff_rows=N_DIFF_ROWS,
-	detected_signal=signal
-	)
-#
-# # # 14) Compute alignment table and summary metrics (matches, differences, etc.)
-# alignments, metrics = blink_comparison.compute_alignments_and_metrics(
-# 	detected_df=detection,
-# 	ground_truth_df=ground_truth_events,
-# 	tolerance_samples=TOLERANCE_SAMPLES,
-# 	)
-# #
-# # # 15) Build MNE Annotations to visualize comparisons in the Raw browser
-# annotations = blink_comparison.build_comparison_annotations(
-# 	ground_truth_starts=ground_truth_events["start_blink"].to_numpy(),
-# 	ground_truth_ends=ground_truth_events["end_blink"].to_numpy(),
-# 	detected_starts=detection["start_blink"].to_numpy(),
-# 	detected_ends=detection["end_blink"].to_numpy(),
-# 	sampling_rate_hz=SAMPLING_RATE_HZ,
-# 	tolerance_samples=TOLERANCE_SAMPLES,
-# 	alignments=alignments,
-# 	)
-# #
-# # # 16) Apply annotations (or clear if none)
-# if annotations is not None:
-# 	print(f"[mne] Applying {len(annotations)} comparison annotations to the EEG raw")
-# 	raw.set_annotations(annotations)
-# else:
-# 	print("[mne] No blink annotations generated; clearing annotations on the EEG raw")
-# 	raw.set_annotations(None)
-#
-# raw.plot(block=True)
+def _load_ground_truth() -> pd.DataFrame:
+    ground_truth_events = pd.read_pickle(DATA_DIR / "blinker_results.pkl")[
+        "frames"
+    ]["blinkFits"]
+    ground_truth_events = ground_truth_events[["leftZero", "rightZero", "maxValue"]].rename(
+        columns={"leftZero": "start_blink", "rightZero": "end_blink"}
+    )
+    ground_truth_events.loc[len(ground_truth_events)] = {
+        "start_blink": 1940,
+        "end_blink": 2005,
+        "maxValue": None,
+    }
+    return (
+        ground_truth_events.sort_values(by="start_blink").reset_index(drop=True).head(10)
+    )
+
+
+def _load_detections() -> pd.DataFrame:
+    detection = pd.read_pickle(DATA_DIR / "pyblinker_results.pkl")["events"]
+    detection = detection[["left_zero", "right_zero", "max_value"]].rename(
+        columns={
+            "left_zero": "start_blink",
+            "right_zero": "end_blink",
+            "max_value": "maxValue",
+        }
+    )
+    detection.loc[len(detection)] = {
+        "start_blink": 1918,
+        "end_blink": 2042,
+        "maxValue": None,
+    }
+    return detection.sort_values(by="start_blink").reset_index(drop=True).head(10)
+
+
+def main() -> None:
+    ground_truth_events = _load_ground_truth()
+    detection = _load_detections()
+
+    raw = mne.io.read_raw_fif(DATA_DIR / "9636511.fif", preload=True)
+    raw.crop(0, 12.0)
+
+    signal = raw.get_data(picks=CHANNELS_TO_KEEP[0])[0]
+
+    comparison = blink_comparison.compare_detected_vs_ground_truth(
+        detection,
+        ground_truth_events,
+        SAMPLING_RATE_HZ,
+        tolerance_samples=TOLERANCE_SAMPLES,
+        n_preview_rows=N_PREVIEW_ROWS,
+        n_diff_rows=N_DIFF_ROWS,
+        detected_signal=signal,
+    )
+
+    metrics = comparison.metrics
+    diff_table = comparison.diff_table
+    annotations = comparison.annotations
+
+    if diff_table.empty:
+        print("\n[diff] diff_table is empty")
+    else:
+        print("\n[diff] Full diff_table:")
+        print(diff_table)
+
+    assert int(metrics["detected_only"]) == 4, metrics
+    assert int(metrics["share_within_tolerance"]) == 2, metrics
+
+    if annotations is not None:
+        assert len(annotations) == 7, f"Expected 7 annotations, found {len(annotations)}"
+        print(f"[mne] Applying {len(annotations)} comparison annotations to the EEG raw")
+        raw.set_annotations(annotations)
+    else:
+        print("[mne] No blink annotations generated; clearing annotations on the EEG raw")
+        raw.set_annotations(None)
+
+    if os.environ.get("PYBLINKER_SKIP_PLOT") == "1":
+        print("[info] Skipping raw.plot() because PYBLINKER_SKIP_PLOT=1")
+    else:
+        raw.plot(block=True)
+
+
+if __name__ == "__main__":
+    main()

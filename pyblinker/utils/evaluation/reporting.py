@@ -11,9 +11,14 @@ from typing import Iterable, Optional
 
 import logging
 
-import mne
 import numpy as np
 import pandas as pd
+
+from pyblinker.utils.annotation_utils import (
+    DIFF_EVENT_LABEL_DETECTED,
+    DIFF_EVENT_LABEL_GROUND_TRUTH,
+    DIFF_EVENT_LABEL_MATCH,
+)
 
 from . import similarity
 from .similarity import Alignment
@@ -26,10 +31,6 @@ def _to_seconds(sample_index: Optional[float], sampling_rate_hz: float) -> Optio
     if sample_index is None:
         return None
     return (float(sample_index) - 1.0) / sampling_rate_hz
-
-
-def _duration_seconds(start_sample: int, end_sample: int, sampling_rate_hz: float) -> float:
-    return (float(end_sample) - float(start_sample) + 1.0) / sampling_rate_hz
 
 
 def preview_side_by_side(
@@ -77,7 +78,8 @@ def print_comparison_summary(metrics_dict: dict[str, float], tolerance_samples: 
     outside = int(metrics_dict.get("pairs_outside_tolerance", 0))
     gt_only = int(metrics_dict.get("ground_truth_only", 0))
     det_only = int(metrics_dict.get("detected_only", 0))
-    share = metrics_dict.get("share_within_tolerance", float("nan"))
+    share_count = int(metrics_dict.get("share_within_tolerance", 0))
+    share_percent = metrics_dict.get("share_within_tolerance_percent", float("nan"))
 
     if paired:
         pct_pairs = (matches / paired) * 100.0
@@ -95,12 +97,13 @@ def print_comparison_summary(metrics_dict: dict[str, float], tolerance_samples: 
 
     logger.info("  • Ground truth-only events: %d", gt_only)
     logger.info("  • Detected-only events: %d", det_only)
-    if np.isfinite(share):
+    total_unique = share_count + gt_only + det_only
+    if np.isfinite(share_percent) and total_unique:
         logger.info(
             "  • Share of total unique events within tolerance: %d/%d (%.2f%%)",
-            matches,
-            matches + outside + gt_only + det_only,
-            share,
+            share_count,
+            total_unique,
+            share_percent,
         )
     else:
         logger.info("  • Share of total unique events within tolerance: n/a")
@@ -129,15 +132,32 @@ def make_diff_table(
     gt_start = ground_truth_df["start_blink"].astype(int).to_numpy()
     gt_end = ground_truth_df["end_blink"].astype(int).to_numpy()
 
-    rows: list[dict[str, Optional[float]]] = []
+    detected_amp_series = detected_df.get("max_amplitude")
+    if detected_amp_series is not None:
+        detected_amp = detected_amp_series.to_numpy(dtype=np.float64)
+    else:
+        detected_amp = np.full(detected_start.shape, np.nan, dtype=float)
+
+    gt_amp_series = ground_truth_df.get("max_amplitude")
+    if gt_amp_series is not None:
+        gt_amp = gt_amp_series.to_numpy(dtype=np.float64)
+    else:
+        gt_amp = np.full(gt_start.shape, np.nan, dtype=float)
+
+    rows: list[dict[str, object]] = []
 
     for alignment in alignments:
         if alignment.ground_truth_idx is None and alignment.detected_idx is None:
             continue
 
+        status = "overlap" if alignment.overlap_samples > 0 else "no_overlap"
+
         if alignment.ground_truth_idx is None:
             idx = alignment.detected_idx
             assert idx is not None
+            det_amp_val = (
+                float(detected_amp[idx]) if idx < detected_amp.size else np.nan
+            )
             rows.append(
                 {
                     "ground_truth_idx": np.nan,
@@ -146,8 +166,13 @@ def make_diff_table(
                     "ground_truth_end": np.nan,
                     "detected_start": float(detected_start[idx]),
                     "detected_end": float(detected_end[idx]),
+                    "detected_max_amplitude": det_amp_val,
+                    "ground_truth_max_amplitude": np.nan,
+                    "max_amplitude": det_amp_val,
                     "start_diff": np.nan,
                     "end_diff": np.nan,
+                    "status": status,
+                    "event_label": DIFF_EVENT_LABEL_DETECTED,
                     "time_sec": _to_seconds(detected_start[idx], sampling_rate_hz),
                 }
             )
@@ -155,6 +180,8 @@ def make_diff_table(
 
         if alignment.detected_idx is None:
             idx = alignment.ground_truth_idx
+            assert idx is not None
+            gt_amp_val = float(gt_amp[idx]) if idx < gt_amp.size else np.nan
             rows.append(
                 {
                     "ground_truth_idx": float(idx),
@@ -163,8 +190,13 @@ def make_diff_table(
                     "ground_truth_end": float(gt_end[idx]),
                     "detected_start": np.nan,
                     "detected_end": np.nan,
+                    "detected_max_amplitude": np.nan,
+                    "ground_truth_max_amplitude": gt_amp_val,
+                    "max_amplitude": gt_amp_val,
                     "start_diff": np.nan,
                     "end_diff": np.nan,
+                    "status": status,
+                    "event_label": DIFF_EVENT_LABEL_GROUND_TRUTH,
                     "time_sec": _to_seconds(gt_start[idx], sampling_rate_hz),
                 }
             )
@@ -182,7 +214,13 @@ def make_diff_table(
         idx_gt = alignment.ground_truth_idx
         idx_det = alignment.detected_idx
         assert idx_gt is not None and idx_det is not None
-        midpoint_sample = (gt_start[idx_gt] + detected_start[idx_det]) / 2.0
+        start_sample = int(min(gt_start[idx_gt], detected_start[idx_det]))
+        det_amp_val = (
+            float(detected_amp[idx_det]) if idx_det < detected_amp.size else np.nan
+        )
+        gt_amp_val = float(gt_amp[idx_gt]) if idx_gt < gt_amp.size else np.nan
+        amp_values = [val for val in (gt_amp_val, det_amp_val) if np.isfinite(val)]
+        avg_amp = float(np.mean(amp_values)) if amp_values else np.nan
         rows.append(
             {
                 "ground_truth_idx": float(idx_gt),
@@ -191,178 +229,27 @@ def make_diff_table(
                 "ground_truth_end": float(gt_end[idx_gt]),
                 "detected_start": float(detected_start[idx_det]),
                 "detected_end": float(detected_end[idx_det]),
+                "detected_max_amplitude": det_amp_val,
+                "ground_truth_max_amplitude": gt_amp_val,
+                "max_amplitude": avg_amp,
                 "start_diff": float(alignment.start_diff),
                 "end_diff": float(alignment.end_diff),
-                "time_sec": _to_seconds(midpoint_sample, sampling_rate_hz),
+                "status": status,
+                "event_label": DIFF_EVENT_LABEL_MATCH,
+                "time_sec": _to_seconds(start_sample, sampling_rate_hz),
             }
         )
 
     diff_df = pd.DataFrame(rows)
     if not diff_df.empty:
+        diff_df = diff_df.sort_values(
+            by=["time_sec", "ground_truth_idx", "detected_idx"],
+            kind="mergesort",
+            na_position="last",
+        )
         diff_df = diff_df.head(max_rows).copy()
         diff_df["time_sec"] = diff_df["time_sec"].round(6)
     return diff_df
 
 
-def _build_alignment_annotation_payload(
-    ground_truth_starts: np.ndarray,
-    ground_truth_ends: np.ndarray,
-    detected_starts: np.ndarray,
-    detected_ends: np.ndarray,
-    sampling_rate_hz: float,
-    tolerance_samples: int,
-    alignments: Optional[Iterable[Alignment]] = None,
-) -> tuple[list[Alignment], list[float], list[float], list[str]]:
-    """Return alignments alongside onset/duration/description lists for annotations."""
 
-    if alignments is None:
-        gt_df = pd.DataFrame({"start_blink": ground_truth_starts, "end_blink": ground_truth_ends})
-        det_df = pd.DataFrame({"start_blink": detected_starts, "end_blink": detected_ends})
-        alignments_list = similarity.align_events(det_df, gt_df, tolerance_samples)
-    else:
-        alignments_list = list(alignments)
-
-    onsets: list[float] = []
-    durations: list[float] = []
-    descriptions: list[str] = []
-
-    for alignment in alignments_list:
-        if alignment.ground_truth_idx is not None and alignment.detected_idx is not None:
-            gt_idx = alignment.ground_truth_idx
-            det_idx = alignment.detected_idx
-            gt_start = int(ground_truth_starts[gt_idx])
-            gt_end = int(ground_truth_ends[gt_idx])
-            det_start = int(detected_starts[det_idx])
-            det_end = int(detected_ends[det_idx])
-
-            gt_onset = _to_seconds(gt_start, sampling_rate_hz)
-            det_onset = _to_seconds(det_start, sampling_rate_hz)
-            gt_duration = _duration_seconds(gt_start, gt_end, sampling_rate_hz)
-            det_duration = _duration_seconds(det_start, det_end, sampling_rate_hz)
-
-            if alignment.is_match(tolerance_samples):
-                onsets.append(float(gt_onset + det_onset) / 2.0)
-                durations.append(float(gt_duration + det_duration) / 2.0)
-                descriptions.append("blink")
-            else:
-                onsets.extend([float(gt_onset), float(det_onset)])
-                durations.extend([float(gt_duration), float(det_duration)])
-                descriptions.extend(["blink_ground_truth", "blink_detected"])
-        elif alignment.ground_truth_idx is not None:
-            gt_idx = alignment.ground_truth_idx
-            gt_start = int(ground_truth_starts[gt_idx])
-            gt_end = int(ground_truth_ends[gt_idx])
-            onsets.append(float(_to_seconds(gt_start, sampling_rate_hz)))
-            durations.append(float(_duration_seconds(gt_start, gt_end, sampling_rate_hz)))
-            descriptions.append("blink_ground_truth")
-        elif alignment.detected_idx is not None:
-            det_idx = alignment.detected_idx
-            det_start = int(detected_starts[det_idx])
-            det_end = int(detected_ends[det_idx])
-            onsets.append(float(_to_seconds(det_start, sampling_rate_hz)))
-            durations.append(float(_duration_seconds(det_start, det_end, sampling_rate_hz)))
-            descriptions.append("blink_detected")
-
-    return alignments_list, onsets, durations, descriptions
-
-
-def build_diagnostic_raw(
-    ground_truth_signal: np.ndarray,
-    detected_signal: np.ndarray,
-    ground_truth_starts: np.ndarray,
-    ground_truth_ends: np.ndarray,
-    detected_starts: np.ndarray,
-    detected_ends: np.ndarray,
-    sampling_rate_hz: float,
-    tolerance_samples: int,
-    alignments: Optional[Iterable[Alignment]] = None,
-) -> mne.io.RawArray:
-    """Create an annotated two-channel :class:`mne.io.RawArray` for inspection.
-
-    Annotations are labeled as:
-    ``"blink"``
-        Detected/ground-truth pairs whose start and end differences are within tolerance.
-    ``"blink_ground_truth"``
-        Events present only in the ground truth table.
-    ``"blink_detected"``
-        Events present only in the detected table or outside tolerance.
-
-    All comparisons and tolerance checks are performed in sample index units (1-based).
-    """
-
-    ground_truth_signal = np.array(ground_truth_signal, dtype=float, copy=True)
-    detected_signal = np.array(detected_signal, dtype=float, copy=True)
-
-    for signal in (ground_truth_signal, detected_signal):
-        max_val = np.max(np.abs(signal)) if signal.size else 0.0
-        if max_val > 0:
-            signal /= max_val
-
-    n_samples = min(len(ground_truth_signal), len(detected_signal))
-    if n_samples == 0:
-        raise ValueError("Signals must contain at least one sample to create RawArray.")
-
-    logger.warning(
-        "Assuming ground truth and detected blink signals are sampled at the same "
-        "rate of %.3f Hz for diagnostic visualization.",
-        float(sampling_rate_hz),
-    )
-
-    if len(ground_truth_signal) != len(detected_signal):
-        logger.warning(
-            "Signal lengths differ (%d vs %d samples); truncating to the overlapping "
-            "window under the shared sampling-rate assumption.",
-            len(ground_truth_signal),
-            len(detected_signal),
-        )
-
-    data = np.vstack([ground_truth_signal[:n_samples], detected_signal[:n_samples]])
-    info = mne.create_info(
-        ch_names=["ground_truth_blink_signal", "detected_blink_signal"],
-        sfreq=float(sampling_rate_hz),
-        ch_types="eeg",
-    )
-    raw = mne.io.RawArray(data, info, verbose="ERROR")
-
-    (
-        alignments_list,
-        onsets,
-        durations,
-        descriptions,
-    ) = _build_alignment_annotation_payload(
-        ground_truth_starts,
-        ground_truth_ends,
-        detected_starts,
-        detected_ends,
-        sampling_rate_hz,
-        tolerance_samples,
-        alignments,
-    )
-
-    if onsets:
-        annotations = mne.Annotations(onset=onsets, duration=durations, description=descriptions)
-        raw.set_annotations(annotations)
-    else:
-        raw.set_annotations(None)
-
-    logger.info(
-        "[mne] Created synthetic Raw with %d blink annotations (matched: %d, ground truth-only: %d, detected-only: %d)",
-        len(onsets),
-        sum(
-            1
-            for a in alignments_list
-            if a.ground_truth_idx is not None and a.detected_idx is not None
-        ),
-        sum(
-            1
-            for a in alignments_list
-            if a.ground_truth_idx is not None and a.detected_idx is None
-        ),
-        sum(
-            1
-            for a in alignments_list
-            if a.detected_idx is not None and a.ground_truth_idx is None
-        ),
-    )
-
-    return raw
