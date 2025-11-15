@@ -45,7 +45,11 @@ CSV_PATH = SCRIPT_DIR / CSV_FILENAME
 
 # 5) Configuration parameters (tweak as needed)
 SAMPLING_RATE_HZ = 200.0                 # sampling rate for the loaded MAT data
-CHANNELS_TO_KEEP = ("CH1", "CH2", "CH3") # subset of channels for detection
+CHANNELS_TO_KEEP = (
+                    "CH1",
+                    # "CH2",
+                    # "CH3"
+        ) # subset of channels for detection
 TOLERANCE_SAMPLES = 20                   # blink start/end alignment tolerance
 N_PREVIEW_ROWS = 10                      # how many preview rows to print in diff table
 N_DIFF_ROWS = 30                         # how many differing rows to print in diff table
@@ -87,7 +91,7 @@ ground_truth_events = mat_data.annotations_to_event_table(
 print(f"[ground-truth] Loaded {len(ground_truth_events)} manual annotations")
 
 # 13) Compare detected vs ground-truth blink intervals (prints previews/diffs)
-_diagnostic_raw = blink_comparison.compare_detected_vs_ground_truth(
+comparison = blink_comparison.compare_detected_vs_ground_truth(
     detection.events,
     ground_truth_events,
     detection.sampling_rate_hz,
@@ -97,23 +101,21 @@ _diagnostic_raw = blink_comparison.compare_detected_vs_ground_truth(
     detected_signal=detection.signal
     )
 
-# 14) Compute alignment table and summary metrics (matches, differences, etc.)
-alignments, metrics = blink_comparison.compute_alignments_and_metrics(
-    detected_df=detection.events,
-    ground_truth_df=ground_truth_events,
-    tolerance_samples=TOLERANCE_SAMPLES,
-    )
+alignments = comparison.alignments or []
+metrics = comparison.metrics
+annotations = comparison.annotations
 
 # 15) Build MNE Annotations to visualize comparisons in the Raw browser
-annotations = blink_comparison.build_comparison_annotations(
-    ground_truth_starts=ground_truth_events["start_blink"].to_numpy(),
-    ground_truth_ends=ground_truth_events["end_blink"].to_numpy(),
-    detected_starts=detection.events["start_blink"].to_numpy(),
-    detected_ends=detection.events["end_blink"].to_numpy(),
-    sampling_rate_hz=detection.sampling_rate_hz,
-    tolerance_samples=TOLERANCE_SAMPLES,
-    alignments=alignments,
-    )
+if annotations is None:
+    annotations = blink_comparison.build_comparison_annotations(
+        ground_truth_starts=ground_truth_events["start_blink"].to_numpy(),
+        ground_truth_ends=ground_truth_events["end_blink"].to_numpy(),
+        detected_starts=detection.events["start_blink"].to_numpy(),
+        detected_ends=detection.events["end_blink"].to_numpy(),
+        sampling_rate_hz=detection.sampling_rate_hz,
+        tolerance_samples=TOLERANCE_SAMPLES,
+        alignments=alignments,
+        )
 
 # 16) Apply annotations (or clear if none)
 if annotations is not None:
