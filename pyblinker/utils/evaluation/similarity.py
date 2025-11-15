@@ -407,6 +407,24 @@ def compute_alignment_metrics(
     ``share_within_tolerance_percent``
         Percentage of unique events that participate in amplitude- and overlap-
         satisfying pairs.
+
+    Example
+    -------
+    Imagine ``tolerance_samples`` is ``1`` with three ground truth blinks
+    (``G1``-``G3``) and three detected blinks (``D1``-``D3``).  Suppose ``G1``
+    aligns with ``D1`` and ``G2`` aligns with ``D2`` once amplitude and overlap
+    checks pass.  ``G1``/``D1`` also satisfy the boundary tolerance while
+    ``G2``/``D2`` fall outside the ±1 sample window.  ``G3`` and ``D3`` remain
+    unmatched.  The resulting metrics would be:
+
+    * ``total_ground_truth`` = 3 and ``total_detected`` = 3.
+    * ``paired_events`` = 2 because two alignments were formed.
+    * ``matches_within_tolerance`` = 1 (only ``G1``/``D1`` obey the boundary
+      tolerance) and ``pairs_outside_tolerance`` = 1 for the failing pair.
+    * ``ground_truth_only`` = 1 (``G3``) and ``detected_only`` = 1 (``D3``).
+    * ``share_within_tolerance`` = 4 because two events participate in each
+      satisfied pair, leading to a ``unique_total`` of 6 events and a
+      ``share_within_tolerance_percent`` of ``4 / 6 * 100``.
     """
 
     if tolerance_samples < 0:

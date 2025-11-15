@@ -9,6 +9,10 @@ import mne
 import numpy as np
 import pandas as pd
 
+from pyblinker.logging import get_logger
+
+logger = get_logger(__name__)
+
 
 @dataclass(slots=True)
 class ComparisonResult:
@@ -61,12 +65,30 @@ def _max_amplitude_within_events(
 def _print_indicator_diagnostics(
     ground_truth_signal: np.ndarray,
     detected_signal: np.ndarray,
-) -> None:
-    """Print quick diagnostics comparing binary indicator signals."""
+) -> dict[str, float]:
+    """Return indicator signal diagnostics and log the summary."""
 
-    if ground_truth_signal.size == 0:
-        print("\n[metrics] Indicator signal comparison skipped (no samples).")
-        return
+    if ground_truth_signal.size == 0 or detected_signal.size == 0:
+        logger.info(
+            "Indicator signal comparison skipped because one or more signals are empty."
+        )
+        return {}
+
+    if ground_truth_signal.shape != detected_signal.shape:
+        min_len = min(ground_truth_signal.size, detected_signal.size)
+        if min_len == 0:
+            logger.info(
+                "Indicator signal comparison skipped because aligned signal length is zero."
+            )
+            return {}
+        logger.warning(
+            "Indicator signals have mismatched lengths (gt=%d, detected=%d); truncating to %d samples for diagnostics.",
+            ground_truth_signal.size,
+            detected_signal.size,
+            min_len,
+        )
+        ground_truth_signal = ground_truth_signal[:min_len]
+        detected_signal = detected_signal[:min_len]
 
     diff_signal = ground_truth_signal - detected_signal
     mean_abs_diff = float(np.mean(np.abs(diff_signal)))
@@ -76,11 +98,25 @@ def _print_indicator_diagnostics(
         corr = float(np.corrcoef(ground_truth_signal, detected_signal)[0, 1])
     else:
         corr = float("nan")
-    print("\n[metrics] Indicator signal comparison:")
-    print(f"  • Mean absolute difference: {mean_abs_diff:.6f}")
-    print(f"  • RMS difference: {rms_diff:.6f}")
-    print(f"  • Max absolute difference: {max_abs_diff:.6f}")
-    print(f"  • Pearson correlation: {corr:.6f}")
+
+    logger.info(
+        "Indicator signal comparison:\n"
+        "  • Mean absolute difference: %.6f\n"
+        "  • RMS difference: %.6f\n"
+        "  • Max absolute difference: %.6f\n"
+        "  • Pearson correlation: %.6f",
+        mean_abs_diff,
+        rms_diff,
+        max_abs_diff,
+        corr,
+    )
+
+    return {
+        "mean_abs_diff": mean_abs_diff,
+        "rms_diff": rms_diff,
+        "max_abs_diff": max_abs_diff,
+        "pearson_corr": corr,
+    }
 
 
 def _filter_events_to_sample_window(
@@ -214,22 +250,24 @@ def compare_detected_vs_ground_truth(
         removed_detected = detected_before - len(detected_df)
         removed_ground_truth = ground_truth_before - len(ground_truth_df)
         if removed_detected or removed_ground_truth:
-            print(
-                "\n[filter] Ignoring blink events outside the available sample window "
-                f"[{min_sample}, {max_sample}] -> removed {removed_detected} detected / "
-                f"{removed_ground_truth} ground truth"
+            logger.info(
+                "Ignoring blink events outside the available sample window [%d, %d] -> "
+                "removed %d detected / %d ground truth",
+                min_sample,
+                max_sample,
+                removed_detected,
+                removed_ground_truth,
             )
 
-    print("\n================ COMPARISON: Detected vs Ground Truth ================")
-    print(f"Tolerance allowed: ±{tolerance_samples} samples")
-    print(f"Detected rows    : {len(detected_df)}")
-    print(f"Ground truth rows: {len(ground_truth_df)}")
-    print("Row count matches? ->", len(detected_df) == len(ground_truth_df))
+    logger.info("================ COMPARISON: Detected vs Ground Truth ================")
+    logger.info("Tolerance allowed: ±%d samples", tolerance_samples)
+    logger.info("Detected rows    : %d", len(detected_df))
+    logger.info("Ground truth rows: %d", len(ground_truth_df))
+    logger.info("Row count matches? -> %s", len(detected_df) == len(ground_truth_df))
 
     nprev = min(n_preview_rows, len(detected_df), len(ground_truth_df))
     preview = reporting.preview_side_by_side(detected_df, ground_truth_df, nprev)
-    print(f"\nFirst {nprev} rows (ground truth vs detected):")
-    print(preview)
+    logger.info("First %d rows (ground truth vs detected):\n%s", nprev, preview)
 
     detected_df["max_amplitude"] = _max_amplitude_within_events(
         detected_df, detected_signal
@@ -268,37 +306,40 @@ def compare_detected_vs_ground_truth(
     )
 
     if all_ok and diff_table.empty:
-        print(f"\n✅ PASSED: all blink intervals match within ±{tolerance_samples} samples.")
+        logger.info(
+            "✅ PASSED: all blink intervals match within ±%d samples.",
+            tolerance_samples,
+        )
     else:
-        print(f"\n[diff] mismatches beyond ±{tolerance_samples} samples (showing {n_diff_rows}):")
+        logger.info(
+            "[diff] mismatches beyond ±%d samples (showing %d):",
+            tolerance_samples,
+            n_diff_rows,
+        )
         if diff_table.empty:
-            print("No mismatches found despite metric discrepancies.")
+            logger.info("No mismatches found despite metric discrepancies.")
         else:
-            print(diff_table)
+            logger.info("%s", diff_table)
 
     reporting.print_comparison_summary(metrics, tolerance_samples)
 
-    if sample_window is not None:
-        n_samples = int(sample_window[1])
-    else:
-        detected_max = int(detected_df["end_blink"].max()) if not detected_df.empty else 0
-        ground_truth_max = (
-            int(ground_truth_df["end_blink"].max()) if not ground_truth_df.empty else 0
+    indicator_metrics: dict[str, float] = {}
+    if ground_truth_signal is not None and detected_signal is not None:
+        indicator_metrics = _print_indicator_diagnostics(
+            ground_truth_signal, detected_signal
         )
-        n_samples = max(detected_max, ground_truth_max)
+    else:
+        logger.debug(
+            "Skipping indicator diagnostics because one or both signals were not provided."
+        )
 
-    gt_signal = (
-        ground_truth_signal
-        if ground_truth_signal is not None
-        else build_indicator_signal(n_samples, ground_truth_df)
-    )
-    det_signal = (
-        detected_signal
-        if detected_signal is not None
-        else build_indicator_signal(n_samples, detected_df)
-    )
-
-    _print_indicator_diagnostics(gt_signal, det_signal)
+    if indicator_metrics:
+        metrics.update(
+            {
+                f"indicator_{key}": value
+                for key, value in indicator_metrics.items()
+            }
+        )
 
     annotations = reporting.annotations_from_diff_table(diff_table, sampling_rate_hz)
 
