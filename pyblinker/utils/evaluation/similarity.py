@@ -460,6 +460,7 @@ def compute_alignment_metrics(
         return (n / d) * 100.0 if d else float("nan")
 
     return {
+        "unique_total": float(unique_total),
         "total_ground_truth": float(total_ground_truth),
         "total_detected": float(total_detected),
         "paired_events": float(len(paired_events)),
@@ -469,7 +470,7 @@ def compute_alignment_metrics(
         "detected_only": float(detected_only),
         "share_within_tolerance": float(share_count),
         "share_within_tolerance_percent": _pct(share_count, unique_total),
-        "unique_total": float(unique_total),
+
     }
 
 

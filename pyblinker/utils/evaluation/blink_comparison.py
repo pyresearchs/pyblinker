@@ -129,7 +129,7 @@ def _filter_events_to_sample_window(
     return events.loc[mask].copy()
 
 
-def compute_alignments_and_metrics(
+def compute_alignments(
     detected_df: pd.DataFrame,
     ground_truth_df: pd.DataFrame,
     tolerance_samples: int,
@@ -157,8 +157,8 @@ def compute_alignments_and_metrics(
         amplitude_atol=amplitude_atol,
         require_both_conditions=require_both_conditions,
     )
-    metrics = similarity.compute_alignment_metrics(alignments, tolerance_samples)
-    return alignments, metrics
+
+    return alignments
 
 
 def build_comparison_annotations(
@@ -269,7 +269,7 @@ def compare_detected_vs_ground_truth(
         ground_truth_df, detected_signal
     )
 
-    alignments, metrics = compute_alignments_and_metrics(
+    alignments = compute_alignments(
         detected_df=detected_df,
         ground_truth_df=ground_truth_df,
         tolerance_samples=tolerance_samples,
@@ -277,6 +277,8 @@ def compare_detected_vs_ground_truth(
         amplitude_atol=amplitude_atol,
         require_both_conditions=require_both_conditions,
     )
+
+
 
     start_diff, end_diff = similarity.compute_pairwise_differences(
         detected_df, ground_truth_df
@@ -320,6 +322,7 @@ def compare_detected_vs_ground_truth(
         else:
             logger.info("%s", preview)
 
+    metrics = similarity.compute_alignment_metrics(alignments, tolerance_samples)
     reporting.print_comparison_summary(metrics, tolerance_samples)
 
     indicator_metrics: dict[str, float] = {}
