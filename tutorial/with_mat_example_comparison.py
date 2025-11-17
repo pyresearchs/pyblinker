@@ -130,11 +130,10 @@ else:
 if os.environ.get("PYBLINKER_SKIP_PLOT") == "1":
     print("[info] Skipping raw.plot() because PYBLINKER_SKIP_PLOT=1")
 else:
-    matches = int(metrics["matches_within_tolerance"])
-    ground_truth_only = int(metrics["ground_truth_only"])
-    detected_only = int(metrics["detected_only"])
-    pairs_outside = int(metrics["pairs_outside_tolerance"])
-    total_differences = ground_truth_only + detected_only + pairs_outside
+    matches = int(metrics.get("share_within_tolerance", 0) // 2)
+    ground_truth_only = int(metrics.get("ground_truth_only", 0))
+    detected_only = int(metrics.get("detected_only", 0))
+    total_differences = ground_truth_only + detected_only
     plot_title = (
             "Manual vs PyBlinker Blink Comparison — "
             f"Matches: {matches}, Ground Truth Only: {ground_truth_only}, "

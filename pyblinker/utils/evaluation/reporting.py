@@ -73,27 +73,10 @@ def print_comparison_summary(metrics_dict: dict[str, float], tolerance_samples: 
         int(metrics_dict.get("total_detected", 0)),
     )
 
-    paired = int(metrics_dict.get("paired_events", 0))
-    matches = int(metrics_dict.get("matches_within_tolerance", 0))
-    outside = int(metrics_dict.get("pairs_outside_tolerance", 0))
     gt_only = int(metrics_dict.get("ground_truth_only", 0))
     det_only = int(metrics_dict.get("detected_only", 0))
     share_count = int(metrics_dict.get("share_within_tolerance", 0))
     share_percent = metrics_dict.get("share_within_tolerance_percent", float("nan"))
-
-    if paired:
-        pct_pairs = (matches / paired) * 100.0
-        logger.info(
-            "  • Paired events within tolerance: %d/%d (%.2f%% of pairs)",
-            matches,
-            paired,
-            pct_pairs,
-        )
-    else:
-        logger.info("  • Paired events within tolerance: 0")
-
-    if outside:
-        logger.info("  • Paired events outside tolerance: %d", outside)
 
     logger.info("  • Ground truth-only events: %d", gt_only)
     logger.info("  • Detected-only events: %d", det_only)
@@ -121,7 +104,22 @@ def make_diff_table(
 
     All comparisons are performed in sample index units (1-based). Time values in the
     resulting table are derived from the provided ``sampling_rate_hz`` purely for
-    display.
+    display. The table includes two columns that describe how each paired
+    event is classified:
+
+    ``match_category``
+        * ``"share_within_tolerance"`` — amplitude/overlap checks passed for the
+          pair. The event may still sit outside the tolerance window if
+          ``within_tolerance`` is ``False``.
+        * ``"matches_within_tolerance"`` — start and end boundaries fall inside
+          the tolerance window, but at least one amplitude/overlap requirement
+          failed.
+        * ``"pairs_outside_tolerance"`` — the pair violates the tolerance window
+          regardless of amplitude/overlap success.
+    ``within_tolerance``
+        Boolean flag indicating whether the start and end differences for a
+        paired event lie within ``±tolerance_samples``. Rows without a pairing
+        retain ``NaN`` for both ``match_category`` and ``within_tolerance``.
     """
 
     similarity.validate_event_table(detected_df)
@@ -151,6 +149,8 @@ def make_diff_table(
             continue
 
         status = "overlap" if alignment.overlap_samples > 0 else "no_overlap"
+        match_category = np.nan
+        within_tolerance = np.nan
 
         if alignment.ground_truth_idx is None:
             idx = alignment.detected_idx
@@ -173,7 +173,9 @@ def make_diff_table(
                     "end_diff": np.nan,
                     "status": status,
                     "event_label": DIFF_EVENT_LABEL_DETECTED,
-                    "time_sec": _to_seconds(detected_start[idx], sampling_rate_hz),
+                    "match_category": match_category,
+                    "within_tolerance": within_tolerance,
+                    "onset": _to_seconds(detected_start[idx], sampling_rate_hz),
                 }
             )
             continue
@@ -197,7 +199,9 @@ def make_diff_table(
                     "end_diff": np.nan,
                     "status": status,
                     "event_label": DIFF_EVENT_LABEL_GROUND_TRUTH,
-                    "time_sec": _to_seconds(gt_start[idx], sampling_rate_hz),
+                    "match_category": match_category,
+                    "within_tolerance": within_tolerance,
+                    "onset": _to_seconds(gt_start[idx], sampling_rate_hz),
                 }
             )
             continue
@@ -205,15 +209,21 @@ def make_diff_table(
         if alignment.start_diff is None or alignment.end_diff is None:
             continue
 
-        if (
-            abs(alignment.start_diff) <= tolerance_samples
-            and abs(alignment.end_diff) <= tolerance_samples
-        ):
-            continue
-
         idx_gt = alignment.ground_truth_idx
         idx_det = alignment.detected_idx
         assert idx_gt is not None and idx_det is not None
+        within_tolerance = (
+            abs(alignment.start_diff) <= tolerance_samples
+            and abs(alignment.end_diff) <= tolerance_samples
+        )
+
+        if alignment.conditions_satisfied:
+            match_category = "share_within_tolerance"
+        elif within_tolerance:
+            match_category = "matches_within_tolerance"
+        else:
+            match_category = "pairs_outside_tolerance"
+
         start_sample = int(min(gt_start[idx_gt], detected_start[idx_det]))
         det_amp_val = (
             float(detected_amp[idx_det]) if idx_det < detected_amp.size else np.nan
@@ -236,18 +246,20 @@ def make_diff_table(
                 "end_diff": float(alignment.end_diff),
                 "status": status,
                 "event_label": DIFF_EVENT_LABEL_MATCH,
-                "time_sec": _to_seconds(start_sample, sampling_rate_hz),
+                "match_category": match_category,
+                "within_tolerance": bool(within_tolerance),
+                "onset": _to_seconds(start_sample, sampling_rate_hz),
             }
         )
 
     diff_df = pd.DataFrame(rows)
     if not diff_df.empty:
         diff_df = diff_df.sort_values(
-            by=["time_sec", "ground_truth_idx", "detected_idx"],
+            by=["onset", "ground_truth_idx", "detected_idx"],
             kind="mergesort",
             na_position="last",
         ).copy()
-        diff_df["time_sec"] = diff_df["time_sec"].round(6)
+        diff_df["onset"] = diff_df["onset"].round(6)
 
         preview_rows = max_rows if max_rows is not None else len(diff_df)
         diff_df.attrs["preview"] = diff_df.head(preview_rows).to_dict(orient="list")
