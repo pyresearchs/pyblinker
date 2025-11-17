@@ -397,6 +397,12 @@ def compute_alignment_metrics(diff_table: pd.DataFrame) -> dict[str, float]:
     ``share_within_tolerance``
         Count of unique events (detected plus ground truth) participating in
         amplitude- and overlap-satisfying pairs.
+    ``matches_within_tolerance``
+        Count of unique events belonging to pairs that met the tolerance window
+        but failed at least one amplitude/overlap requirement.
+    ``pairs_outside_tolerance``
+        Count of unique events in pairs whose boundaries exceeded the tolerance
+        window regardless of amplitude/overlap success.
     ``share_within_tolerance_percent``
         Percentage of unique events that participate in amplitude- and overlap-
         satisfying pairs.
@@ -444,6 +450,10 @@ def compute_alignment_metrics(diff_table: pd.DataFrame) -> dict[str, float]:
     * ``share_within_tolerance`` = 2 because only ``G1`` and ``D1`` satisfy both
       amplitude and overlap checks; ``share_within_tolerance_percent`` is
       therefore ``2 / 6 * 100`` when measured against the six unique events.
+    * ``matches_within_tolerance`` = 2 for the ``G3``/``D3`` pair whose
+      amplitudes differ despite boundary agreement.
+    * ``pairs_outside_tolerance`` = 2 for the ``G2``/``D2`` pair whose boundaries
+      violate the tolerance window.
     """
 
     if not isinstance(diff_table, pd.DataFrame):
@@ -461,15 +471,23 @@ def compute_alignment_metrics(diff_table: pd.DataFrame) -> dict[str, float]:
 
     paired_mask = diff_table["ground_truth_idx"].notna() & diff_table["detected_idx"].notna()
     share_pairs_mask = match_category == "share_within_tolerance"
+    matches_pairs_mask = match_category == "matches_within_tolerance"
+    outside_pairs_mask = match_category == "pairs_outside_tolerance"
+
     share_pairs = int((share_pairs_mask & paired_mask).sum())
+    matches_pairs = int((matches_pairs_mask & paired_mask).sum())
+    outside_pairs = int((outside_pairs_mask & paired_mask).sum())
+
     share_count = 2 * share_pairs
+    matches_count = 2 * matches_pairs
+    outside_count = 2 * outside_pairs
     ground_truth_only = int(
         (diff_table["ground_truth_idx"].notna() & diff_table["detected_idx"].isna()).sum()
     )
     detected_only = int(
         (diff_table["detected_idx"].notna() & diff_table["ground_truth_idx"].isna()).sum()
     )
-    unique_total = share_count + ground_truth_only + detected_only
+    unique_total = int(total_ground_truth + total_detected)
 
     def _pct(n: int, d: int) -> float:
         return (n / d) * 100.0 if d else float("nan")
@@ -481,6 +499,8 @@ def compute_alignment_metrics(diff_table: pd.DataFrame) -> dict[str, float]:
         "ground_truth_only": float(ground_truth_only),
         "detected_only": float(detected_only),
         "share_within_tolerance": float(share_count),
+        "matches_within_tolerance": float(matches_count),
+        "pairs_outside_tolerance": float(outside_count),
         "share_within_tolerance_percent": _pct(share_count, unique_total),
 
     }
