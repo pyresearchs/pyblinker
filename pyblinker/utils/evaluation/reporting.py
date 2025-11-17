@@ -151,6 +151,8 @@ def make_diff_table(
             continue
 
         status = "overlap" if alignment.overlap_samples > 0 else "no_overlap"
+        match_category = np.nan
+        within_tolerance = np.nan
 
         if alignment.ground_truth_idx is None:
             idx = alignment.detected_idx
@@ -173,7 +175,9 @@ def make_diff_table(
                     "end_diff": np.nan,
                     "status": status,
                     "event_label": DIFF_EVENT_LABEL_DETECTED,
-                    "time_sec": _to_seconds(detected_start[idx], sampling_rate_hz),
+                    "match_category": match_category,
+                    "within_tolerance": within_tolerance,
+                    "onset": _to_seconds(detected_start[idx], sampling_rate_hz),
                 }
             )
             continue
@@ -197,7 +201,9 @@ def make_diff_table(
                     "end_diff": np.nan,
                     "status": status,
                     "event_label": DIFF_EVENT_LABEL_GROUND_TRUTH,
-                    "time_sec": _to_seconds(gt_start[idx], sampling_rate_hz),
+                    "match_category": match_category,
+                    "within_tolerance": within_tolerance,
+                    "onset": _to_seconds(gt_start[idx], sampling_rate_hz),
                 }
             )
             continue
@@ -205,15 +211,21 @@ def make_diff_table(
         if alignment.start_diff is None or alignment.end_diff is None:
             continue
 
-        if (
-            abs(alignment.start_diff) <= tolerance_samples
-            and abs(alignment.end_diff) <= tolerance_samples
-        ):
-            continue
-
         idx_gt = alignment.ground_truth_idx
         idx_det = alignment.detected_idx
         assert idx_gt is not None and idx_det is not None
+        within_tolerance = (
+            abs(alignment.start_diff) <= tolerance_samples
+            and abs(alignment.end_diff) <= tolerance_samples
+        )
+
+        if alignment.conditions_satisfied:
+            match_category = "share_within_tolerance"
+        elif within_tolerance:
+            match_category = "matches_within_tolerance"
+        else:
+            match_category = "pairs_outside_tolerance"
+
         start_sample = int(min(gt_start[idx_gt], detected_start[idx_det]))
         det_amp_val = (
             float(detected_amp[idx_det]) if idx_det < detected_amp.size else np.nan
@@ -236,18 +248,20 @@ def make_diff_table(
                 "end_diff": float(alignment.end_diff),
                 "status": status,
                 "event_label": DIFF_EVENT_LABEL_MATCH,
-                "time_sec": _to_seconds(start_sample, sampling_rate_hz),
+                "match_category": match_category,
+                "within_tolerance": bool(within_tolerance),
+                "onset": _to_seconds(start_sample, sampling_rate_hz),
             }
         )
 
     diff_df = pd.DataFrame(rows)
     if not diff_df.empty:
         diff_df = diff_df.sort_values(
-            by=["time_sec", "ground_truth_idx", "detected_idx"],
+            by=["onset", "ground_truth_idx", "detected_idx"],
             kind="mergesort",
             na_position="last",
         ).copy()
-        diff_df["time_sec"] = diff_df["time_sec"].round(6)
+        diff_df["onset"] = diff_df["onset"].round(6)
 
         preview_rows = max_rows if max_rows is not None else len(diff_df)
         diff_df.attrs["preview"] = diff_df.head(preview_rows).to_dict(orient="list")

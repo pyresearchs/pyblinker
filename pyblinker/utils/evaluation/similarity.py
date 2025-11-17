@@ -380,12 +380,12 @@ def align_events(
     return alignments
 
 
-def compute_alignment_metrics(
-    alignments: list[Alignment], tolerance_samples: int
-) -> dict[str, float]:
+def compute_alignment_metrics(diff_table: pd.DataFrame) -> dict[str, float]:
     """Compute summary metrics describing alignment quality.
 
-    Metrics are based on sample index comparisons (1-based) and include:
+    Metrics are based on sample index comparisons (1-based) contained in
+    ``diff_table`` (typically produced by :func:`pyblinker.utils.evaluation.reporting.make_diff_table`)
+    and include:
 
     ``total_ground_truth``
         Number of ground truth events.
@@ -408,6 +408,11 @@ def compute_alignment_metrics(
         Percentage of unique events that participate in amplitude- and overlap-
         satisfying pairs.
 
+    ``diff_table`` must include a ``match_category`` column with values from
+    {``"matches_within_tolerance"``, ``"pairs_outside_tolerance"``,
+    ``"share_within_tolerance"``} along with a ``within_tolerance`` boolean
+    column used to distinguish boundary matches.
+
     Example
     -------
     Imagine ``tolerance_samples`` is ``1`` with three ground truth blinks
@@ -427,33 +432,43 @@ def compute_alignment_metrics(
       ``share_within_tolerance_percent`` of ``4 / 6 * 100``.
     """
 
-    if tolerance_samples < 0:
-        raise ValueError("tolerance_samples must be non-negative.")
+    if not isinstance(diff_table, pd.DataFrame):
+        raise TypeError("diff_table must be a pandas DataFrame.")
 
-    total_ground_truth = sum(a.ground_truth_idx is not None for a in alignments)
-    total_detected = sum(a.detected_idx is not None for a in alignments)
-    paired_events = [
-        a for a in alignments if a.ground_truth_idx is not None and a.detected_idx is not None
-    ]
+    total_ground_truth = diff_table["ground_truth_idx"].notna().sum()
+    total_detected = diff_table["detected_idx"].notna().sum()
 
-    boundary_matches = sum(
-        (
-            a.start_diff is not None
-            and a.end_diff is not None
-            and abs(float(a.start_diff)) <= tolerance_samples
-            and abs(float(a.end_diff)) <= tolerance_samples
-        )
-        for a in paired_events
+    paired_mask = diff_table["ground_truth_idx"].notna() & diff_table["detected_idx"].notna()
+    paired_events = diff_table.loc[paired_mask]
+
+    match_category = diff_table.get("match_category")
+    if match_category is None:
+        raise KeyError("diff_table must include a 'match_category' column.")
+
+    within_tolerance = diff_table.get("within_tolerance")
+    if within_tolerance is None:
+        raise KeyError("diff_table must include a 'within_tolerance' column.")
+    within_tolerance_series = pd.Series(within_tolerance, copy=False).astype("boolean")
+    within_tolerance_mask = within_tolerance_series.fillna(False)
+
+    matches_mask = match_category.isin(["matches_within_tolerance", "share_within_tolerance"])
+    boundary_matches = int((matches_mask & paired_mask & within_tolerance_mask).sum())
+
+    share_pairs_mask = match_category == "share_within_tolerance"
+    share_pairs = int(share_pairs_mask[paired_mask].sum())
+    share_count = 2 * share_pairs
+    pairs_outside_mask = (
+        match_category.isin(["pairs_outside_tolerance", "share_within_tolerance"])
+        & paired_mask
+        & ~within_tolerance_mask
     )
-    satisfied_pairs = [
-        a
-        for a in paired_events
-        if getattr(a, "conditions_satisfied", False)
-    ]
-    share_count = 2 * len(satisfied_pairs)
-    pairs_outside_tolerance = len(paired_events) - boundary_matches
-    ground_truth_only = sum(a.ground_truth_idx is not None and a.detected_idx is None for a in alignments)
-    detected_only = sum(a.detected_idx is not None and a.ground_truth_idx is None for a in alignments)
+    pairs_outside_tolerance = int(pairs_outside_mask.sum())
+    ground_truth_only = int(
+        (diff_table["ground_truth_idx"].notna() & diff_table["detected_idx"].isna()).sum()
+    )
+    detected_only = int(
+        (diff_table["detected_idx"].notna() & diff_table["ground_truth_idx"].isna()).sum()
+    )
     unique_total = share_count + ground_truth_only + detected_only
 
     def _pct(n: int, d: int) -> float:
