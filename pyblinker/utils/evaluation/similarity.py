@@ -429,16 +429,21 @@ def compute_alignment_metrics(diff_table: pd.DataFrame) -> dict[str, float]:
     -------
     Imagine ``tolerance_samples`` is ``1`` with three ground truth blinks
     (``G1``-``G3``) and three detected blinks (``D1``-``D3``). Suppose ``G1``
-    aligns with ``D1`` and ``G2`` aligns with ``D2`` once amplitude and overlap
-    checks pass. ``G1``/``D1`` also satisfy the boundary tolerance while
-    ``G2``/``D2`` fall outside the ±1 sample window. ``G3`` and ``D3`` remain
-    unmatched. The resulting metrics would be:
+    and ``D1`` overlap and have similar amplitudes, so they receive
+    ``match_category="share_within_tolerance"`` with ``within_tolerance=True``.
+    ``G2`` and ``D2`` overlap but the detected start is two samples early, so
+    they receive ``match_category="pairs_outside_tolerance"`` with
+    ``within_tolerance=False`` even though amplitude checks pass. ``G3`` and
+    ``D3`` align within the tolerance window but the amplitudes differ, leading
+    to ``match_category="matches_within_tolerance"`` with
+    ``within_tolerance=True``. The resulting metrics would be:
 
     * ``total_ground_truth`` = 3 and ``total_detected`` = 3.
-    * ``ground_truth_only`` = 1 (``G3``) and ``detected_only`` = 1 (``D3``).
-    * ``share_within_tolerance`` = 4 because two events participate in each
-      satisfied pair, leading to a ``unique_total`` of 6 events and a
-      ``share_within_tolerance_percent`` of ``4 / 6 * 100``.
+    * ``ground_truth_only`` = 0 and ``detected_only`` = 0 because all events are
+      paired.
+    * ``share_within_tolerance`` = 2 because only ``G1`` and ``D1`` satisfy both
+      amplitude and overlap checks; ``share_within_tolerance_percent`` is
+      therefore ``2 / 6 * 100`` when measured against the six unique events.
     """
 
     if not isinstance(diff_table, pd.DataFrame):
