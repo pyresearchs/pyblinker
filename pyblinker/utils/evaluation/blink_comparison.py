@@ -304,15 +304,21 @@ def compare_detected_vs_ground_truth(
             tolerance_samples,
         )
     else:
+        preview_attr = diff_table.attrs.get("preview")
+        preview = (
+            pd.DataFrame(preview_attr)
+            if isinstance(preview_attr, dict)
+            else diff_table.head(n_diff_rows)
+        )
         logger.info(
             "[diff] mismatches beyond ±%d samples (showing %d):",
             tolerance_samples,
-            n_diff_rows,
+            len(preview),
         )
         if diff_table.empty:
             logger.info("No mismatches found despite metric discrepancies.")
         else:
-            logger.info("%s", diff_table)
+            logger.info("%s", preview)
 
     reporting.print_comparison_summary(metrics, tolerance_samples)
 
