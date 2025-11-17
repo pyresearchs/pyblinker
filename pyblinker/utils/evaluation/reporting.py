@@ -246,9 +246,11 @@ def make_diff_table(
             by=["time_sec", "ground_truth_idx", "detected_idx"],
             kind="mergesort",
             na_position="last",
-        )
-        diff_df = diff_df.head(max_rows).copy()
+        ).copy()
         diff_df["time_sec"] = diff_df["time_sec"].round(6)
+
+        preview_rows = max_rows if max_rows is not None else len(diff_df)
+        diff_df.attrs["preview"] = diff_df.head(preview_rows).to_dict(orient="list")
     return diff_df
 
 
