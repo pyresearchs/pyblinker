@@ -73,27 +73,10 @@ def print_comparison_summary(metrics_dict: dict[str, float], tolerance_samples: 
         int(metrics_dict.get("total_detected", 0)),
     )
 
-    paired = int(metrics_dict.get("paired_events", 0))
-    matches = int(metrics_dict.get("matches_within_tolerance", 0))
-    outside = int(metrics_dict.get("pairs_outside_tolerance", 0))
     gt_only = int(metrics_dict.get("ground_truth_only", 0))
     det_only = int(metrics_dict.get("detected_only", 0))
     share_count = int(metrics_dict.get("share_within_tolerance", 0))
     share_percent = metrics_dict.get("share_within_tolerance_percent", float("nan"))
-
-    if paired:
-        pct_pairs = (matches / paired) * 100.0
-        logger.info(
-            "  • Paired events within tolerance: %d/%d (%.2f%% of pairs)",
-            matches,
-            paired,
-            pct_pairs,
-        )
-    else:
-        logger.info("  • Paired events within tolerance: 0")
-
-    if outside:
-        logger.info("  • Paired events outside tolerance: %d", outside)
 
     logger.info("  • Ground truth-only events: %d", gt_only)
     logger.info("  • Detected-only events: %d", det_only)
@@ -121,7 +104,22 @@ def make_diff_table(
 
     All comparisons are performed in sample index units (1-based). Time values in the
     resulting table are derived from the provided ``sampling_rate_hz`` purely for
-    display.
+    display. The table includes two columns that describe how each paired
+    event is classified:
+
+    ``match_category``
+        * ``"share_within_tolerance"`` — amplitude/overlap checks passed for the
+          pair. The event may still sit outside the tolerance window if
+          ``within_tolerance`` is ``False``.
+        * ``"matches_within_tolerance"`` — start and end boundaries fall inside
+          the tolerance window, but at least one amplitude/overlap requirement
+          failed.
+        * ``"pairs_outside_tolerance"`` — the pair violates the tolerance window
+          regardless of amplitude/overlap success.
+    ``within_tolerance``
+        Boolean flag indicating whether the start and end differences for a
+        paired event lie within ``±tolerance_samples``. Rows without a pairing
+        retain ``NaN`` for both ``match_category`` and ``within_tolerance``.
     """
 
     similarity.validate_event_table(detected_df)
