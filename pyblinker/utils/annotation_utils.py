@@ -102,9 +102,8 @@ def annotations_from_diff_table(
     The diff table is expected to contain ``event_label`` columns matching the
     ``DIFF_EVENT_LABEL_*`` constants along with ``ground_truth_start``/
     ``ground_truth_end`` and ``detected_start``/``detected_end`` values. When a
-    ``time_sec`` column is available it is used directly as the annotation
-    onset; otherwise onsets are derived from the earliest available sample
-    index.
+    ``onset`` column is available it is used directly as the annotation onset;
+    otherwise onsets are derived from the earliest available sample index.
     """
 
     if diff_table.empty:
@@ -143,8 +142,8 @@ def annotations_from_diff_table(
             continue
 
         onset = (
-            float(row.time_sec)
-            if hasattr(row, "time_sec") and pd.notna(row.time_sec)
+            float(row.onset)
+            if hasattr(row, "onset") and pd.notna(row.onset)
             else float(_to_seconds(start_sample, sampling_rate_hz))
         )
         duration = float(_duration_seconds(start_sample, end_sample, sampling_rate_hz))

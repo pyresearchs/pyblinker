@@ -380,23 +380,16 @@ def align_events(
     return alignments
 
 
-def compute_alignment_metrics(
-    alignments: list[Alignment], tolerance_samples: int
-) -> dict[str, float]:
+def compute_alignment_metrics(diff_table: pd.DataFrame) -> dict[str, float]:
     """Compute summary metrics describing alignment quality.
 
-    Metrics are based on sample index comparisons (1-based) and include:
+    Metrics are derived directly from ``diff_table`` (typically produced by
+    :func:`pyblinker.utils.evaluation.reporting.make_diff_table`) and include:
 
     ``total_ground_truth``
         Number of ground truth events.
     ``total_detected``
         Number of detected events.
-    ``paired_events``
-        Count of alignments satisfying the amplitude/overlap criteria.
-    ``matches_within_tolerance``
-        Number of paired events whose start and end differences fall within ``tolerance_samples``.
-    ``pairs_outside_tolerance``
-        Number of paired events that violate the boundary tolerance.
     ``ground_truth_only``
         Ground truth events without a detected counterpart.
     ``detected_only``
@@ -404,72 +397,112 @@ def compute_alignment_metrics(
     ``share_within_tolerance``
         Count of unique events (detected plus ground truth) participating in
         amplitude- and overlap-satisfying pairs.
+    ``matches_within_tolerance``
+        Count of unique events belonging to pairs that met the tolerance window
+        but failed at least one amplitude/overlap requirement.
+    ``pairs_outside_tolerance``
+        Count of unique events in pairs whose boundaries exceeded the tolerance
+        window regardless of amplitude/overlap success.
     ``share_within_tolerance_percent``
         Percentage of unique events that participate in amplitude- and overlap-
         satisfying pairs.
 
+    ``diff_table`` must include ``match_category`` and ``within_tolerance``
+    columns describing how each paired event was classified:
+
+    ``"share_within_tolerance"``
+        Assigned when both amplitude and overlap conditions are satisfied for a
+        detected/ground-truth pair. ``within_tolerance`` may be either ``True``
+        or ``False`` depending on whether the start/end boundaries also fall
+        within the tolerance window.
+    ``"matches_within_tolerance"``
+        Assigned to pairs whose start and end indices fall within the tolerance
+        window but fail at least one amplitude/overlap requirement. These pairs
+        are within the boundary window (``within_tolerance=True``) yet are not
+        counted toward ``share_within_tolerance`` because the quality checks did
+        not pass.
+    ``"pairs_outside_tolerance"``
+        Assigned when a paired event violates the tolerance window
+        (``within_tolerance=False``), even if amplitude/overlap conditions are
+        otherwise satisfied.
+
+    The ``within_tolerance`` column is a boolean flag indicating whether both
+    start and end differences for a paired event fall within the configured
+    tolerance. Rows without a detected/ground-truth pairing use ``NaN`` for both
+    ``match_category`` and ``within_tolerance``.
+
     Example
     -------
     Imagine ``tolerance_samples`` is ``1`` with three ground truth blinks
-    (``G1``-``G3``) and three detected blinks (``D1``-``D3``).  Suppose ``G1``
-    aligns with ``D1`` and ``G2`` aligns with ``D2`` once amplitude and overlap
-    checks pass.  ``G1``/``D1`` also satisfy the boundary tolerance while
-    ``G2``/``D2`` fall outside the ±1 sample window.  ``G3`` and ``D3`` remain
-    unmatched.  The resulting metrics would be:
+    (``G1``-``G3``) and three detected blinks (``D1``-``D3``). Suppose ``G1``
+    and ``D1`` overlap and have similar amplitudes, so they receive
+    ``match_category="share_within_tolerance"`` with ``within_tolerance=True``.
+    ``G2`` and ``D2`` overlap but the detected start is two samples early, so
+    they receive ``match_category="pairs_outside_tolerance"`` with
+    ``within_tolerance=False`` even though amplitude checks pass. ``G3`` and
+    ``D3`` align within the tolerance window but the amplitudes differ, leading
+    to ``match_category="matches_within_tolerance"`` with
+    ``within_tolerance=True``. The resulting metrics would be:
 
     * ``total_ground_truth`` = 3 and ``total_detected`` = 3.
-    * ``paired_events`` = 2 because two alignments were formed.
-    * ``matches_within_tolerance`` = 1 (only ``G1``/``D1`` obey the boundary
-      tolerance) and ``pairs_outside_tolerance`` = 1 for the failing pair.
-    * ``ground_truth_only`` = 1 (``G3``) and ``detected_only`` = 1 (``D3``).
-    * ``share_within_tolerance`` = 4 because two events participate in each
-      satisfied pair, leading to a ``unique_total`` of 6 events and a
-      ``share_within_tolerance_percent`` of ``4 / 6 * 100``.
+    * ``ground_truth_only`` = 0 and ``detected_only`` = 0 because all events are
+      paired.
+    * ``share_within_tolerance`` = 2 because only ``G1`` and ``D1`` satisfy both
+      amplitude and overlap checks; ``share_within_tolerance_percent`` is
+      therefore ``2 / 6 * 100`` when measured against the six unique events.
+    * ``matches_within_tolerance`` = 2 for the ``G3``/``D3`` pair whose
+      amplitudes differ despite boundary agreement.
+    * ``pairs_outside_tolerance`` = 2 for the ``G2``/``D2`` pair whose boundaries
+      violate the tolerance window.
     """
 
-    if tolerance_samples < 0:
-        raise ValueError("tolerance_samples must be non-negative.")
+    if not isinstance(diff_table, pd.DataFrame):
+        raise TypeError("diff_table must be a pandas DataFrame.")
 
-    total_ground_truth = sum(a.ground_truth_idx is not None for a in alignments)
-    total_detected = sum(a.detected_idx is not None for a in alignments)
-    paired_events = [
-        a for a in alignments if a.ground_truth_idx is not None and a.detected_idx is not None
-    ]
+    total_ground_truth = diff_table["ground_truth_idx"].notna().sum()
+    total_detected = diff_table["detected_idx"].notna().sum()
 
-    boundary_matches = sum(
-        (
-            a.start_diff is not None
-            and a.end_diff is not None
-            and abs(float(a.start_diff)) <= tolerance_samples
-            and abs(float(a.end_diff)) <= tolerance_samples
-        )
-        for a in paired_events
+    match_category = diff_table.get("match_category")
+    if match_category is None:
+        raise KeyError("diff_table must include a 'match_category' column.")
+
+    if "within_tolerance" not in diff_table.columns:
+        raise KeyError("diff_table must include a 'within_tolerance' column.")
+
+    paired_mask = diff_table["ground_truth_idx"].notna() & diff_table["detected_idx"].notna()
+    share_pairs_mask = match_category == "share_within_tolerance"
+    matches_pairs_mask = match_category == "matches_within_tolerance"
+    outside_pairs_mask = match_category == "pairs_outside_tolerance"
+
+    share_pairs = int((share_pairs_mask & paired_mask).sum())
+    matches_pairs = int((matches_pairs_mask & paired_mask).sum())
+    outside_pairs = int((outside_pairs_mask & paired_mask).sum())
+
+    share_count = 2 * share_pairs
+    matches_count = 2 * matches_pairs
+    outside_count = 2 * outside_pairs
+    ground_truth_only = int(
+        (diff_table["ground_truth_idx"].notna() & diff_table["detected_idx"].isna()).sum()
     )
-    satisfied_pairs = [
-        a
-        for a in paired_events
-        if getattr(a, "conditions_satisfied", False)
-    ]
-    share_count = 2 * len(satisfied_pairs)
-    pairs_outside_tolerance = len(paired_events) - boundary_matches
-    ground_truth_only = sum(a.ground_truth_idx is not None and a.detected_idx is None for a in alignments)
-    detected_only = sum(a.detected_idx is not None and a.ground_truth_idx is None for a in alignments)
-    unique_total = share_count + ground_truth_only + detected_only
+    detected_only = int(
+        (diff_table["detected_idx"].notna() & diff_table["ground_truth_idx"].isna()).sum()
+    )
+    unique_total = int(total_ground_truth + total_detected)
 
     def _pct(n: int, d: int) -> float:
         return (n / d) * 100.0 if d else float("nan")
 
     return {
+        "unique_total": float(unique_total),
         "total_ground_truth": float(total_ground_truth),
         "total_detected": float(total_detected),
-        "paired_events": float(len(paired_events)),
-        "matches_within_tolerance": float(boundary_matches),
-        "pairs_outside_tolerance": float(pairs_outside_tolerance),
         "ground_truth_only": float(ground_truth_only),
         "detected_only": float(detected_only),
         "share_within_tolerance": float(share_count),
+        "matches_within_tolerance": float(matches_count),
+        "pairs_outside_tolerance": float(outside_count),
         "share_within_tolerance_percent": _pct(share_count, unique_total),
-        "unique_total": float(unique_total),
+
     }
 
 

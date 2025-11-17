@@ -129,7 +129,7 @@ def _filter_events_to_sample_window(
     return events.loc[mask].copy()
 
 
-def compute_alignments_and_metrics(
+def compute_alignments(
     detected_df: pd.DataFrame,
     ground_truth_df: pd.DataFrame,
     tolerance_samples: int,
@@ -157,8 +157,8 @@ def compute_alignments_and_metrics(
         amplitude_atol=amplitude_atol,
         require_both_conditions=require_both_conditions,
     )
-    metrics = similarity.compute_alignment_metrics(alignments, tolerance_samples)
-    return alignments, metrics
+
+    return alignments
 
 
 def build_comparison_annotations(
@@ -269,7 +269,7 @@ def compare_detected_vs_ground_truth(
         ground_truth_df, detected_signal
     )
 
-    alignments, metrics = compute_alignments_and_metrics(
+    alignments = compute_alignments(
         detected_df=detected_df,
         ground_truth_df=ground_truth_df,
         tolerance_samples=tolerance_samples,
@@ -277,6 +277,8 @@ def compare_detected_vs_ground_truth(
         amplitude_atol=amplitude_atol,
         require_both_conditions=require_both_conditions,
     )
+
+
 
     start_diff, end_diff = similarity.compute_pairwise_differences(
         detected_df, ground_truth_df
@@ -298,28 +300,46 @@ def compare_detected_vs_ground_truth(
         sampling_rate_hz,
     )
 
-    if all_ok and diff_table.empty:
+    match_category = diff_table.get("match_category")
+    within_tolerance = diff_table.get("within_tolerance")
+    within_tolerance_series = (
+        pd.Series(within_tolerance, copy=False).astype("boolean")
+        if within_tolerance is not None
+        else pd.Series(False, index=diff_table.index, dtype="boolean")
+    )
+    within_tolerance_mask = within_tolerance_series.fillna(False)
+
+    mismatch_mask = (
+        diff_table["event_label"] != reporting.DIFF_EVENT_LABEL_MATCH
+    ) | (
+        match_category.isin(["pairs_outside_tolerance", "share_within_tolerance"])
+        & ~within_tolerance_mask
+    )
+    mismatches = diff_table.loc[mismatch_mask]
+
+    if all_ok and mismatches.empty:
         logger.info(
             "✅ PASSED: all blink intervals match within ±%d samples.",
             tolerance_samples,
         )
     else:
-        preview_attr = diff_table.attrs.get("preview")
+        preview_attr = mismatches.attrs.get("preview")
         preview = (
             pd.DataFrame(preview_attr)
             if isinstance(preview_attr, dict)
-            else diff_table.head(n_diff_rows)
+            else mismatches.head(n_diff_rows)
         )
         logger.info(
             "[diff] mismatches beyond ±%d samples (showing %d):",
             tolerance_samples,
             len(preview),
         )
-        if diff_table.empty:
+        if mismatches.empty:
             logger.info("No mismatches found despite metric discrepancies.")
         else:
             logger.info("%s", preview)
 
+    metrics = similarity.compute_alignment_metrics(diff_table)
     reporting.print_comparison_summary(metrics, tolerance_samples)
 
     indicator_metrics: dict[str, float] = {}
