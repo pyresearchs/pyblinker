@@ -52,3 +52,28 @@ pip install git+https://github.com/pyresearchs/pyblinker.git
 
 # Documentation
 For a detailed guide on `pyblinker`, see the [tutorials](https://github.com/pyresearchs/pyblinker/tree/main/tutorial).
+
+## Refined blink flow from external annotations
+
+If you already have approximate blink regions (e.g., from manual CSV annotations), you can refine them with zero-crossing bounds, run FitBlinks/BlinkProperties, and export an MNE HTML report that shows left/right zero crossings plus key blink metrics.
+
+Run the flow on the included sample data:
+
+```bash
+python -m pyblinker.outside_annotation.cli \
+    --annotations manual_annotation_feature_calculation_data/ear_eog.csv \
+    --fif manual_annotation_feature_calculation_data/ear_eog.fif \
+    --channel EEG-E8 \
+    --output manual_annotation_feature_calculation_data/refined_blink_metrics.csv
+```
+
+For a guided example that also generates `refined_blink_report.html`, run:
+
+```bash
+python tutorial/refined_blink_report_tutorial.py
+```
+
+Both commands rely on the bundled `manual_annotation_feature_calculation_data/ear_eog.*` files. They produce:
+
+* A refined metrics CSV (default: `manual_annotation_feature_calculation_data/refined_blink_metrics.csv`).
+* An MNE HTML report (`tutorial_outputs/refined_blink_report.html` via the tutorial) with per-blink plots marking zero crossings and metrics.
