@@ -14,6 +14,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import mne
+
 from pyblinker.outside_annotation import (
     BlinkRegionRefinementFlow,
     RefinementConfig,
@@ -28,6 +30,9 @@ def main() -> None:
 
     output_dir = Path(__file__).resolve().parents[1] / "tutorial_outputs"
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Toggle EAR overlay for plots. Default is False to preserve existing behavior.
+    enable_ear_overlay = False
 
     config = RefinementConfig(
         annotation_csv=annotations,
@@ -45,11 +50,24 @@ def main() -> None:
 
     # Build visual report with zero-crossing overlays and key metrics
     report_path = output_dir / "refined_blink_report.html"
+    overlay_signal = None
+    overlay_sfreq = None
+    if enable_ear_overlay:
+        raw = mne.io.read_raw_fif(fif_path, preload=False, verbose="ERROR")
+        overlay_sfreq = float(raw.info["sfreq"])
+        try:
+            overlay_signal = raw.get_data(picks="EAR-avg_ear")[0]
+        except Exception as exc:  # pragma: no cover - defensive channel lookup
+            raise ValueError("Channel EAR-avg_ear not found for overlay") from exc
+
     build_refined_blink_report(
         results=artifacts.results,
         signal=artifacts.signal,
         sfreq=artifacts.sfreq,
         channel_name=config.channel,
+        plot_overlay=enable_ear_overlay,
+        overlay_signal=overlay_signal,
+        overlay_sfreq=overlay_sfreq,
         output_path=report_path,
     )
 
