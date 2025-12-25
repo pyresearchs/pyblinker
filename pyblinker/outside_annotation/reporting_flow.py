@@ -75,6 +75,7 @@ def build_refined_blink_report(
     n_samples = signal.shape[0]
     pad_samples = int(round(pad_seconds * sfreq))
 
+    annotation_rows = len(results)
     total_candidates = len(results)
     rows = list(results.itertuples(index=False))
     if max_plots is not None:
@@ -208,6 +209,7 @@ def build_refined_blink_report(
         plt.close(fig)
 
     summary_rows = [
+        ("Source CSV rows (blinks)", annotation_rows),
         ("Total refined blinks", total_candidates),
         ("Blinks plotted", plotted_count),
     ]

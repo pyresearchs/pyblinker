@@ -1,13 +1,25 @@
-"""Tutorial: run the refined blink flow and generate an HTML report.
+"""Tutorial: run the refined blink flow, compute metrics, and export an HTML report.
 
-This tutorial uses the provided manual annotations and FIF recording:
+What this tutorial does (high level)
+------------------------------------
+1. Loads manual blink annotations from ``manual_annotation_feature_calculation_data/ear_eog.csv``.
+2. Loads the corresponding MNE FIF recording at ``manual_annotation_feature_calculation_data/ear_eog.fif``.
+3. Runs the blink refinement pipeline (zero-crossings, optional fitting, and properties) on the
+   ``EEG-E8`` channel.
+4. Writes the merged metrics to ``tutorial_outputs/refined_blink_metrics.csv`` for inspection.
+5. Generates an ``tutorial_outputs/refined_blink_report.html`` MNE report that overlays:
+   - zero-crossing markers and labels,
+   - the maximum-amplitude marker,
+   - key blink metrics,
+   - and, optionally, an EAR overlay (``EAR-avg_ear``) on a secondary y-axis.
 
-- CSV: manual_annotation_feature_calculation_data/ear_eog.csv
-- FIF: manual_annotation_feature_calculation_data/ear_eog.fif
-
-It runs the refinement flow, writes the merged metrics to CSV, and produces
-an MNE `report.html` that overlays zero-crossings and key blink metrics for
-visual validation.
+Why this exists
+---------------
+This tutorial is designed to remain understandable years later: it shows the full path from
+raw annotations + FIF to visual validation of refined blinks. By default it mirrors the
+original behavior (EEG-only plot). Turning on the EAR overlay is a single-flag change to help
+compare eye-aspect-ratio traces to EEG-derived blink regions without altering the core
+processing code.
 """
 
 from __future__ import annotations
