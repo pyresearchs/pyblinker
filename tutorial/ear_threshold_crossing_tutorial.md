@@ -89,9 +89,60 @@ ax.plot(
     label=f"Opening slope = {opening_slope:.2f}",
 )
 
+# Vertical guides
+ax.axvline(triplet.left.time, color="crimson", alpha=0.4)
+ax.axvline(triplet.right.time, color="crimson", alpha=0.4)
+ax.axvline(triplet.minimum_time, color="black", alpha=0.3)
+
+# Annotations (matching the demo snippet)
+ax.annotate(
+    "Left threshold crossing",
+    xy=(triplet.left.time, theta),
+    xytext=(triplet.left.time - 0.35, theta + 0.06),
+    arrowprops=dict(arrowstyle="->", lw=2, color="crimson"),
+    fontsize=11,
+    color="crimson",
+)
+
+ax.annotate(
+    "Minimum EAR",
+    xy=(triplet.minimum_time, triplet.minimum_value),
+    xytext=(triplet.minimum_time + 0.10, triplet.minimum_value - 0.08),
+    arrowprops=dict(arrowstyle="->", lw=2),
+    fontsize=11,
+)
+
+ax.annotate(
+    "Right threshold crossing",
+    xy=(triplet.right.time, theta),
+    xytext=(triplet.right.time + 0.05, theta + 0.06),
+    arrowprops=dict(arrowstyle="->", lw=2, color="crimson"),
+    fontsize=11,
+    color="crimson",
+)
+
+# Slope labels
+ax.text(
+    (triplet.left.time + triplet.minimum_time) / 2,
+    (theta + triplet.minimum_value) / 2 + 0.01,
+    f"closing slope = {closing_slope:.2f} EAR/s",
+    bbox=dict(boxstyle="round", fc="white", ec="black"),
+    fontsize=11,
+)
+
+ax.text(
+    (triplet.minimum_time + triplet.right.time) / 2,
+    (theta + triplet.minimum_value) / 2 - 0.04,
+    f"opening slope = {opening_slope:.2f} EAR/s",
+    bbox=dict(boxstyle="round", fc="white", ec="green"),
+    fontsize=11,
+    color="green",
+)
+
 ax.set_title("EAR threshold crossings with slopes")
 ax.set_xlabel("Time (s)")
 ax.set_ylabel("EAR")
+ax.set_ylim(0.05, 0.36)
 ax.legend(loc="lower left")
 ax.grid(alpha=0.25)
 fig.tight_layout()

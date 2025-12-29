@@ -86,9 +86,60 @@ def plot_crossings(
         label=f"Opening slope = {opening_slope:.2f}",
     )
 
+    # Vertical guides
+    ax.axvline(left_time, color="crimson", alpha=0.4)
+    ax.axvline(right_time, color="crimson", alpha=0.4)
+    ax.axvline(min_time, color="black", alpha=0.3)
+
+    # Annotations (matching the instructional snippet)
+    ax.annotate(
+        "Left threshold crossing",
+        xy=(left_time, theta),
+        xytext=(left_time - 0.35, theta + 0.06),
+        arrowprops=dict(arrowstyle="->", lw=2, color="crimson"),
+        fontsize=11,
+        color="crimson",
+    )
+
+    ax.annotate(
+        "Minimum EAR",
+        xy=(min_time, min_value),
+        xytext=(min_time + 0.10, min_value - 0.08),
+        arrowprops=dict(arrowstyle="->", lw=2),
+        fontsize=11,
+    )
+
+    ax.annotate(
+        "Right threshold crossing",
+        xy=(right_time, theta),
+        xytext=(right_time + 0.05, theta + 0.06),
+        arrowprops=dict(arrowstyle="->", lw=2, color="crimson"),
+        fontsize=11,
+        color="crimson",
+    )
+
+    # Slope labels
+    ax.text(
+        (left_time + min_time) / 2,
+        (theta + min_value) / 2 + 0.01,
+        f"closing slope = {closing_slope:.2f} EAR/s",
+        bbox=dict(boxstyle="round", fc="white", ec="black"),
+        fontsize=11,
+    )
+
+    ax.text(
+        (min_time + right_time) / 2,
+        (theta + min_value) / 2 - 0.04,
+        f"opening slope = {opening_slope:.2f} EAR/s",
+        bbox=dict(boxstyle="round", fc="white", ec="green"),
+        fontsize=11,
+        color="green",
+    )
+
     ax.set_title("EAR threshold crossings with slopes")
     ax.set_xlabel("Time (s)")
     ax.set_ylabel("EAR")
+    ax.set_ylim(0.05, 0.36)
     ax.legend(loc="lower left")
     ax.grid(alpha=0.25)
     fig.tight_layout()
