@@ -26,6 +26,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import sys
+import os
 
 import mne
 import pandas as pd
@@ -39,6 +40,7 @@ from pyblinker.blink_features.ear_metrics import (  # noqa: E402
     EARFeatureConfig,
     EARRefinementConfig,
     EARThresholdBlinkRefiner,
+    apply_flat_threshold_selection,
     load_coarse_blinks,
     load_ear_channel,
 )
@@ -46,10 +48,12 @@ from pyblinker.outside_annotation import build_refined_blink_report  # noqa: E40
 
 
 def main() -> None:
+    save_reports = os.environ.get("PYBLINKER_SAVE_REPORTS", "1") != "0"
     project_root = PROJECT_ROOT
     data_dir = project_root / "manual_annotation_feature_calculation_data"
     output_dir = project_root / "tutorial_outputs"
-    output_dir.mkdir(parents=True, exist_ok=True)
+    if save_reports:
+        output_dir.mkdir(parents=True, exist_ok=True)
 
     annotation_csv = data_dir / "ear_eog.csv"
     fif_path = data_dir / "ear_eog.fif"
@@ -86,9 +90,11 @@ def main() -> None:
         ear_signal, sfreq, threshold=ear_threshold, feature_config=feature_config
     )
     features = extractor.build_feature_table(refined)
+    apply_flat_threshold_selection(features, extractor.threshold_store)
 
-    output_path = output_dir / "ear_threshold_refined_blinks.csv"
-    features.to_csv(output_path, index=False)
+    if save_reports:
+        output_path = output_dir / "ear_threshold_refined_blinks.csv"
+        features.to_csv(output_path, index=False)
 
     # Build visual report with EEG overlay by default to mirror the CSV + threshold story
     raw = mne.io.read_raw_fif(fif_path, preload=True, verbose="ERROR")
@@ -100,44 +106,51 @@ def main() -> None:
     right_time = pd.to_numeric(report_df["ear_threshold_right_time"], errors="coerce")
     min_time = pd.to_numeric(report_df["ear_threshold_min_time"], errors="coerce")
 
-    report_df["refined_left_zero"] = (left_time * sfreq).round()
-    report_df["refined_right_zero"] = (right_time * sfreq).round()
-    report_df["refined_min_zero"] = (min_time * sfreq).round()
+    report_df["ear_threshold_left_sample"] = (left_time * sfreq).round()
+    report_df["ear_threshold_right_sample"] = (right_time * sfreq).round()
+    report_df["ear_threshold_min_sample"] = (min_time * sfreq).round()
 
     missing_left = report_df["refined_left_zero"].isna()
     missing_right = report_df["refined_right_zero"].isna()
-    missing_min = report_df["refined_min_zero"].isna()
+    missing_min = report_df["ear_threshold_min_sample"].isna()
 
-    report_df.loc[missing_left, "refined_left_zero"] = report_df.loc[
+    report_df.loc[missing_left, "ear_threshold_left_sample"] = report_df.loc[
         missing_left, "refined_start_sample"
     ]
-    report_df.loc[missing_right, "refined_right_zero"] = report_df.loc[
+    report_df.loc[missing_right, "ear_threshold_right_sample"] = report_df.loc[
         missing_right, "refined_end_sample"
     ]
-    report_df.loc[missing_min, "refined_min_zero"] = report_df.loc[
+    report_df.loc[missing_min, "ear_threshold_min_sample"] = report_df.loc[
         missing_min, "refined_start_sample"
     ]
 
-    report_df["refined_left_zero"] = report_df["refined_left_zero"].astype(int)
-    report_df["refined_right_zero"] = report_df["refined_right_zero"].astype(int)
-    report_df["refined_min_zero"] = report_df["refined_min_zero"].astype(int)
+    report_df["ear_threshold_left_sample"] = (
+        report_df["ear_threshold_left_sample"].fillna(report_df["refined_start_sample"]).astype(int)
+    )
+    report_df["ear_threshold_right_sample"] = (
+        report_df["ear_threshold_right_sample"].fillna(report_df["refined_end_sample"]).astype(int)
+    )
+    report_df["ear_threshold_min_sample"] = (
+        report_df["ear_threshold_min_sample"].fillna(report_df["refined_start_sample"]).astype(int)
+    )
     report_df["zero_crossing_found"] = report_df["ear_threshold_status"].eq("ok")
 
-    report_path = output_dir / "ear_threshold_refined_blink_report.html"
-    build_refined_blink_report(
-        results=report_df,
-        signal=ear_signal,
-        sfreq=sfreq,
-        channel_name="EAR-avg_ear",
-        plot_overlay=True,
-        plot_signal_as_scatter=True,
-        mark_threshold_crossings=True,
-        threshold_value=ear_threshold,
-        overlay_signal=eeg_overlay,
-        overlay_sfreq=overlay_sfreq,
-        overlay_label="EEG-E8",
-        output_path=report_path,
-    )
+    if save_reports:
+        report_path = output_dir / "ear_threshold_refined_blink_report.html"
+        build_refined_blink_report(
+            results=report_df,
+            signal=ear_signal,
+            sfreq=sfreq,
+            channel_name="EAR-avg_ear",
+            plot_overlay=True,
+            plot_signal_as_scatter=True,
+            mark_threshold_crossings=True,
+            threshold_value=ear_threshold,
+            overlay_signal=eeg_overlay,
+            overlay_sfreq=overlay_sfreq,
+            overlay_label="EEG-E8",
+            output_path=report_path,
+        )
 
     n_success = int(features["refinement_succeeded"].sum())
     print(f"Refined {len(features)} blinks; {n_success} used threshold crossings.")
@@ -166,8 +179,11 @@ def main() -> None:
     print("\nExample rows with refined timing and EAR features:")
     print(features.loc[:, preview_cols].head())
 
-    print("\nSaved refined blink table to:", output_path)
-    print("Blink validation report saved to:", report_path)
+    if save_reports:
+        print("\nSaved refined blink table to:", output_path)
+        print("Blink validation report saved to:", report_path)
+    else:
+        print("\nSaving is disabled (set PYBLINKER_SAVE_REPORTS=1 to enable).")
     print(
         "You can tune `ear_threshold`, `max_extension`, `extension_step`, and "
         "`baseline_window` to suit different sensors or annotation granularity."
