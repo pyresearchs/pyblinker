@@ -257,6 +257,7 @@ def _compute_threshold_features(
     window: np.ndarray,
     threshold: float,
     feature_config: EARFeatureConfig,
+    blink_type: Optional[str],
 ) -> Dict[str, float | str | bool]:
     """Compute threshold-dependent metrics for a single threshold value.
 
@@ -278,12 +279,15 @@ def _compute_threshold_features(
         EAR threshold used for crossings and under-threshold metrics.
     feature_config : EARFeatureConfig
         Threshold-dependent configuration (slope expansion, classification overrides).
+    blink_type : str | None
+        Optional blink label from annotations; preferred over computed classification.
 
     Returns
     -------
     dict
         Metrics tied to the provided threshold, including slopes, durations, AUC,
-        classification outcome, and crossing metadata.
+        classification outcome (prefers CSV label), computed classification, and
+        crossing metadata.
     """
 
     dt = 1.0 / sfreq
@@ -336,7 +340,10 @@ def _compute_threshold_features(
         else threshold
     )
     min_value = float(window[int(min_sample - start_sample)])
-    blink_classification = "full" if min_value < classification_threshold else "partial"
+    computed_classification = "full" if min_value < classification_threshold else "partial"
+    blink_classification = (
+        str(blink_type) if blink_type is not None and str(blink_type) else computed_classification
+    )
 
     threshold_features: Dict[str, float | str | bool] = {
         "closed_duration_seconds": closed_duration,
@@ -346,6 +353,7 @@ def _compute_threshold_features(
         "auc_below_threshold": auc_below,
         "classification_threshold": float(classification_threshold),
         "blink_classification": blink_classification,
+        "blink_classification_computed": computed_classification,
         "threshold_value": float(threshold),
     }
     threshold_features.update(slope_metrics)
@@ -556,6 +564,7 @@ def compute_blink_features(
             window=window,
             threshold=theta,
             feature_config=feature_config,
+            blink_type=blink_type,
         )
 
     selection = _select_threshold(
