@@ -76,9 +76,7 @@ def main() -> None:
         plot_threshold=None,
     )
     features = extractor.build_feature_table(refined)
-    features, best_threshold = apply_flat_threshold_selection(
-        features, extractor.threshold_store
-    )
+    best_threshold = apply_flat_threshold_selection(features, extractor.threshold_store)
 
     output_path = output_dir / "ear_multi_threshold_refined_blinks.csv"
     features.to_csv(output_path, index=False)
@@ -102,27 +100,27 @@ def main() -> None:
     right_time = pd.to_numeric(report_df["ear_threshold_right_time"], errors="coerce")
     min_time = pd.to_numeric(report_df["ear_threshold_min_time"], errors="coerce")
 
-    report_df["refined_left_zero"] = (left_time * sfreq).round()
-    report_df["refined_right_zero"] = (right_time * sfreq).round()
-    report_df["refined_min_zero"] = (min_time * sfreq).round()
+    report_df["ear_threshold_left_sample"] = (left_time * sfreq).round()
+    report_df["ear_threshold_right_sample"] = (right_time * sfreq).round()
+    report_df["ear_threshold_min_sample"] = (min_time * sfreq).round()
 
     missing_left = report_df["refined_left_zero"].isna()
     missing_right = report_df["refined_right_zero"].isna()
     missing_min = report_df["refined_min_zero"].isna()
 
-    report_df.loc[missing_left, "refined_left_zero"] = report_df.loc[
+    report_df.loc[missing_left, "ear_threshold_left_sample"] = report_df.loc[
         missing_left, "refined_start_sample"
     ]
-    report_df.loc[missing_right, "refined_right_zero"] = report_df.loc[
+    report_df.loc[missing_right, "ear_threshold_right_sample"] = report_df.loc[
         missing_right, "refined_end_sample"
     ]
-    report_df.loc[missing_min, "refined_min_zero"] = report_df.loc[
+    report_df.loc[missing_min, "ear_threshold_min_sample"] = report_df.loc[
         missing_min, "refined_start_sample"
     ]
 
-    report_df["refined_left_zero"] = report_df["refined_left_zero"].astype(int)
-    report_df["refined_right_zero"] = report_df["refined_right_zero"].astype(int)
-    report_df["refined_min_zero"] = report_df["refined_min_zero"].astype(int)
+    report_df["ear_threshold_left_sample"] = report_df["ear_threshold_left_sample"].astype(int)
+    report_df["ear_threshold_right_sample"] = report_df["ear_threshold_right_sample"].astype(int)
+    report_df["ear_threshold_min_sample"] = report_df["ear_threshold_min_sample"].astype(int)
     report_df["zero_crossing_found"] = report_df["ear_threshold_status"].eq("ok")
 
     user_plot_threshold = 0.22
@@ -151,7 +149,7 @@ def main() -> None:
         plot_overlay=True,
         plot_signal_as_scatter=True,
         mark_threshold_crossings=True,
-        threshold_value=None,  # allow auto-selected threshold to be annotated
+        threshold_value=best_threshold,
         overlay_signal=eeg_overlay,
         overlay_sfreq=overlay_sfreq,
         overlay_label="EEG-E8",

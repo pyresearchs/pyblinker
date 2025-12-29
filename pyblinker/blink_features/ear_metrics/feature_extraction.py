@@ -453,10 +453,9 @@ def _select_best_threshold_from_df(df: pd.DataFrame) -> tuple[float | None, str]
 def apply_flat_threshold_selection(
     df: pd.DataFrame,
     threshold_store: Sequence[Mapping[float, Mapping[str, float | str | bool]]],
-) -> tuple[pd.DataFrame, float | None]:
+) -> float | None:
     """Populate selection metadata and legacy scalar columns using flattened metrics."""
 
-    df = df.copy()
     best_threshold, selection_mode = _select_best_threshold_from_df(df)
     selection_reason = (
         "most_ok_statuses_in_flat_metrics" if best_threshold is not None else "no_thresholds"
@@ -487,7 +486,7 @@ def apply_flat_threshold_selection(
             for key, value in scalars.items():
                 df.loc[idx, key] = value
 
-    return df, best_threshold
+    return best_threshold
 
 
 def compute_blink_features(

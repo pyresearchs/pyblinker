@@ -213,8 +213,20 @@ def build_refined_blink_report(
     )
 
     for idx, row in enumerate(rows):
-        left = int(getattr(row, "refined_left_zero", getattr(row, "left_zero", 0)))
-        right = int(getattr(row, "refined_right_zero", getattr(row, "right_zero", 0)))
+        left = int(
+            getattr(
+                row,
+                "ear_threshold_left_sample",
+                getattr(row, "refined_left_zero", getattr(row, "left_zero", 0)),
+            )
+        )
+        right = int(
+            getattr(
+                row,
+                "ear_threshold_right_sample",
+                getattr(row, "refined_right_zero", getattr(row, "right_zero", 0)),
+            )
+        )
         start = max(0, left - pad_samples)
         end = min(n_samples - 1, right + pad_samples)
 
@@ -232,7 +244,11 @@ def build_refined_blink_report(
         min_time = getattr(row, "ear_threshold_min_time", None)
         if min_time is not None and (pd.isna(min_time) or np.isinf(min_time)):
             min_time = None
-        min_sample = getattr(row, "refined_min_zero", getattr(row, "min_zero", None))
+        min_sample = getattr(
+            row,
+            "ear_threshold_min_sample",
+            getattr(row, "refined_min_zero", getattr(row, "min_zero", None)),
+        )
         if min_sample is None and min_time is not None:
             min_sample = int(np.clip(round(min_time * sfreq), 0, n_samples - 1))
         elif min_sample is not None:
