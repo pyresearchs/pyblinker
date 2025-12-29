@@ -152,12 +152,21 @@ def build_refined_blink_report(
         ax.axvline(right_time, color="C2", linestyle="--", label="Right threshold crossing")
 
         if threshold_value is not None:
+            chosen_threshold = threshold_value
+            threshold_origin = "user"
+        else:
+            chosen_threshold = getattr(row, "selected_threshold_value", None)
+            threshold_origin = getattr(row, "threshold_selection_mode", None)
+            if chosen_threshold is None:
+                chosen_threshold = getattr(row, "threshold_value", None)
+        if chosen_threshold is not None:
             ax.axhline(
-                threshold_value,
+                chosen_threshold,
                 color="C5",
                 linestyle=":",
                 lw=1.0,
-                label=f"Threshold = {threshold_value:.3f}",
+                label=f"Threshold = {float(chosen_threshold):.3f}"
+                + (f" ({threshold_origin})" if threshold_origin else ""),
             )
 
         # Mark key landmarks directly on the plot for clarity.
@@ -171,8 +180,8 @@ def build_refined_blink_report(
             min_value = float(signal[min_sample])
 
         crossing_times = [left_time, right_time]
-        if threshold_value is not None:
-            crossing_values = [threshold_value, threshold_value]
+        if chosen_threshold is not None:
+            crossing_values = [float(chosen_threshold), float(chosen_threshold)]
         else:
             crossing_values = [
                 float(signal[int(np.clip(left, 0, n_samples - 1))]),
@@ -291,8 +300,9 @@ def build_refined_blink_report(
             f"Sampling rate: {sfreq:.2f} Hz. "
             f"Segment {start}–{end} ({(end - start) / sfreq:.3f}s)."
         )
-        if threshold_value is not None:
-            caption += f" Threshold value: {threshold_value:.3f}."
+        if chosen_threshold is not None:
+            suffix = f" ({threshold_origin})" if threshold_origin else ""
+            caption += f" Threshold value: {float(chosen_threshold):.3f}{suffix}."
         report.add_figure(
             fig=fig,
             title=f"Blink {idx}",
@@ -312,6 +322,30 @@ def build_refined_blink_report(
         summary_rows.append((f"Skipped ({reason})", skipped_count))
     if zero_crossing_failures is not None:
         summary_rows.append(("Zero-crossing failures", zero_crossing_failures))
+    if threshold_value is not None:
+        summary_rows.append(("Plot threshold (user-provided)", f"{float(threshold_value):.3f}"))
+    else:
+        if {"selected_threshold_value", "threshold_selection_mode"} <= set(results.columns):
+            selected_values = pd.to_numeric(
+                results["selected_threshold_value"], errors="coerce"
+            ).dropna()
+            if not selected_values.empty:
+                summary_rows.append(
+                    ("Plot threshold (auto mode)", f"{float(selected_values.mode().iat[0]):.3f}")
+                )
+            mode_counts = results["threshold_selection_mode"].astype(str).value_counts()
+            if not mode_counts.empty:
+                summary_rows.append(
+                    ("Threshold selection modes", "; ".join(f"{k}: {v}" for k, v in mode_counts.items()))
+                )
+        if "threshold_selection_reason" in results.columns:
+            reasons = results["threshold_selection_reason"].dropna().astype(str)
+            if not reasons.empty:
+                reason_counts = reasons.value_counts()
+                top_reason = reason_counts.index[0]
+                summary_rows.append(
+                    ("Threshold selection rationale", f"{top_reason} ({int(reason_counts.iloc[0])}x)")
+                )
 
     summary_html = """<table style='border-collapse: collapse;'>
     <thead><tr><th style='text-align:left;padding:4px;'>Metric</th>

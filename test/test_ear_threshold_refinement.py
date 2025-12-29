@@ -103,3 +103,31 @@ def test_feature_extraction_outputs_expected_columns(
     assert set(features.columns).issuperset(required)
     assert (features["closed_duration_seconds"] >= 0).all()
     assert (features["refined_duration"] >= 0).all()
+
+
+def test_feature_extraction_handles_multiple_thresholds(
+    ear_data: tuple[np.ndarray, float, pd.DataFrame]
+) -> None:
+    signal, sfreq, annotations = ear_data
+    refinement = EARThresholdBlinkRefiner(
+        signal,
+        sfreq,
+        EARRefinementConfig(threshold=0.23, annotation_time_unit="seconds"),
+    ).refine_annotations(annotations.head(2))
+
+    thresholds = [0.18, 0.2, 0.22, 0.24, 0.26]
+    extractor = EARBlinkFeatureExtractor(
+        signal,
+        sfreq,
+        threshold=thresholds,
+        feature_config=EARFeatureConfig(baseline_window=0.1, context_window=0.05),
+    )
+    features = extractor.build_feature_table(refinement)
+
+    assert "threshold_features" in features.columns
+    assert "selected_threshold_value" in features.columns
+    assert all(np.isin(features["selected_threshold_value"], thresholds))
+    first_thresholds = features["threshold_features"].iloc[0]
+    assert isinstance(first_thresholds, dict)
+    # Ensure each candidate was evaluated.
+    assert set(np.round(list(first_thresholds.keys()), 3)) == set(np.round(thresholds, 3))
