@@ -96,6 +96,28 @@ def build_refined_blink_report(
         start = max(0, left - pad_samples)
         end = min(n_samples - 1, right + pad_samples)
 
+        left_time = float(
+            getattr(row, "ear_threshold_left_time", getattr(row, "left_time", left / sfreq))
+        )
+        right_time = float(
+            getattr(row, "ear_threshold_right_time", getattr(row, "right_time", right / sfreq))
+        )
+        if not np.isfinite(left_time):
+            left_time = left / sfreq
+        if not np.isfinite(right_time):
+            right_time = right / sfreq
+
+        min_time = getattr(row, "ear_threshold_min_time", None)
+        if min_time is not None and (pd.isna(min_time) or np.isinf(min_time)):
+            min_time = None
+        min_sample = getattr(row, "refined_min_zero", getattr(row, "min_zero", None))
+        if min_sample is None and min_time is not None:
+            min_sample = int(np.clip(round(min_time * sfreq), 0, n_samples - 1))
+        elif min_sample is not None:
+            min_sample = int(min_sample)
+            if min_time is None:
+                min_time = min_sample / sfreq
+
         window_times = np.arange(start, end + 1, dtype=float) / sfreq
         window_signal = signal[start : end + 1]
 
@@ -126,10 +148,8 @@ def build_refined_blink_report(
                 color="C0",
                 label=channel_name,
             )
-        ax.axvline(left / sfreq, color="C1", linestyle="--", label="Left threshold crossing")
-        ax.axvline(
-            right / sfreq, color="C2", linestyle="--", label="Right threshold crossing"
-        )
+        ax.axvline(left_time, color="C1", linestyle="--", label="Left threshold crossing")
+        ax.axvline(right_time, color="C2", linestyle="--", label="Right threshold crossing")
 
         if threshold_value is not None:
             ax.axhline(
@@ -141,44 +161,65 @@ def build_refined_blink_report(
             )
 
         # Mark key landmarks directly on the plot for clarity.
-        zero_x = [left / sfreq, right / sfreq]
-        zero_y = [0.0, 0.0]
-        ax.scatter(zero_x, zero_y, color="C1", zorder=4)
+        y_min = float(np.min(window_signal))
+        y_max = float(np.max(window_signal))
+        y_span = max(y_max - y_min, 1e-6)
+        y_offset = 0.1 * y_span
+
+        min_value = None
+        if min_sample is not None and 0 <= min_sample < n_samples:
+            min_value = float(signal[min_sample])
+
+        crossing_times = [left_time, right_time]
+        if threshold_value is not None:
+            crossing_values = [threshold_value, threshold_value]
+        else:
+            crossing_values = [
+                float(signal[int(np.clip(left, 0, n_samples - 1))]),
+                float(signal[int(np.clip(right, 0, n_samples - 1))]),
+            ]
+
+        if min_time is not None and min_value is not None:
+            crossing_times.insert(1, float(min_time))
+            crossing_values.insert(1, min_value)
+
+        if mark_threshold_crossings:
+            ax.scatter(
+                crossing_times,
+                crossing_values,
+                color="black",
+                zorder=5,
+                s=28,
+                label="Threshold landmarks",
+            )
+
         ax.annotate(
             "Left threshold crossing",
-            xy=(zero_x[0], zero_y[0]),
-            xytext=(zero_x[0], min(window_signal)),
+            xy=(left_time, crossing_values[0]),
+            xytext=(left_time, crossing_values[0] + y_offset),
             arrowprops=dict(arrowstyle="->", color="C1"),
             fontsize=8,
             ha="center",
         )
+
+        if min_time is not None and min_value is not None:
+            ax.annotate(
+                "Minimum EAR",
+                xy=(min_time, min_value),
+                xytext=(min_time, min_value - y_offset),
+                arrowprops=dict(arrowstyle="->", color="C7"),
+                fontsize=8,
+                ha="center",
+            )
+
         ax.annotate(
             "Right threshold crossing",
-            xy=(zero_x[1], zero_y[1]),
-            xytext=(zero_x[1], max(window_signal)),
+            xy=(right_time, crossing_values[-1]),
+            xytext=(right_time, crossing_values[-1] - y_offset),
             arrowprops=dict(arrowstyle="->", color="C2"),
             fontsize=8,
             ha="center",
         )
-
-        if mark_threshold_crossings:
-            zero_y_vals = []
-            if 0 <= left < signal.shape[0]:
-                zero_y_vals.append(signal[left])
-            else:
-                zero_y_vals.append(0.0)
-            if 0 <= right < signal.shape[0]:
-                zero_y_vals.append(signal[right])
-            else:
-                zero_y_vals.append(0.0)
-            ax.scatter(
-                zero_x,
-                zero_y_vals,
-                color="black",
-                zorder=5,
-                s=28,
-                label="Threshold crossings",
-            )
 
         # Maximum absolute amplitude within the window.
         max_idx = int(np.argmax(np.abs(window_signal)))

@@ -28,6 +28,7 @@ from pathlib import Path
 import sys
 
 import mne
+import pandas as pd
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
@@ -95,9 +96,32 @@ def main() -> None:
     overlay_sfreq = float(raw.info["sfreq"])
 
     report_df = features.copy()
-    report_df["refined_left_zero"] = report_df["refined_start_sample"]
-    report_df["refined_right_zero"] = report_df["refined_end_sample"]
-    report_df["zero_crossing_found"] = report_df["refinement_succeeded"]
+    left_time = pd.to_numeric(report_df["ear_threshold_left_time"], errors="coerce")
+    right_time = pd.to_numeric(report_df["ear_threshold_right_time"], errors="coerce")
+    min_time = pd.to_numeric(report_df["ear_threshold_min_time"], errors="coerce")
+
+    report_df["refined_left_zero"] = (left_time * sfreq).round()
+    report_df["refined_right_zero"] = (right_time * sfreq).round()
+    report_df["refined_min_zero"] = (min_time * sfreq).round()
+
+    missing_left = report_df["refined_left_zero"].isna()
+    missing_right = report_df["refined_right_zero"].isna()
+    missing_min = report_df["refined_min_zero"].isna()
+
+    report_df.loc[missing_left, "refined_left_zero"] = report_df.loc[
+        missing_left, "refined_start_sample"
+    ]
+    report_df.loc[missing_right, "refined_right_zero"] = report_df.loc[
+        missing_right, "refined_end_sample"
+    ]
+    report_df.loc[missing_min, "refined_min_zero"] = report_df.loc[
+        missing_min, "refined_start_sample"
+    ]
+
+    report_df["refined_left_zero"] = report_df["refined_left_zero"].astype(int)
+    report_df["refined_right_zero"] = report_df["refined_right_zero"].astype(int)
+    report_df["refined_min_zero"] = report_df["refined_min_zero"].astype(int)
+    report_df["zero_crossing_found"] = report_df["ear_threshold_status"].eq("ok")
 
     report_path = output_dir / "ear_threshold_refined_blink_report.html"
     build_refined_blink_report(
