@@ -59,6 +59,7 @@ def build_refined_blink_report(
     plot_overlay: bool = False,
     plot_signal_as_scatter: bool = False,
     mark_threshold_crossings: bool = False,
+    threshold_value: float | None = None,
     output_path: Path | None = None,
     pad_seconds: float = 0.1,
     max_plots: int | None = None,
@@ -108,6 +109,14 @@ def build_refined_blink_report(
                 color="C0",
                 label=channel_name,
             )
+            ax.plot(
+                window_times,
+                window_signal,
+                lw=0.8,
+                alpha=0.25,
+                color="C0",
+                label=None,
+            )
         else:
             ax.plot(
                 window_times,
@@ -117,15 +126,26 @@ def build_refined_blink_report(
                 color="C0",
                 label=channel_name,
             )
-        ax.axvline(left / sfreq, color="C1", linestyle="--", label="Left zero crossing")
-        ax.axvline(right / sfreq, color="C2", linestyle="--", label="Right zero crossing")
+        ax.axvline(left / sfreq, color="C1", linestyle="--", label="Left threshold crossing")
+        ax.axvline(
+            right / sfreq, color="C2", linestyle="--", label="Right threshold crossing"
+        )
+
+        if threshold_value is not None:
+            ax.axhline(
+                threshold_value,
+                color="C5",
+                linestyle=":",
+                lw=1.0,
+                label=f"Threshold = {threshold_value:.3f}",
+            )
 
         # Mark key landmarks directly on the plot for clarity.
         zero_x = [left / sfreq, right / sfreq]
         zero_y = [0.0, 0.0]
         ax.scatter(zero_x, zero_y, color="C1", zorder=4)
         ax.annotate(
-            "Left zero crossing",
+            "Left threshold crossing",
             xy=(zero_x[0], zero_y[0]),
             xytext=(zero_x[0], min(window_signal)),
             arrowprops=dict(arrowstyle="->", color="C1"),
@@ -133,7 +153,7 @@ def build_refined_blink_report(
             ha="center",
         )
         ax.annotate(
-            "Right zero crossing",
+            "Right threshold crossing",
             xy=(zero_x[1], zero_y[1]),
             xytext=(zero_x[1], max(window_signal)),
             arrowprops=dict(arrowstyle="->", color="C2"),
@@ -151,7 +171,14 @@ def build_refined_blink_report(
                 zero_y_vals.append(signal[right])
             else:
                 zero_y_vals.append(0.0)
-            ax.scatter(zero_x, zero_y_vals, color="black", zorder=5, s=28, label="Threshold crossings")
+            ax.scatter(
+                zero_x,
+                zero_y_vals,
+                color="black",
+                zorder=5,
+                s=28,
+                label="Threshold crossings",
+            )
 
         # Maximum absolute amplitude within the window.
         max_idx = int(np.argmax(np.abs(window_signal)))
@@ -219,10 +246,12 @@ def build_refined_blink_report(
             ax.legend(handles, labels, loc="upper right")
 
         caption = (
-            f"Zero crossings at {left / sfreq:.3f}s and {right / sfreq:.3f}s. "
+            f"Threshold crossings at {left / sfreq:.3f}s and {right / sfreq:.3f}s. "
             f"Sampling rate: {sfreq:.2f} Hz. "
             f"Segment {start}–{end} ({(end - start) / sfreq:.3f}s)."
         )
+        if threshold_value is not None:
+            caption += f" Threshold value: {threshold_value:.3f}."
         report.add_figure(
             fig=fig,
             title=f"Blink {idx}",

@@ -108,6 +108,7 @@ def main() -> None:
         plot_overlay=True,
         plot_signal_as_scatter=True,
         mark_threshold_crossings=True,
+        threshold_value=ear_threshold,
         overlay_signal=eeg_overlay,
         overlay_sfreq=overlay_sfreq,
         overlay_label="EEG-E8",
