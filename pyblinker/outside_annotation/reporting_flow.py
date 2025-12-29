@@ -434,6 +434,18 @@ def build_refined_blink_report(
         if handles:
             ax.legend(handles, labels, loc="upper right")
 
+        threshold_status = None
+        threshold_found_by = None
+        if chosen_threshold is not None:
+            status_key = f"threshold_{float(chosen_threshold):.6g}_ear_threshold_status"
+            found_key = f"threshold_{float(chosen_threshold):.6g}_ear_threshold_found_by"
+            threshold_status = getattr(row, status_key, None)
+            threshold_found_by = getattr(row, found_key, None)
+        if threshold_status is None:
+            threshold_status = getattr(row, "ear_threshold_status", None)
+        if threshold_found_by is None:
+            threshold_found_by = getattr(row, "ear_threshold_found_by", None)
+
         caption = (
             f"Threshold crossings at {left / sfreq:.3f}s and {right / sfreq:.3f}s. "
             f"Sampling rate: {sfreq:.2f} Hz. "
@@ -442,6 +454,10 @@ def build_refined_blink_report(
         if chosen_threshold is not None:
             suffix = f" ({plot_threshold_origin})" if plot_threshold_origin else ""
             caption += f" Threshold value: {float(chosen_threshold):.3f}{suffix}."
+        if threshold_status is not None and not pd.isna(threshold_status):
+            caption += f" Threshold status: {threshold_status}."
+        if threshold_found_by is not None and not pd.isna(threshold_found_by):
+            caption += f" Found by: {threshold_found_by}."
         report.add_figure(
             fig=fig,
             title=f"Blink {idx}",
