@@ -32,6 +32,24 @@ class EARFeatureConfig:
 
 
 def _compute_baseline(signal: np.ndarray, start: int, baseline_samples: int) -> float:
+    """Return the average EAR before the blink onset for baseline depth calculation.
+
+    Parameters
+    ----------
+    signal : np.ndarray
+        1D EAR signal in raw units.
+    start : int
+        Sample index of the refined blink onset.
+    baseline_samples : int
+        Number of samples to average before onset (already converted from seconds).
+
+    Returns
+    -------
+    float
+        Baseline EAR value preceding the blink window. Falls back to the onset value
+        when insufficient samples exist.
+    """
+
     if baseline_samples <= 0:
         return float(signal[start])
     baseline_start = max(0, start - baseline_samples)
@@ -41,6 +59,21 @@ def _compute_baseline(signal: np.ndarray, start: int, baseline_samples: int) -> 
 
 
 def _safe_gradient(values: np.ndarray, dt: float) -> np.ndarray:
+    """Compute the gradient with zero-padding for very small arrays.
+
+    Parameters
+    ----------
+    values : np.ndarray
+        Input samples.
+    dt : float
+        Sampling interval in seconds.
+
+    Returns
+    -------
+    np.ndarray
+        Gradient estimate with the same shape as ``values``.
+    """
+
     if values.size < 2:
         return np.zeros_like(values, dtype=float)
     return np.gradient(values, dt)
@@ -49,7 +82,20 @@ def _safe_gradient(values: np.ndarray, dt: float) -> np.ndarray:
 def _normalize_thresholds(
     thresholds: float | Sequence[float], extra_threshold: float | None = None
 ) -> List[float]:
-    """Return a deterministic, deduplicated threshold list preserving order."""
+    """Return a deterministic, deduplicated threshold list preserving order.
+
+    Parameters
+    ----------
+    thresholds : float | Sequence[float]
+        Single threshold or iterable of thresholds to evaluate.
+    extra_threshold : float | None
+        Optional additional threshold to append (e.g., explicit plot value).
+
+    Returns
+    -------
+    list[float]
+        Ordered, de-duplicated threshold list.
+    """
 
     if isinstance(thresholds, (str, bytes)):
         raise TypeError("Thresholds must be numeric, not a string.")
@@ -79,7 +125,30 @@ def _compute_base_features(
     blink_type: Optional[str],
     feature_config: EARFeatureConfig,
 ) -> Tuple[Dict[str, float | str], Dict[str, float | np.ndarray]]:
-    """Compute threshold-independent features for a blink window."""
+    """Compute threshold-independent features for a blink window.
+
+    Parameters
+    ----------
+    signal : np.ndarray
+        Full EAR signal (raw units).
+    sfreq : float
+        Sampling frequency in Hertz.
+    start_sample : int
+        Refined blink onset sample.
+    end_sample : int
+        Refined blink offset sample (inclusive).
+    blink_type : str | None
+        Optional blink label from annotations.
+    feature_config : EARFeatureConfig
+        Configuration controlling context padding, baseline window, and percentiles.
+
+    Returns
+    -------
+    tuple[dict, dict]
+        A tuple of:
+        - base_features: scalar metrics independent of thresholding.
+        - transient_arrays: reusable arrays (window, velocity, context) and indices.
+    """
 
     dt = 1.0 / sfreq
 
@@ -189,7 +258,33 @@ def _compute_threshold_features(
     threshold: float,
     feature_config: EARFeatureConfig,
 ) -> Dict[str, float | str | bool]:
-    """Compute threshold-dependent metrics for a single threshold value."""
+    """Compute threshold-dependent metrics for a single threshold value.
+
+    Parameters
+    ----------
+    signal : np.ndarray
+        Full EAR signal in raw units.
+    sfreq : float
+        Sampling frequency in Hertz.
+    start_sample : int
+        Refined blink onset sample.
+    end_sample : int
+        Refined blink offset sample (inclusive).
+    min_sample : int
+        Sample index of the minimum EAR within the blink window.
+    window : np.ndarray
+        Blink window slice from ``start_sample`` to ``end_sample`` (inclusive).
+    threshold : float
+        EAR threshold used for crossings and under-threshold metrics.
+    feature_config : EARFeatureConfig
+        Threshold-dependent configuration (slope expansion, classification overrides).
+
+    Returns
+    -------
+    dict
+        Metrics tied to the provided threshold, including slopes, durations, AUC,
+        classification outcome, and crossing metadata.
+    """
 
     dt = 1.0 / sfreq
     slope_metrics: Dict[str, float | str | bool] = {
@@ -257,6 +352,30 @@ def _compute_threshold_features(
     return threshold_features
 
 
+def _flatten_threshold_metrics(
+    threshold_metrics: Mapping[float, Mapping[str, float | str | bool]]
+) -> Dict[str, float | str | bool]:
+    """Flatten per-threshold metrics into prefixed keys for tabular inspection.
+
+    Parameters
+    ----------
+    threshold_metrics : Mapping[float, Mapping[str, float | str | bool]]
+        Metrics keyed by threshold value.
+
+    Returns
+    -------
+    dict
+        Flattened metrics with keys of the form ``threshold_<value>_<metric>``.
+    """
+
+    flat: Dict[str, float | str | bool] = {}
+    for theta, metrics in threshold_metrics.items():
+        prefix = f"threshold_{theta:.6g}_"
+        for key, value in metrics.items():
+            flat[f"{prefix}{key}"] = value
+    return flat
+
+
 def _score_threshold_candidate(metrics: Mapping[str, float | str]) -> float:
     """Score a threshold candidate for deterministic selection.
 
@@ -264,6 +383,16 @@ def _score_threshold_candidate(metrics: Mapping[str, float | str]) -> float:
     1. Successful threshold crossings (status == \"ok\").
     2. Steeper opening/closing slopes (sum of absolute slopes).
     3. Mid-range closed_fraction (penalizes extreme 0/1 saturation).
+
+    Parameters
+    ----------
+    metrics : Mapping[str, float | str]
+        Per-threshold metrics from ``_compute_threshold_features``.
+
+    Returns
+    -------
+    float
+        Selection score (``-inf`` when crossings fail).
     """
 
     status = metrics.get("ear_threshold_status")
@@ -289,7 +418,24 @@ def _select_threshold(
     candidates: Sequence[float],
     user_threshold: float | None,
 ) -> Dict[str, float | str | None]:
-    """Select which threshold to surface for plotting and legacy fields."""
+    """Select which threshold to surface for plotting and legacy fields.
+
+    Parameters
+    ----------
+    threshold_metrics : Mapping[float, Mapping[str, float | str | bool]]
+        Per-threshold metric dictionary keyed by the threshold value used.
+    candidates : Sequence[float]
+        Thresholds that are eligible for automatic selection (typically the list
+        the caller asked to evaluate).
+    user_threshold : float | None
+        Explicit threshold to honor for plotting; bypasses auto selection when set.
+
+    Returns
+    -------
+    dict
+        Selection metadata containing the chosen value, selection mode, reason,
+        and the candidate list considered.
+    """
 
     if user_threshold is not None:
         return {
@@ -351,10 +497,35 @@ def compute_blink_features(
 ) -> Dict[str, object]:
     """Compute EAR-derived features for a single blink window.
 
-    Returns a structured payload separating threshold-independent and threshold-dependent outputs:
-    - ``base_features``: metrics computed once per blink window.
-    - ``thresholds``: mapping of threshold value -> metrics dependent on that threshold.
-    - ``selected_threshold``: selection metadata for plotting/compatibility fields.
+    Parameters
+    ----------
+    signal : np.ndarray
+        Full EAR signal in raw units.
+    sfreq : float
+        Sampling frequency in Hertz.
+    threshold : float | Sequence[float]
+        Single threshold or list of thresholds to evaluate for threshold-dependent metrics.
+    start_sample : int
+        Refined blink onset sample (inclusive).
+    end_sample : int
+        Refined blink offset sample (inclusive).
+    blink_type : str | None
+        Optional blink label.
+    feature_config : EARFeatureConfig
+        Configuration controlling baseline window, slope search, percentiles, and classification.
+    plot_threshold : float | None
+        Optional explicit threshold to use for plotting/legacy columns. When ``None``,
+        auto-selection chooses among ``threshold`` candidates.
+
+    Returns
+    -------
+    dict
+        Structured features containing:
+        - ``base_features``: threshold-independent metrics.
+        - ``thresholds``: per-threshold metric dictionaries keyed by value.
+        - ``threshold_metrics_flat``: flattened per-threshold metrics for easy tabular use.
+        - ``selected_threshold``: selection metadata (value, mode, reason, candidates).
+        - Legacy keys mirroring the selected threshold for backward compatibility.
     """
 
     start_sample = int(max(0, start_sample))
@@ -394,10 +565,12 @@ def compute_blink_features(
     )
 
     selected_metrics = threshold_metrics.get(selection["value"], {})
+    threshold_metrics_flat = _flatten_threshold_metrics(threshold_metrics)
 
     features: Dict[str, object] = {
         "base_features": base_features,
         "thresholds": threshold_metrics,
+        "threshold_metrics_flat": threshold_metrics_flat,
         "selected_threshold": selection,
         # Convenience copies for backward compatibility with existing flat columns.
         "blink_type_original": blink_type,
@@ -440,6 +613,22 @@ class EARBlinkFeatureExtractor:
         feature_config: Optional[EARFeatureConfig] = None,
         plot_threshold: float | None = None,
     ):
+        """Create an EAR feature extractor.
+
+        Parameters
+        ----------
+        signal : np.ndarray
+            Full EAR signal (raw units).
+        sfreq : float
+            Sampling frequency in Hertz.
+        threshold : float | Sequence[float]
+            Threshold(s) to evaluate for threshold-dependent metrics.
+        feature_config : EARFeatureConfig, optional
+            Configuration controlling baseline, percentiles, slopes, and classification.
+        plot_threshold : float | None
+            Explicit threshold to surface in legacy columns/plots; defaults to automatic
+            selection among ``threshold`` candidates.
+        """
         self.signal = np.asarray(signal, dtype=float)
         self.sfreq = float(sfreq)
         self.thresholds = threshold
@@ -447,7 +636,21 @@ class EARBlinkFeatureExtractor:
         self.feature_config = feature_config or EARFeatureConfig()
 
     def build_feature_table(self, refined: pd.DataFrame) -> pd.DataFrame:
-        """Attach EAR-based blink features to refined annotation rows."""
+        """Attach EAR-based blink features to refined annotation rows.
+
+        Parameters
+        ----------
+        refined : pd.DataFrame
+            DataFrame containing at least ``refined_start_sample`` and
+            ``refined_end_sample`` columns (from refinement).
+
+        Returns
+        -------
+        pd.DataFrame
+            Input rows augmented with base EAR metrics, per-threshold metrics,
+            flattened per-threshold columns, and legacy selected-threshold fields
+            for plotting/report compatibility.
+        """
 
         required_cols = {"refined_start_sample", "refined_end_sample"}
         missing_cols = required_cols - set(refined.columns)
@@ -472,6 +675,7 @@ class EARBlinkFeatureExtractor:
                 **row,
                 **features,
                 "threshold_features": features["thresholds"],
+                "threshold_metrics_flat": features["threshold_metrics_flat"],
                 "selected_threshold_value": features["selected_threshold"]["value"],
                 "threshold_selection_mode": features["selected_threshold"]["mode"],
                 "threshold_selection_reason": features["selected_threshold"]["reason"],
