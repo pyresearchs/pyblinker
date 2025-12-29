@@ -124,10 +124,14 @@ def test_feature_extraction_handles_multiple_thresholds(
     )
     features = extractor.build_feature_table(refinement)
 
-    assert "threshold_features" in features.columns
     assert "selected_threshold_value" in features.columns
     assert all(np.isin(features["selected_threshold_value"], thresholds))
-    first_thresholds = features["threshold_features"].iloc[0]
-    assert isinstance(first_thresholds, dict)
-    # Ensure each candidate was evaluated.
-    assert set(np.round(list(first_thresholds.keys()), 3)) == set(np.round(thresholds, 3))
+
+    # Flattened per-threshold metrics should be present as separate columns.
+    for theta in thresholds:
+        col = f"threshold_{theta:.6g}_closed_duration_seconds"
+        assert col in features.columns
+
+    # No nested dictionaries should be present.
+    dict_in_columns = features.apply(lambda col: col.map(lambda x: isinstance(x, dict)).any()).any()
+    assert not dict_in_columns

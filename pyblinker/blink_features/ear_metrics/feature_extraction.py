@@ -680,14 +680,30 @@ class EARBlinkFeatureExtractor:
                 feature_config=self.feature_config,
                 plot_threshold=self.plot_threshold,
             )
+            flattened_thresholds = features.get("threshold_metrics_flat", {})
+            selection = features.get("selected_threshold", {})
+
+            # Retain only scalar-friendly keys from features.
+            scalar_features = {
+                key: value
+                for key, value in features.items()
+                if key
+                not in {
+                    "threshold_metrics_flat",
+                    "thresholds",
+                    "base_features",
+                    "selected_threshold",
+                }
+                and not isinstance(value, (dict, list, tuple, np.ndarray))
+            }
+
             combined = {
                 **row,
-                **features,
-                "threshold_features": features["thresholds"],
-                "threshold_metrics_flat": features["threshold_metrics_flat"],
-                "selected_threshold_value": features["selected_threshold"]["value"],
-                "threshold_selection_mode": features["selected_threshold"]["mode"],
-                "threshold_selection_reason": features["selected_threshold"]["reason"],
+                **scalar_features,
+                **flattened_thresholds,
+                "selected_threshold_value": selection.get("value"),
+                "threshold_selection_mode": selection.get("mode"),
+                "threshold_selection_reason": selection.get("reason"),
             }
             combined["time_under_threshold_fraction"] = combined.get("closed_fraction", float("nan"))
             combined["refined_duration"] = float(
