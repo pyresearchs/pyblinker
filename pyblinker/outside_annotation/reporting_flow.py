@@ -57,6 +57,8 @@ def build_refined_blink_report(
     overlay_sfreq: float | None = None,
     overlay_label: str = "EAR-avg_ear",
     plot_overlay: bool = False,
+    plot_signal_as_scatter: bool = False,
+    mark_threshold_crossings: bool = False,
     output_path: Path | None = None,
     pad_seconds: float = 0.1,
     max_plots: int | None = None,
@@ -97,14 +99,24 @@ def build_refined_blink_report(
         window_signal = signal[start : end + 1]
 
         fig, ax = plt.subplots(figsize=(9, 3))
-        ax.plot(
-            window_times,
-            window_signal,
-            lw=1.0,
-            alpha=0.85,
-            color="C0",
-            label=channel_name,
-        )
+        if plot_signal_as_scatter:
+            ax.scatter(
+                window_times,
+                window_signal,
+                s=14,
+                alpha=0.85,
+                color="C0",
+                label=channel_name,
+            )
+        else:
+            ax.plot(
+                window_times,
+                window_signal,
+                lw=1.0,
+                alpha=0.85,
+                color="C0",
+                label=channel_name,
+            )
         ax.axvline(left / sfreq, color="C1", linestyle="--", label="Left zero crossing")
         ax.axvline(right / sfreq, color="C2", linestyle="--", label="Right zero crossing")
 
@@ -128,6 +140,18 @@ def build_refined_blink_report(
             fontsize=8,
             ha="center",
         )
+
+        if mark_threshold_crossings:
+            zero_y_vals = []
+            if 0 <= left < signal.shape[0]:
+                zero_y_vals.append(signal[left])
+            else:
+                zero_y_vals.append(0.0)
+            if 0 <= right < signal.shape[0]:
+                zero_y_vals.append(signal[right])
+            else:
+                zero_y_vals.append(0.0)
+            ax.scatter(zero_x, zero_y_vals, color="black", zorder=5, s=28, label="Threshold crossings")
 
         # Maximum absolute amplitude within the window.
         max_idx = int(np.argmax(np.abs(window_signal)))

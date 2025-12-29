@@ -106,6 +106,8 @@ def main() -> None:
         sfreq=sfreq,
         channel_name="EAR-avg_ear",
         plot_overlay=True,
+        plot_signal_as_scatter=True,
+        mark_threshold_crossings=True,
         overlay_signal=eeg_overlay,
         overlay_sfreq=overlay_sfreq,
         overlay_label="EEG-E8",
