@@ -83,7 +83,8 @@ def main() -> None:
     print(features.loc[:4, ["candidate_id", "selected_threshold_value", "threshold_selection_mode"]])
 
     print("Available per-threshold metrics for the first blink:")
-    print(pd.DataFrame(features.loc[0, "threshold_features"]).T)
+    threshold_cols = [c for c in features.columns if c.startswith("threshold_")]
+    print(features.loc[0, threshold_cols].to_frame().T)
 
     # Build visual reports:
     # 1) User-specified plot threshold.

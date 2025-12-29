@@ -12,6 +12,21 @@ import pandas as pd
 
 
 def _format_metrics(row: pd.Series, keys: Sequence[str]) -> str:
+    """Format selected metrics from a row into human-readable text.
+
+    Parameters
+    ----------
+    row : pd.Series
+        Row of blink metrics (seconds, amplitude units of the plotted channel).
+    keys : Sequence[str]
+        Column names to include if present in ``row``.
+
+    Returns
+    -------
+    str
+        Multi-line string with ``key: value`` pairs rounded to 4 decimals for floats.
+    """
+
     lines = []
     for key in keys:
         if key not in row:
@@ -32,8 +47,23 @@ def _compute_overlay_indices(
 ) -> tuple[int, int]:
     """Compute overlay index range aligned to base sampling.
 
-    Uses floating point conversion to seconds for robustness, then maps into the overlay
-    signal index space while clamping to valid bounds.
+    Parameters
+    ----------
+    start : int
+        Inclusive start sample in the base signal.
+    end : int
+        Inclusive end sample in the base signal.
+    base_sfreq : float
+        Sampling frequency (Hz) of the base signal.
+    overlay_len : int
+        Total number of samples in the overlay signal.
+    overlay_sfreq : float | None
+        Sampling frequency (Hz) of the overlay signal; defaults to ``base_sfreq`` when None.
+
+    Returns
+    -------
+    tuple[int, int]
+        Overlay start/end sample indices clamped to ``[0, overlay_len - 1]``.
     """
 
     derived_sfreq = base_sfreq if overlay_sfreq is None else overlay_sfreq
@@ -72,7 +102,47 @@ def build_refined_blink_report(
         "reopening_time_zero",
     ),
 ) -> mne.Report:
-    """Generate an MNE report visualizing refined blink boundaries and metrics."""
+    """Generate an MNE report visualizing refined blink boundaries and metrics.
+
+    Parameters
+    ----------
+    results : pd.DataFrame
+        Blink metrics including refined start/end samples and threshold metadata.
+        Time-related columns are seconds; sample indices are integer sample counts.
+    signal : np.ndarray
+        Base signal to plot (e.g., EEG or EAR), sampled at ``sfreq``.
+    sfreq : float
+        Sampling frequency of ``signal`` in Hertz.
+    channel_name : str
+        Name used in plot labels/legends.
+    overlay_signal : np.ndarray | None, optional
+        Secondary signal to overlay on a twin axis; should be aligned to the same time base.
+    overlay_sfreq : float | None, optional
+        Sampling frequency of ``overlay_signal``; defaults to ``sfreq`` when None.
+    overlay_label : str, optional
+        Legend label for the overlay signal.
+    plot_overlay : bool, optional
+        Whether to plot ``overlay_signal`` when provided.
+    plot_signal_as_scatter : bool, optional
+        If True, use scatter + thin line for the base signal.
+    mark_threshold_crossings : bool, optional
+        If True, mark threshold crossings and minimum with low-opacity markers.
+    threshold_value : float | None, optional
+        Explicit threshold to draw; if None, uses per-row selected threshold when available.
+    output_path : Path | None, optional
+        Destination for the generated HTML report; directories are created as needed.
+    pad_seconds : float, optional
+        Padding (seconds) around each blink window for plotting.
+    max_plots : int | None, optional
+        Maximum number of blinks to include; useful for large datasets.
+    metrics_keys : Iterable[str], optional
+        Column names to include in the inset metrics text on each plot.
+
+    Returns
+    -------
+    mne.Report
+        Generated report object with figures and summary HTML added.
+    """
 
     report = mne.Report(title="Refined Blink Validation")
     n_samples = signal.shape[0]

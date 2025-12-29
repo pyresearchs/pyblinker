@@ -373,7 +373,8 @@ def _flatten_threshold_metrics(
     Returns
     -------
     dict
-        Flattened metrics with keys of the form ``threshold_<value>_<metric>``.
+        Flattened metrics with keys of the form ``threshold_<value>_<metric>`` (all
+        values are scalar: float, int, bool, or str).
     """
 
     flat: Dict[str, float | str | bool] = {}
