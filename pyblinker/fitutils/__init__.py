@@ -9,6 +9,14 @@ from .forking import (
     mad,
 )
 from .line_intersection import lines_intersection
+from .ear_crossing import (
+    CrossingPoint,
+    ThresholdCrossingError,
+    ThresholdCrossingResult,
+    compute_threshold_slopes,
+    find_threshold_crossing_triplet,
+    linear_interpolated_crossing,
+)
 
 __all__ = [
     "corr",
@@ -18,5 +26,10 @@ __all__ = [
     "weighted_corr",
     "lines_intersection",
     "mad",
+    "CrossingPoint",
+    "ThresholdCrossingError",
+    "ThresholdCrossingResult",
+    "compute_threshold_slopes",
+    "find_threshold_crossing_triplet",
+    "linear_interpolated_crossing",
 ]
-

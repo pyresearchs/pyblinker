@@ -8,6 +8,11 @@ from typing import Dict, List, Optional, Sequence
 import numpy as np
 import pandas as pd
 
+from pyblinker.fitutils.ear_crossing import (
+    ThresholdCrossingError,
+    compute_threshold_slopes,
+    find_threshold_crossing_triplet,
+)
 from pyblinker.logging import get_logger
 
 logger = get_logger(__name__)
@@ -21,6 +26,9 @@ class EARFeatureConfig:
     classification_threshold: Optional[float] = None
     context_window: Optional[float] = None
     percentiles: Sequence[int] = field(default_factory=lambda: (5, 10, 90, 95))
+    slope_max_expansion_seconds: float = 0.0
+    slope_expansion_step_seconds: float = 0.01
+    slope_plateau_policy: str = "midpoint"
 
 
 def _compute_baseline(signal: np.ndarray, start: int, baseline_samples: int) -> float:
@@ -108,6 +116,44 @@ def compute_blink_features(
         float(np.mean(reopening_velocity)) if reopening_velocity.size else float("nan")
     )
 
+    slope_metrics: Dict[str, float | str | bool] = {
+        "ear_threshold_closing_slope": float("nan"),
+        "ear_threshold_opening_slope": float("nan"),
+        "ear_threshold_left_time": float("nan"),
+        "ear_threshold_min_time": float("nan"),
+        "ear_threshold_right_time": float("nan"),
+        "ear_threshold_found_by": "unattempted",
+        "ear_threshold_status": "failed",
+    }
+
+    try:
+        max_expansion = int(round(feature_config.slope_max_expansion_seconds * sfreq))
+        expansion_step = int(max(1, round(feature_config.slope_expansion_step_seconds * sfreq)))
+        t = np.arange(signal.shape[0]) / sfreq
+        triplet = find_threshold_crossing_triplet(
+            signal,
+            theta=threshold,
+            t=t,
+            window=(start_sample, end_sample),
+            max_expansion=max_expansion,
+            expansion_step=expansion_step,
+            plateau_policy=feature_config.slope_plateau_policy,  # type: ignore[arg-type]
+        )
+        closing_slope, opening_slope = compute_threshold_slopes(triplet, threshold)
+        slope_metrics.update(
+            {
+                "ear_threshold_closing_slope": closing_slope,
+                "ear_threshold_opening_slope": opening_slope,
+                "ear_threshold_left_time": triplet.left.time,
+                "ear_threshold_min_time": triplet.minimum_time,
+                "ear_threshold_right_time": triplet.right.time,
+                "ear_threshold_found_by": triplet.found_by,
+                "ear_threshold_status": triplet.status,
+            }
+        )
+    except ThresholdCrossingError:
+        slope_metrics["ear_threshold_status"] = "failed"
+
     closure_time = (min_sample - start_sample) * dt
     reopening_time = (end_sample - min_sample) * dt
 
@@ -155,6 +201,7 @@ def compute_blink_features(
         "classification_threshold": float(classification_threshold),
         "blink_classification": blink_classification,
     }
+    features.update(slope_metrics)
     features.update(percentile_dict)
 
     return features
