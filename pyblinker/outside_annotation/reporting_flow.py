@@ -198,7 +198,9 @@ def build_refined_blink_report(
                 crossing_values,
                 color="black",
                 zorder=5,
-                s=28,
+                s=32,
+                marker="*",
+                alpha=0.45,
                 label="Threshold landmarks",
             )
 
