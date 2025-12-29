@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import sys
+import os
 
 import mne
 import pandas as pd
@@ -31,9 +32,11 @@ from pyblinker.outside_annotation import build_refined_blink_report  # noqa: E40
 
 
 def main() -> None:
+    save_reports = os.environ.get("PYBLINKER_SAVE_REPORTS", "1") != "0"
     data_dir = PROJECT_ROOT / "manual_annotation_feature_calculation_data"
     output_dir = PROJECT_ROOT / "tutorial_outputs"
-    output_dir.mkdir(parents=True, exist_ok=True)
+    if save_reports:
+        output_dir.mkdir(parents=True, exist_ok=True)
 
     annotation_csv = data_dir / "ear_eog.csv"
     fif_path = data_dir / "ear_eog.fif"
@@ -78,8 +81,9 @@ def main() -> None:
     features = extractor.build_feature_table(refined)
     best_threshold = apply_flat_threshold_selection(features, extractor.threshold_store)
 
-    output_path = output_dir / "ear_multi_threshold_refined_blinks.csv"
-    features.to_csv(output_path, index=False)
+    if save_reports:
+        output_path = output_dir / "ear_multi_threshold_refined_blinks.csv"
+        features.to_csv(output_path, index=False)
 
     print("Example selected thresholds (first five rows):")
     print(features.loc[:4, ["candidate_id", "selected_threshold_value", "threshold_selection_mode"]])
@@ -118,43 +122,50 @@ def main() -> None:
         missing_min, "refined_start_sample"
     ]
 
-    report_df["ear_threshold_left_sample"] = report_df["ear_threshold_left_sample"].astype(int)
-    report_df["ear_threshold_right_sample"] = report_df["ear_threshold_right_sample"].astype(int)
-    report_df["ear_threshold_min_sample"] = report_df["ear_threshold_min_sample"].astype(int)
+    report_df["ear_threshold_left_sample"] = (
+        report_df["ear_threshold_left_sample"].fillna(report_df["refined_start_sample"]).astype(int)
+    )
+    report_df["ear_threshold_right_sample"] = (
+        report_df["ear_threshold_right_sample"].fillna(report_df["refined_end_sample"]).astype(int)
+    )
+    report_df["ear_threshold_min_sample"] = (
+        report_df["ear_threshold_min_sample"].fillna(report_df["refined_start_sample"]).astype(int)
+    )
     report_df["zero_crossing_found"] = report_df["ear_threshold_status"].eq("ok")
 
     user_plot_threshold = 0.22
-    user_report_path = output_dir / "ear_multi_threshold_refined_blink_report_user.html"
-    build_refined_blink_report(
-        results=report_df,
-        signal=ear_signal,
-        sfreq=sfreq,
-        channel_name="EAR-avg_ear",
-        plot_overlay=True,
-        plot_signal_as_scatter=True,
-        mark_threshold_crossings=True,
-        threshold_value=user_plot_threshold,
-        overlay_signal=eeg_overlay,
-        overlay_sfreq=overlay_sfreq,
-        overlay_label="EEG-E8",
-        output_path=user_report_path,
-    )
+    if save_reports:
+        user_report_path = output_dir / "ear_multi_threshold_refined_blink_report_user.html"
+        build_refined_blink_report(
+            results=report_df,
+            signal=ear_signal,
+            sfreq=sfreq,
+            channel_name="EAR-avg_ear",
+            plot_overlay=True,
+            plot_signal_as_scatter=True,
+            mark_threshold_crossings=True,
+            threshold_value=user_plot_threshold,
+            overlay_signal=eeg_overlay,
+            overlay_sfreq=overlay_sfreq,
+            overlay_label="EEG-E8",
+            output_path=user_report_path,
+        )
 
-    auto_report_path = output_dir / "ear_multi_threshold_refined_blink_report_auto.html"
-    build_refined_blink_report(
-        results=report_df,
-        signal=ear_signal,
-        sfreq=sfreq,
-        channel_name="EAR-avg_ear",
-        plot_overlay=True,
-        plot_signal_as_scatter=True,
-        mark_threshold_crossings=True,
-        threshold_value=best_threshold,
-        overlay_signal=eeg_overlay,
-        overlay_sfreq=overlay_sfreq,
-        overlay_label="EEG-E8",
-        output_path=auto_report_path,
-    )
+        auto_report_path = output_dir / "ear_multi_threshold_refined_blink_report_auto.html"
+        build_refined_blink_report(
+            results=report_df,
+            signal=ear_signal,
+            sfreq=sfreq,
+            channel_name="EAR-avg_ear",
+            plot_overlay=True,
+            plot_signal_as_scatter=True,
+            mark_threshold_crossings=True,
+            threshold_value=best_threshold,
+            overlay_signal=eeg_overlay,
+            overlay_sfreq=overlay_sfreq,
+            overlay_label="EEG-E8",
+            output_path=auto_report_path,
+        )
 
     n_success = int(features["refinement_succeeded"].sum())
     print(f"Refined {len(features)} blinks; {n_success} used threshold crossings.")
@@ -180,9 +191,12 @@ def main() -> None:
     print("\nExample rows with multi-threshold EAR features:")
     print(features.loc[:, preview_cols].head())
 
-    print("\nSaved refined blink table to:", output_path)
-    print("Blink validation report with user threshold saved to:", user_report_path)
-    print("Blink validation report with auto-selected threshold saved to:", auto_report_path)
+    if save_reports:
+        print("\nSaved refined blink table to:", output_path)
+        print("Blink validation report with user threshold saved to:", user_report_path)
+        print("Blink validation report with auto-selected threshold saved to:", auto_report_path)
+    else:
+        print("\nSaving is disabled (set PYBLINKER_SAVE_REPORTS=1 to enable).")
     print(
         "You can adjust the candidate thresholds to compare how crossings and derived\n"
         "metrics change without rerunning annotation refinement."
