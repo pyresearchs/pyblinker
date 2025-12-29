@@ -45,7 +45,13 @@ def test_refinement_detects_crossings(ear_data: tuple[np.ndarray, float, pd.Data
     assert not refined.empty
     assert refined["refinement_succeeded"].any()
     assert set(refined.columns).issuperset(
-        {"refined_start_sample", "refined_end_sample", "onset_offset_seconds"}
+        {
+            "refined_start_sample",
+            "refined_end_sample",
+            "onset_offset_seconds",
+            "refined_left_zero",
+            "refined_right_zero",
+        }
     )
     assert (refined["refined_end_sample"] >= refined["refined_start_sample"]).all()
 

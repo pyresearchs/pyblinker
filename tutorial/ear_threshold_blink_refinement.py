@@ -27,6 +27,8 @@ from __future__ import annotations
 from pathlib import Path
 import sys
 
+import mne
+
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
@@ -39,6 +41,7 @@ from pyblinker.blink_features.ear_metrics import (  # noqa: E402
     load_coarse_blinks,
     load_ear_channel,
 )
+from pyblinker.outside_annotation import build_refined_blink_report  # noqa: E402
 
 
 def main() -> None:
@@ -86,6 +89,29 @@ def main() -> None:
     output_path = output_dir / "ear_threshold_refined_blinks.csv"
     features.to_csv(output_path, index=False)
 
+    # Build visual report with EEG overlay by default to mirror the CSV + threshold story
+    raw = mne.io.read_raw_fif(fif_path, preload=True, verbose="ERROR")
+    eeg_overlay = raw.get_data(picks="EEG-E8")[0]
+    overlay_sfreq = float(raw.info["sfreq"])
+
+    report_df = features.copy()
+    report_df["refined_left_zero"] = report_df["refined_start_sample"]
+    report_df["refined_right_zero"] = report_df["refined_end_sample"]
+    report_df["zero_crossing_found"] = report_df["refinement_succeeded"]
+
+    report_path = output_dir / "ear_threshold_refined_blink_report.html"
+    build_refined_blink_report(
+        results=report_df,
+        signal=ear_signal,
+        sfreq=sfreq,
+        channel_name="EAR-avg_ear",
+        plot_overlay=True,
+        overlay_signal=eeg_overlay,
+        overlay_sfreq=overlay_sfreq,
+        overlay_label="EEG-E8",
+        output_path=report_path,
+    )
+
     n_success = int(features["refinement_succeeded"].sum())
     print(f"Refined {len(features)} blinks; {n_success} used threshold crossings.")
     print("Average onset shift (s):", features["onset_offset_seconds"].mean())
@@ -114,6 +140,7 @@ def main() -> None:
     print(features.loc[:, preview_cols].head())
 
     print("\nSaved refined blink table to:", output_path)
+    print("Blink validation report saved to:", report_path)
     print(
         "You can tune `ear_threshold`, `max_extension`, `extension_step`, and "
         "`baseline_window` to suit different sensors or annotation granularity."

@@ -125,6 +125,8 @@ def _progressive_search(
     return {
         "refined_start_sample": int(refined_start),
         "refined_end_sample": int(refined_end),
+        "refined_left_zero": int(refined_start),
+        "refined_right_zero": int(refined_end),
         "search_window_start_sample": int(window_start),
         "search_window_end_sample": int(window_end),
         "search_window_start_time": float(window_start / sfreq),
@@ -197,6 +199,7 @@ class EARThresholdBlinkRefiner:
             "refined_end_sample": refined_end_sample,
             "coarse_start_sample": int(coarse_start_sample),
             "coarse_end_sample": int(coarse_end_sample),
+            "zero_crossing_found": bool(search_result["refinement_succeeded"]),
             **search_result,
         }
 
