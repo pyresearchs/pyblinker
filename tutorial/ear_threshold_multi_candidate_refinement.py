@@ -106,7 +106,7 @@ def main() -> None:
 
     missing_left = report_df["refined_left_zero"].isna()
     missing_right = report_df["refined_right_zero"].isna()
-    missing_min = report_df["refined_min_zero"].isna()
+    missing_min = report_df["ear_threshold_min_sample"].isna()
 
     report_df.loc[missing_left, "ear_threshold_left_sample"] = report_df.loc[
         missing_left, "refined_start_sample"
