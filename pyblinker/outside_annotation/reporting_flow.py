@@ -207,6 +207,7 @@ def build_refined_blink_report(
     zero_crossing_failures = None
     if "zero_crossing_found" in results.columns:
         zero_crossing_failures = int((~results["zero_crossing_found"].astype(bool)).sum())
+    sampling_rate = float(sfreq)
 
     representative_threshold, threshold_origin = _determine_report_threshold(
         results, threshold_value
@@ -432,16 +433,33 @@ def build_refined_blink_report(
             handles.extend(overlay_handles)
             labels.extend(overlay_labels)
         if handles:
-            ax.legend(handles, labels, loc="upper right")
+            ax.legend(handles, labels, loc="upper right", fontsize=8)
+
+        threshold_status = None
+        threshold_found_by = None
+        if chosen_threshold is not None:
+            status_key = f"threshold_{float(chosen_threshold):.6g}_ear_threshold_status"
+            found_key = f"threshold_{float(chosen_threshold):.6g}_ear_threshold_found_by"
+            threshold_status = getattr(row, status_key, None)
+            threshold_found_by = getattr(row, found_key, None)
+        if threshold_status is None:
+            threshold_status = getattr(row, "ear_threshold_status", None)
+        if threshold_found_by is None:
+            threshold_found_by = getattr(row, "ear_threshold_found_by", None)
 
         caption = (
             f"Threshold crossings at {left / sfreq:.3f}s and {right / sfreq:.3f}s. "
-            f"Sampling rate: {sfreq:.2f} Hz. "
             f"Segment {start}–{end} ({(end - start) / sfreq:.3f}s)."
         )
         if chosen_threshold is not None:
             suffix = f" ({plot_threshold_origin})" if plot_threshold_origin else ""
             caption += f" Threshold value: {float(chosen_threshold):.3f}{suffix}."
+        if min_time is not None:
+            caption += f" Minimum EAR at {float(min_time):.3f}s."
+        if threshold_status is not None and not pd.isna(threshold_status):
+            caption += f" Threshold status: {threshold_status}."
+        if threshold_found_by is not None and not pd.isna(threshold_found_by):
+            caption += f" Found by: {threshold_found_by}."
         report.add_figure(
             fig=fig,
             title=f"Blink {idx}",
@@ -459,8 +477,27 @@ def build_refined_blink_report(
     if skipped_count:
         reason = "max_plots limit" if max_plots is not None else "not plotted"
         summary_rows.append((f"Skipped ({reason})", skipped_count))
+    summary_rows.append(("Sampling rate (Hz)", f"{sampling_rate:.2f}"))
     if zero_crossing_failures is not None:
         summary_rows.append(("Zero-crossing failures", zero_crossing_failures))
+    if "ear_threshold_status" in results.columns:
+        status_counts = results["ear_threshold_status"].astype(str).value_counts()
+        if not status_counts.empty:
+            summary_rows.append(
+                (
+                    "Threshold status counts",
+                    "; ".join(f"{status}: {count}" for status, count in status_counts.items()),
+                )
+            )
+    if "ear_threshold_found_by" in results.columns:
+        found_counts = results["ear_threshold_found_by"].astype(str).value_counts()
+        if not found_counts.empty:
+            summary_rows.append(
+                (
+                    "Threshold found-by counts",
+                    "; ".join(f"{method}: {count}" for method, count in found_counts.items()),
+                )
+            )
     if representative_threshold is not None:
         label = (
             "Plot threshold (user-provided)" if threshold_origin == "user" else "Plot threshold (auto mode)"
