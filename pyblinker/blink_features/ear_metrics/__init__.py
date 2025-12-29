@@ -1,10 +1,24 @@
-"""EAR baseline and extrema aggregation."""
+"""EAR baseline, refinement, and feature aggregation."""
 
 from .aggregate import aggregate_ear_features
+from .feature_extraction import (
+    EARBlinkFeatureExtractor,
+    EARFeatureConfig,
+    compute_blink_features,
+)
 from .features import ear_before_blink_avg_epoch, ear_extrema_epoch
+from .io import load_coarse_blinks, load_ear_channel
+from .refinement import EARRefinementConfig, EARThresholdBlinkRefiner
 
 __all__ = [
     "aggregate_ear_features",
+    "EARBlinkFeatureExtractor",
+    "EARFeatureConfig",
+    "EARRefinementConfig",
+    "EARThresholdBlinkRefiner",
+    "compute_blink_features",
     "ear_before_blink_avg_epoch",
     "ear_extrema_epoch",
+    "load_coarse_blinks",
+    "load_ear_channel",
 ]
