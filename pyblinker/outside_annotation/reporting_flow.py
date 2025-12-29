@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Iterable, Sequence
 
@@ -12,6 +13,21 @@ import pandas as pd
 
 
 def _format_metrics(row: pd.Series, keys: Sequence[str]) -> str:
+    """Format selected metrics from a row into human-readable text.
+
+    Parameters
+    ----------
+    row : pd.Series
+        Row of blink metrics (seconds, amplitude units of the plotted channel).
+    keys : Sequence[str]
+        Column names to include if present in ``row``.
+
+    Returns
+    -------
+    str
+        Multi-line string with ``key: value`` pairs rounded to 4 decimals for floats.
+    """
+
     lines = []
     for key in keys:
         if key not in row:
@@ -32,8 +48,23 @@ def _compute_overlay_indices(
 ) -> tuple[int, int]:
     """Compute overlay index range aligned to base sampling.
 
-    Uses floating point conversion to seconds for robustness, then maps into the overlay
-    signal index space while clamping to valid bounds.
+    Parameters
+    ----------
+    start : int
+        Inclusive start sample in the base signal.
+    end : int
+        Inclusive end sample in the base signal.
+    base_sfreq : float
+        Sampling frequency (Hz) of the base signal.
+    overlay_len : int
+        Total number of samples in the overlay signal.
+    overlay_sfreq : float | None
+        Sampling frequency (Hz) of the overlay signal; defaults to ``base_sfreq`` when None.
+
+    Returns
+    -------
+    tuple[int, int]
+        Overlay start/end sample indices clamped to ``[0, overlay_len - 1]``.
     """
 
     derived_sfreq = base_sfreq if overlay_sfreq is None else overlay_sfreq
@@ -45,6 +76,52 @@ def _compute_overlay_indices(
     overlay_start = int(np.clip(round(start_time * derived_sfreq), 0, overlay_len - 1))
     overlay_end = int(np.clip(round(end_time * derived_sfreq), overlay_start, overlay_len - 1))
     return overlay_start, overlay_end
+
+
+def _determine_report_threshold(results: pd.DataFrame, threshold_value: float | None) -> tuple[float | None, str | None]:
+    """Return a single representative threshold for the entire report."""
+
+    if threshold_value is not None:
+        return float(threshold_value), "user"
+
+    status_pattern = re.compile(r"^threshold_(?P<value>[^_]+)_ear_threshold_status$")
+    candidates: list[tuple[float, int, int]] = []
+    for col in results.columns:
+        match = status_pattern.match(col)
+        if not match:
+            continue
+        try:
+            theta = float(match.group("value"))
+        except ValueError:
+            continue
+        status_series = results[col].astype(str)
+        ok_count = int((status_series == "ok").sum())
+        found_by_col = f"threshold_{match.group('value')}_ear_threshold_found_by"
+        found_count = 0
+        if found_by_col in results.columns:
+            found_count = int(results[found_by_col].notna().sum())
+        candidates.append((theta, ok_count, found_count))
+
+    if candidates:
+        candidates.sort(key=lambda item: (-item[1], -item[2], item[0]))
+        top_ok = candidates[0][1]
+        best_candidates = [c for c in candidates if c[1] == top_ok]
+        best_found = max(c[2] for c in best_candidates)
+        best = [c for c in best_candidates if c[2] == best_found][0]
+        return float(best[0]), "auto_flat"
+
+    if "selected_threshold_value" in results.columns:
+        selected_values = pd.to_numeric(results["selected_threshold_value"], errors="coerce").dropna()
+        if not selected_values.empty:
+            mode_value = float(selected_values.mode().iat[0])
+            return mode_value, "auto"
+
+    if "threshold_value" in results.columns:
+        threshold_values = pd.to_numeric(results["threshold_value"], errors="coerce").dropna()
+        if not threshold_values.empty:
+            return float(threshold_values.mode().iat[0]), "auto"
+
+    return None, None
 
 
 def build_refined_blink_report(
@@ -72,7 +149,48 @@ def build_refined_blink_report(
         "reopening_time_zero",
     ),
 ) -> mne.Report:
-    """Generate an MNE report visualizing refined blink boundaries and metrics."""
+    """Generate an MNE report visualizing refined blink boundaries and metrics.
+
+    Parameters
+    ----------
+    results : pd.DataFrame
+        Blink metrics including refined start/end samples and threshold metadata.
+        Time-related columns are seconds; sample indices are integer sample counts.
+    signal : np.ndarray
+        Base signal to plot (e.g., EEG or EAR), sampled at ``sfreq``.
+    sfreq : float
+        Sampling frequency of ``signal`` in Hertz.
+    channel_name : str
+        Name used in plot labels/legends.
+    overlay_signal : np.ndarray | None, optional
+        Secondary signal to overlay on a twin axis; should be aligned to the same time base.
+    overlay_sfreq : float | None, optional
+        Sampling frequency of ``overlay_signal``; defaults to ``sfreq`` when None.
+    overlay_label : str, optional
+        Legend label for the overlay signal.
+    plot_overlay : bool, optional
+        Whether to plot ``overlay_signal`` when provided.
+    plot_signal_as_scatter : bool, optional
+        If True, use scatter + thin line for the base signal.
+    mark_threshold_crossings : bool, optional
+        If True, mark threshold crossings and minimum with low-opacity markers.
+    threshold_value : float | None, optional
+        Explicit threshold to draw; if None, uses a single representative threshold derived
+        from the results.
+    output_path : Path | None, optional
+        Destination for the generated HTML report; directories are created as needed.
+    pad_seconds : float, optional
+        Padding (seconds) around each blink window for plotting.
+    max_plots : int | None, optional
+        Maximum number of blinks to include; useful for large datasets.
+    metrics_keys : Iterable[str], optional
+        Column names to include in the inset metrics text on each plot.
+
+    Returns
+    -------
+    mne.Report
+        Generated report object with figures and summary HTML added.
+    """
 
     report = mne.Report(title="Refined Blink Validation")
     n_samples = signal.shape[0]
@@ -90,9 +208,25 @@ def build_refined_blink_report(
     if "zero_crossing_found" in results.columns:
         zero_crossing_failures = int((~results["zero_crossing_found"].astype(bool)).sum())
 
+    representative_threshold, threshold_origin = _determine_report_threshold(
+        results, threshold_value
+    )
+
     for idx, row in enumerate(rows):
-        left = int(getattr(row, "refined_left_zero", getattr(row, "left_zero", 0)))
-        right = int(getattr(row, "refined_right_zero", getattr(row, "right_zero", 0)))
+        left = int(
+            getattr(
+                row,
+                "ear_threshold_left_sample",
+                getattr(row, "refined_left_zero", getattr(row, "left_zero", 0)),
+            )
+        )
+        right = int(
+            getattr(
+                row,
+                "ear_threshold_right_sample",
+                getattr(row, "refined_right_zero", getattr(row, "right_zero", 0)),
+            )
+        )
         start = max(0, left - pad_samples)
         end = min(n_samples - 1, right + pad_samples)
 
@@ -110,7 +244,11 @@ def build_refined_blink_report(
         min_time = getattr(row, "ear_threshold_min_time", None)
         if min_time is not None and (pd.isna(min_time) or np.isinf(min_time)):
             min_time = None
-        min_sample = getattr(row, "refined_min_zero", getattr(row, "min_zero", None))
+        min_sample = getattr(
+            row,
+            "ear_threshold_min_sample",
+            getattr(row, "refined_min_zero", getattr(row, "min_zero", None)),
+        )
         if min_sample is None and min_time is not None:
             min_sample = int(np.clip(round(min_time * sfreq), 0, n_samples - 1))
         elif min_sample is not None:
@@ -151,13 +289,21 @@ def build_refined_blink_report(
         ax.axvline(left_time, color="C1", linestyle="--", label="Left threshold crossing")
         ax.axvline(right_time, color="C2", linestyle="--", label="Right threshold crossing")
 
-        if threshold_value is not None:
+        chosen_threshold = representative_threshold
+        plot_threshold_origin = threshold_origin
+        if chosen_threshold is None:
+            chosen_threshold = getattr(row, "selected_threshold_value", None)
+            plot_threshold_origin = getattr(row, "threshold_selection_mode", None)
+            if chosen_threshold is None:
+                chosen_threshold = getattr(row, "threshold_value", None)
+        if chosen_threshold is not None:
             ax.axhline(
-                threshold_value,
+                chosen_threshold,
                 color="C5",
                 linestyle=":",
                 lw=1.0,
-                label=f"Threshold = {threshold_value:.3f}",
+                label=f"Threshold = {float(chosen_threshold):.3f}"
+                + (f" ({plot_threshold_origin})" if plot_threshold_origin else ""),
             )
 
         # Mark key landmarks directly on the plot for clarity.
@@ -171,8 +317,8 @@ def build_refined_blink_report(
             min_value = float(signal[min_sample])
 
         crossing_times = [left_time, right_time]
-        if threshold_value is not None:
-            crossing_values = [threshold_value, threshold_value]
+        if chosen_threshold is not None:
+            crossing_values = [float(chosen_threshold), float(chosen_threshold)]
         else:
             crossing_values = [
                 float(signal[int(np.clip(left, 0, n_samples - 1))]),
@@ -189,7 +335,9 @@ def build_refined_blink_report(
                 crossing_values,
                 color="black",
                 zorder=5,
-                s=28,
+                s=32,
+                marker="*",
+                alpha=0.45,
                 label="Threshold landmarks",
             )
 
@@ -291,8 +439,9 @@ def build_refined_blink_report(
             f"Sampling rate: {sfreq:.2f} Hz. "
             f"Segment {start}–{end} ({(end - start) / sfreq:.3f}s)."
         )
-        if threshold_value is not None:
-            caption += f" Threshold value: {threshold_value:.3f}."
+        if chosen_threshold is not None:
+            suffix = f" ({plot_threshold_origin})" if plot_threshold_origin else ""
+            caption += f" Threshold value: {float(chosen_threshold):.3f}{suffix}."
         report.add_figure(
             fig=fig,
             title=f"Blink {idx}",
@@ -312,6 +461,25 @@ def build_refined_blink_report(
         summary_rows.append((f"Skipped ({reason})", skipped_count))
     if zero_crossing_failures is not None:
         summary_rows.append(("Zero-crossing failures", zero_crossing_failures))
+    if representative_threshold is not None:
+        label = (
+            "Plot threshold (user-provided)" if threshold_origin == "user" else "Plot threshold (auto mode)"
+        )
+        summary_rows.append((label, f"{float(representative_threshold):.3f}"))
+    if {"selected_threshold_value", "threshold_selection_mode"} <= set(results.columns):
+        mode_counts = results["threshold_selection_mode"].astype(str).value_counts()
+        if not mode_counts.empty:
+            summary_rows.append(
+                ("Threshold selection modes", "; ".join(f"{k}: {v}" for k, v in mode_counts.items()))
+            )
+    if "threshold_selection_reason" in results.columns:
+        reasons = results["threshold_selection_reason"].dropna().astype(str)
+        if not reasons.empty:
+            reason_counts = reasons.value_counts()
+            top_reason = reason_counts.index[0]
+            summary_rows.append(
+                ("Threshold selection rationale", f"{top_reason} ({int(reason_counts.iloc[0])}x)")
+            )
 
     summary_html = """<table style='border-collapse: collapse;'>
     <thead><tr><th style='text-align:left;padding:4px;'>Metric</th>

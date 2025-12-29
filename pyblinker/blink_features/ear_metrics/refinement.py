@@ -24,7 +24,27 @@ AnnotationUnit = Literal["seconds", "samples"]
 
 @dataclass
 class EARRefinementConfig:
-    """Configuration for threshold-based blink refinement."""
+    """Configuration for threshold-based blink refinement.
+
+    Parameters
+    ----------
+    threshold : float
+        EAR threshold (raw units) used to detect downward/upward crossings.
+    annotation_time_unit : {"seconds", "samples"}, default "seconds"
+        Unit of the ``onset`` and ``duration`` columns in the coarse annotations.
+    max_extension : float, default 0.35
+        Maximum outward expansion in seconds to search for crossings when they
+        do not exist inside the coarse window.
+    extension_step : float, default 0.05
+        Step size in seconds for each outward expansion attempt.
+    padding : float, default 0.0
+        Symmetric padding in seconds added around the coarse window before
+        expansion attempts.
+    extend_before : bool, default True
+        Whether to allow expansion before the coarse onset.
+    extend_after : bool, default True
+        Whether to allow expansion after the coarse offset.
+    """
 
     threshold: float
     annotation_time_unit: AnnotationUnit = "seconds"
@@ -35,18 +55,33 @@ class EARRefinementConfig:
     extend_after: bool = True
 
     def to_samples(self, value: float, sfreq: float) -> int:
+        """Convert a time/duration value to samples based on the configured unit."""
+
         if self.annotation_time_unit == "seconds":
             return int(np.round(value * sfreq))
         return int(np.round(value))
 
     def duration_seconds(self, value: float, sfreq: float) -> float:
+        """Convert a time/duration value to seconds based on the configured unit."""
+
         if self.annotation_time_unit == "seconds":
             return float(value)
         return float(value / sfreq)
 
 
 def _compute_crossings(mask: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-    """Locate downward and upward threshold crossings from a boolean mask."""
+    """Locate downward and upward threshold crossings from a boolean mask.
+
+    Parameters
+    ----------
+    mask : np.ndarray
+        Boolean array where ``True`` marks samples under the threshold.
+
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray]
+        Indices of downward (False->True) and upward (True->False) crossings.
+    """
 
     downward = np.flatnonzero(~mask[:-1] & mask[1:]) + 1
     upward = np.flatnonzero(mask[:-1] & ~mask[1:]) + 1
@@ -56,7 +91,22 @@ def _compute_crossings(mask: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
 def _select_crossing_pair(
     mask: np.ndarray, start: int, end: int
 ) -> Optional[Tuple[int, int]]:
-    """Select the first downward + subsequent upward crossing inside a window."""
+    """Select the first downward + subsequent upward crossing inside a window.
+
+    Parameters
+    ----------
+    mask : np.ndarray
+        Boolean under-threshold mask.
+    start : int
+        Inclusive search start sample.
+    end : int
+        Inclusive search end sample.
+
+    Returns
+    -------
+    tuple[int, int] | None
+        Downward and upward crossing sample indices if found; otherwise ``None``.
+    """
 
     downward, upward = _compute_crossings(mask)
     downward = downward[(downward >= start) & (downward <= end)]
@@ -83,7 +133,29 @@ def _progressive_search(
     sfreq: float,
     config: EARRefinementConfig,
 ) -> Dict[str, float | int | bool]:
-    """Search for threshold crossings, extending the window outward if needed."""
+    """Search for threshold crossings, extending the window outward if needed.
+
+    Parameters
+    ----------
+    signal : np.ndarray
+        Full EAR signal (raw units).
+    threshold : float
+        EAR threshold for defining closed periods.
+    coarse_start : int
+        Coarse onset sample.
+    coarse_end : int
+        Coarse offset sample.
+    sfreq : float
+        Sampling frequency in Hertz.
+    config : EARRefinementConfig
+        Search configuration controlling padding and expansion.
+
+    Returns
+    -------
+    dict
+        Refined onset/offset samples, search window bounds (samples and seconds),
+        whether refinement succeeded, and search diagnostics (extensions, attempts).
+    """
 
     n_samples = signal.shape[0]
     padding_samples = int(round(config.padding * sfreq))
@@ -147,6 +219,17 @@ class EARThresholdBlinkRefiner:
         sfreq: float,
         config: EARRefinementConfig,
     ):
+        """Create a blink refiner.
+
+        Parameters
+        ----------
+        signal : np.ndarray
+            Full EAR signal (raw units).
+        sfreq : float
+            Sampling frequency in Hertz.
+        config : EARRefinementConfig
+            Threshold and search settings controlling refinement.
+        """
         self.signal = np.asarray(signal, dtype=float)
         self.sfreq = float(sfreq)
         self.config = config
@@ -154,7 +237,20 @@ class EARThresholdBlinkRefiner:
     def refine_annotation_row(
         self, row: Dict[str, float | str], candidate_id: int
     ) -> Dict[str, float | int | str | bool]:
-        """Refine a single blink annotation row."""
+        """Refine a single blink annotation row.
+
+        Parameters
+        ----------
+        row : dict
+            Annotation row containing ``onset`` and ``duration`` plus optional labels.
+        candidate_id : int
+            Unique identifier for the annotation row.
+
+        Returns
+        -------
+        dict
+            Refined timing, offsets, window metadata, and search diagnostics.
+        """
 
         coarse_onset = float(row["onset"])
         duration = float(row["duration"])
@@ -204,7 +300,18 @@ class EARThresholdBlinkRefiner:
         }
 
     def refine_annotations(self, annotations: pd.DataFrame) -> pd.DataFrame:
-        """Refine all blink annotations in a DataFrame."""
+        """Refine all blink annotations in a DataFrame.
+
+        Parameters
+        ----------
+        annotations : pd.DataFrame
+            Annotation table with ``onset`` and ``duration`` columns (seconds or samples).
+
+        Returns
+        -------
+        pd.DataFrame
+            Table containing refined timing, offsets, search metadata, and flags.
+        """
 
         missing_cols = {"onset", "duration"} - set(annotations.columns)
         if missing_cols:
