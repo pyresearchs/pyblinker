@@ -8,9 +8,9 @@ flattened per-threshold columns.
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 import sys
-import os
 
 import mne
 import pandas as pd
@@ -27,7 +27,9 @@ from pyblinker.blink_features.ear_metrics import (  # noqa: E402
     load_coarse_blinks,
     load_ear_channel,
 )
+from pyblinker.utils import select_auto_threshold  # noqa: E402
 from pyblinker.outside_annotation import build_refined_blink_report  # noqa: E402
+from pyblinker.viz import prepare_threshold_report_dataframe  # noqa: E402
 
 
 def main() -> None:
@@ -58,12 +60,7 @@ def main() -> None:
     print(f"Sampling rate: {sfreq} Hz; signal length: {len(ear_signal)} samples")
 
     # Refine and extract independently for each threshold.
-    extractor = EARBlinkFeatureExtractor(
-        ear_signal,
-        sfreq,
-        threshold=None,
-        feature_config=feature_config,
-    )
+    extractor = EARBlinkFeatureExtractor(ear_signal, sfreq, feature_config=feature_config)
     feature_tables = []
     for idx, theta in enumerate(candidate_thresholds):
         refinement_config = EARRefinementConfig(
@@ -110,41 +107,11 @@ def main() -> None:
     overlay_sfreq = float(raw.info["sfreq"])
 
     report_threshold = candidate_thresholds[2]
-    report_df = features.loc[features["threshold_value"] == report_threshold].copy()
-    left_time = pd.to_numeric(report_df["ear_threshold_left_time"], errors="coerce")
-    right_time = pd.to_numeric(report_df["ear_threshold_right_time"], errors="coerce")
-    min_time = pd.to_numeric(report_df["ear_threshold_min_time"], errors="coerce")
-
-    report_df["ear_threshold_left_sample"] = (left_time * sfreq).round()
-    report_df["ear_threshold_right_sample"] = (right_time * sfreq).round()
-    report_df["ear_threshold_min_sample"] = (min_time * sfreq).round()
-
-    missing_left = report_df["refined_left_zero"].isna()
-    missing_right = report_df["refined_right_zero"].isna()
-    missing_min = report_df["ear_threshold_min_sample"].isna()
-
-    report_df.loc[missing_left, "ear_threshold_left_sample"] = report_df.loc[
-        missing_left, "refined_start_sample"
-    ]
-    report_df.loc[missing_right, "ear_threshold_right_sample"] = report_df.loc[
-        missing_right, "refined_end_sample"
-    ]
-    report_df.loc[missing_min, "ear_threshold_min_sample"] = report_df.loc[
-        missing_min, "refined_start_sample"
-    ]
-
-    report_df["ear_threshold_left_sample"] = (
-        report_df["ear_threshold_left_sample"].fillna(report_df["refined_start_sample"]).astype(int)
-    )
-    report_df["ear_threshold_right_sample"] = (
-        report_df["ear_threshold_right_sample"].fillna(report_df["refined_end_sample"]).astype(int)
-    )
-    report_df["ear_threshold_min_sample"] = (
-        report_df["ear_threshold_min_sample"].fillna(report_df["refined_start_sample"]).astype(int)
-    )
-    report_df["zero_crossing_found"] = report_df["ear_threshold_status"].eq("ok")
-
+    report_df = prepare_threshold_report_dataframe(features, sfreq, report_threshold)
     user_plot_threshold = report_threshold
+
+    auto_threshold = select_auto_threshold(features)
+    auto_report_df = prepare_threshold_report_dataframe(features, sfreq, auto_threshold)
     if save_reports:
         user_report_path = output_dir / "ear_multi_threshold_refined_blink_report_user.html"
         build_refined_blink_report(
@@ -162,9 +129,26 @@ def main() -> None:
             output_path=user_report_path,
         )
 
+        auto_report_path = output_dir / "ear_multi_threshold_refined_blink_report_auto.html"
+        build_refined_blink_report(
+            results=auto_report_df,
+            signal=ear_signal,
+            sfreq=sfreq,
+            channel_name="EAR-avg_ear",
+            plot_overlay=True,
+            plot_signal_as_scatter=True,
+            mark_threshold_crossings=True,
+            threshold_value=auto_threshold,
+            overlay_signal=eeg_overlay,
+            overlay_sfreq=overlay_sfreq,
+            overlay_label="EEG-E8",
+            output_path=auto_report_path,
+        )
+
     n_success = int(features["refinement_succeeded"].sum())
     print(f"Refined {len(features)} blink-threshold pairs; {n_success} used threshold crossings.")
     print(f"Report threshold used for visualization: {report_threshold}")
+    print(f"Automatically selected threshold for report: {auto_threshold}")
     print("Average onset shift (s):", features["onset_offset_seconds"].mean())
     print("Average offset shift (s):", features["offset_offset_seconds"].mean())
 
