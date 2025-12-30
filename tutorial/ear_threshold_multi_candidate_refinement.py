@@ -8,12 +8,11 @@ flattened per-threshold columns.
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 import sys
-import os
 
 import mne
-import numpy as np
 import pandas as pd
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -28,68 +27,9 @@ from pyblinker.blink_features.ear_metrics import (  # noqa: E402
     load_coarse_blinks,
     load_ear_channel,
 )
+from pyblinker.utils import select_auto_threshold  # noqa: E402
 from pyblinker.outside_annotation import build_refined_blink_report  # noqa: E402
-
-
-def _prepare_report_dataframe(features: pd.DataFrame, sfreq: float, threshold_value: float) -> pd.DataFrame:
-    """Return a report-ready DataFrame for a single threshold value."""
-
-    report_df = features.loc[features["threshold_value"] == threshold_value].copy()
-    report_df["ear_threshold_left_sample"] = pd.to_numeric(
-        report_df["refined_left_threshold"], errors="coerce"
-    )
-    report_df["ear_threshold_right_sample"] = pd.to_numeric(
-        report_df["refined_right_threshold"], errors="coerce"
-    )
-    report_df["ear_threshold_min_sample"] = pd.to_numeric(
-        report_df["refined_lowest_point_sample"], errors="coerce"
-    )
-
-    missing_left = report_df["refined_left_threshold"].isna()
-    missing_right = report_df["refined_right_threshold"].isna()
-    missing_min = report_df["refined_lowest_point_sample"].isna()
-
-    report_df.loc[missing_left, "ear_threshold_left_sample"] = report_df.loc[
-        missing_left, "refined_start_sample"
-    ]
-    report_df.loc[missing_right, "ear_threshold_right_sample"] = report_df.loc[
-        missing_right, "refined_end_sample"
-    ]
-    report_df.loc[missing_min, "ear_threshold_min_sample"] = report_df.loc[
-        missing_min, "refined_start_sample"
-    ]
-
-    report_df["ear_threshold_left_sample"] = (
-        report_df["ear_threshold_left_sample"].fillna(report_df["refined_start_sample"]).astype(int)
-    )
-    report_df["ear_threshold_right_sample"] = (
-        report_df["ear_threshold_right_sample"].fillna(report_df["refined_end_sample"]).astype(int)
-    )
-    report_df["ear_threshold_min_sample"] = (
-        report_df["ear_threshold_min_sample"].fillna(report_df["refined_start_sample"]).astype(int)
-    )
-    report_df["threshold_crossing_found"] = report_df["refinement_succeeded"].astype(bool)
-
-    return report_df
-
-
-def _select_auto_threshold(features: pd.DataFrame) -> float:
-    """Choose a threshold value favoring minimal fallback/extension and valid slopes."""
-
-    if "threshold_value" not in features.columns or features.empty:
-        raise ValueError("Features must include 'threshold_value' to select an automatic threshold.")
-
-    candidates = []
-    for theta, group in features.groupby("threshold_value"):
-        fallback_rate = pd.to_numeric(group["refinement_fallback_to_coarse"], errors="coerce").mean()
-        extension_rate = pd.to_numeric(group["refinement_used_outward_extension"], errors="coerce").mean()
-
-        slopes = pd.to_numeric(group["ear_threshold_closing_slope"], errors="coerce")
-        slope_valid_rate = float(np.isfinite(slopes).mean()) if not slopes.empty else 0.0
-        candidates.append((float(theta), float(fallback_rate), float(extension_rate), slope_valid_rate))
-
-    candidates.sort(key=lambda item: (item[1], item[2], -item[3], item[0]))
-    return candidates[0][0]
+from pyblinker.viz import prepare_threshold_report_dataframe  # noqa: E402
 
 
 def main() -> None:
@@ -167,11 +107,11 @@ def main() -> None:
     overlay_sfreq = float(raw.info["sfreq"])
 
     report_threshold = candidate_thresholds[2]
-    report_df = _prepare_report_dataframe(features, sfreq, report_threshold)
+    report_df = prepare_threshold_report_dataframe(features, sfreq, report_threshold)
     user_plot_threshold = report_threshold
 
-    auto_threshold = _select_auto_threshold(features)
-    auto_report_df = _prepare_report_dataframe(features, sfreq, auto_threshold)
+    auto_threshold = select_auto_threshold(features)
+    auto_report_df = prepare_threshold_report_dataframe(features, sfreq, auto_threshold)
     if save_reports:
         user_report_path = output_dir / "ear_multi_threshold_refined_blink_report_user.html"
         build_refined_blink_report(
