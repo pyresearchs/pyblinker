@@ -8,8 +8,8 @@ the search is deterministically expanded outward up to a configurable limit.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Dict, List, Literal, Optional, Tuple
+from dataclasses import dataclass, replace
+from typing import Dict, List, Literal, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -20,6 +20,7 @@ logger = get_logger(__name__)
 
 
 AnnotationUnit = Literal["seconds", "samples"]
+Number = Union[int, float]
 
 
 @dataclass
@@ -329,6 +330,7 @@ class EARThresholdBlinkRefiner:
             refined["extension_seconds_used"] > 0
         )
         refined["refinement_fallback_to_coarse"] = ~refined["refinement_succeeded"]
+        refined["threshold_value"] = float(self.config.threshold)
 
         logger.info(
             "Refined %s coarse blink annotations (threshold=%s)",
@@ -336,3 +338,50 @@ class EARThresholdBlinkRefiner:
             self.config.threshold,
         )
         return refined
+
+
+def refine_annotations_for_threshold(
+    signal: np.ndarray,
+    sfreq: float,
+    annotations: pd.DataFrame,
+    base_config: EARRefinementConfig,
+    candidate_threshold: Number,
+    threshold_index: Optional[int] = None,
+) -> pd.DataFrame:
+    """Refine annotations for a single threshold value.
+
+    Parameters
+    ----------
+    signal : np.ndarray
+        Full EAR signal (raw units).
+    sfreq : float
+        Sampling frequency in Hertz.
+    annotations : pd.DataFrame
+        Coarse blink annotations with ``onset`` and ``duration`` columns.
+    base_config : EARRefinementConfig
+        Baseline configuration that will be copied for the provided threshold.
+    candidate_threshold : float | int
+        Threshold value to evaluate.
+    threshold_index : int | None, optional
+        Optional index to preserve caller-provided ordering across thresholds.
+
+    Returns
+    -------
+    pd.DataFrame
+        Refinement table containing the ``threshold_value`` and ``threshold_index`` columns
+        identifying the threshold used for each row.
+    """
+
+    theta = float(candidate_threshold)
+    threshold_config = replace(base_config, threshold=theta)
+    refiner = EARThresholdBlinkRefiner(signal, sfreq, threshold_config)
+    refined = refiner.refine_annotations(annotations)
+    refined["threshold_value"] = theta
+    refined["threshold_index"] = int(threshold_index) if threshold_index is not None else 0
+
+    logger.info(
+        "Refined annotations for threshold=%s; resulting rows=%s",
+        theta,
+        len(refined),
+    )
+    return refined

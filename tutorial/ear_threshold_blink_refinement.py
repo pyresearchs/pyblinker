@@ -40,7 +40,6 @@ from pyblinker.blink_features.ear_metrics import (  # noqa: E402
     EARFeatureConfig,
     EARRefinementConfig,
     EARThresholdBlinkRefiner,
-    apply_flat_threshold_selection,
     load_coarse_blinks,
     load_ear_channel,
 )
@@ -87,10 +86,9 @@ def main() -> None:
     refined = refiner.refine_annotations(annotations)
 
     extractor = EARBlinkFeatureExtractor(
-        ear_signal, sfreq, threshold=ear_threshold, feature_config=feature_config
+        ear_signal, sfreq, feature_config=feature_config
     )
     features = extractor.build_feature_table(refined)
-    apply_flat_threshold_selection(features, extractor.threshold_store)
 
     if save_reports:
         output_path = output_dir / "ear_threshold_refined_blinks.csv"
