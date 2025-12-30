@@ -214,6 +214,8 @@ def build_refined_blink_report(
     )
 
     for idx, row in enumerate(rows):
+        interpolated_left_sample_attr = getattr(row, "ear_interpolated_left_sample", None)
+        interpolated_right_sample_attr = getattr(row, "ear_interpolated_right_sample", None)
         left = int(
             getattr(
                 row,
@@ -236,15 +238,28 @@ def build_refined_blink_report(
                 ),
             )
         )
+        if interpolated_left_sample_attr is not None and not pd.isna(interpolated_left_sample_attr):
+            left = int(interpolated_left_sample_attr)
+        if (
+            interpolated_right_sample_attr is not None
+            and not pd.isna(interpolated_right_sample_attr)
+        ):
+            right = int(interpolated_right_sample_attr)
         start = max(0, left - pad_samples)
         end = min(n_samples - 1, right + pad_samples)
 
-        left_time_attr = getattr(row, "ear_threshold_left_time", None)
+        raw_interp_left_time = getattr(row, "ear_interpolated_left_time", None)
+        raw_interp_right_time = getattr(row, "ear_interpolated_right_time", None)
+        left_time_attr = raw_interp_left_time
+        if left_time_attr is None:
+            left_time_attr = getattr(row, "ear_threshold_left_time", None)
         left_time = float(left_time_attr) if left_time_attr is not None else left / sfreq
         if not np.isfinite(left_time):
             left_time = left / sfreq
 
-        right_time_attr = getattr(row, "ear_threshold_right_time", None)
+        right_time_attr = raw_interp_right_time
+        if right_time_attr is None:
+            right_time_attr = getattr(row, "ear_threshold_right_time", None)
         right_time = float(right_time_attr) if right_time_attr is not None else right / sfreq
         if not np.isfinite(right_time):
             right_time = right / sfreq
@@ -326,6 +341,21 @@ def build_refined_blink_report(
         if min_sample is not None and 0 <= min_sample < n_samples:
             min_value = float(signal[min_sample])
 
+        def _safe_time(value: float | None) -> float | None:
+            if value is None:
+                return None
+            try:
+                numeric = float(value)
+            except (TypeError, ValueError):
+                return None
+            return numeric if np.isfinite(numeric) else None
+
+        interpolated_left_time_value = _safe_time(raw_interp_left_time)
+        interpolated_right_time_value = _safe_time(raw_interp_right_time)
+        interpolated_times_available = (
+            interpolated_left_time_value is not None and interpolated_right_time_value is not None
+        )
+
         crossing_times = [left_time, right_time]
         if chosen_threshold is not None:
             crossing_values = [float(chosen_threshold), float(chosen_threshold)]
@@ -348,7 +378,7 @@ def build_refined_blink_report(
                 s=32,
                 marker="*",
                 alpha=0.45,
-                label="Threshold landmarks",
+                label="Interpolated threshold landmarks" if interpolated_times_available else "Threshold landmarks",
             )
 
         ax.annotate(
@@ -444,8 +474,9 @@ def build_refined_blink_report(
         if handles:
             ax.legend(handles, labels, loc="upper right", fontsize=8)
 
+        caption_prefix = "Interpolated threshold crossings" if interpolated_times_available else "Threshold crossings"
         caption = (
-            f"Threshold crossings at {left_time:.3f}s and {right_time:.3f}s. "
+            f"{caption_prefix} at {left_time:.3f}s and {right_time:.3f}s. "
             f"Segment {start}–{end} ({(end - start) / sfreq:.3f}s)."
         )
         if chosen_threshold is not None:
