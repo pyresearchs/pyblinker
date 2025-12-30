@@ -198,8 +198,8 @@ def _progressive_search(
     return {
         "refined_start_sample": int(refined_start),
         "refined_end_sample": int(refined_end),
-        "refined_left_zero": int(refined_start),
-        "refined_right_zero": int(refined_end),
+        "refined_left_threshold": int(refined_start),
+        "refined_right_threshold": int(refined_end),
         "search_window_start_sample": int(window_start),
         "search_window_end_sample": int(window_end),
         "search_window_start_time": float(window_start / sfreq),
@@ -235,6 +235,36 @@ class EARThresholdBlinkRefiner:
         self.sfreq = float(sfreq)
         self.config = config
 
+    def _compute_lowest_point_sample(self, start: int, end: int) -> float:
+        """Return the lowest EAR sample index within the refined interval.
+
+        The search is inclusive of ``start`` and ``end``. When the interval is invalid,
+        empty, or contains no finite values, ``nan`` is returned.
+        """
+
+        n_samples = self.signal.shape[0]
+        if start is None or end is None:
+            return float("nan")
+        try:
+            start_idx = int(start)
+            end_idx = int(end)
+        except (TypeError, ValueError):
+            return float("nan")
+
+        if start_idx < 0 or end_idx >= n_samples or start_idx > end_idx:
+            return float("nan")
+
+        window = self.signal[start_idx : end_idx + 1]
+        if window.size == 0:
+            return float("nan")
+
+        finite_mask = np.isfinite(window)
+        if not finite_mask.any():
+            return float("nan")
+
+        local_min = int(np.argmin(np.where(finite_mask, window, np.inf)))
+        return float(start_idx + local_min)
+
     def refine_annotation_row(
         self, row: Dict[str, float | str], candidate_id: int
     ) -> Dict[str, float | int | str | bool]:
@@ -250,7 +280,8 @@ class EARThresholdBlinkRefiner:
         Returns
         -------
         dict
-            Refined timing, offsets, window metadata, and search diagnostics.
+            Refined timing, offsets, lowest-point sample index, window metadata, and
+            search diagnostics.
         """
 
         coarse_onset = float(row["onset"])
@@ -276,6 +307,10 @@ class EARThresholdBlinkRefiner:
         refined_start_sample = int(search_result["refined_start_sample"])
         refined_end_sample = int(search_result["refined_end_sample"])
 
+        refined_lowest_point_sample = self._compute_lowest_point_sample(
+            refined_start_sample, refined_end_sample
+        )
+
         refined_onset_time = refined_start_sample / self.sfreq
         refined_offset_time = refined_end_sample / self.sfreq
 
@@ -294,9 +329,10 @@ class EARThresholdBlinkRefiner:
             "offset_offset_seconds": float(refined_offset_time - coarse_offset_time),
             "refined_start_sample": refined_start_sample,
             "refined_end_sample": refined_end_sample,
+            "refined_lowest_point_sample": refined_lowest_point_sample,
             "coarse_start_sample": int(coarse_start_sample),
             "coarse_end_sample": int(coarse_end_sample),
-            "zero_crossing_found": bool(search_result["refinement_succeeded"]),
+            "threshold_crossing_found": bool(search_result["refinement_succeeded"]),
             **search_result,
         }
 

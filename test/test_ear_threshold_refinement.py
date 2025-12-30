@@ -50,8 +50,9 @@ def test_refinement_detects_crossings(ear_data: tuple[np.ndarray, float, pd.Data
             "refined_start_sample",
             "refined_end_sample",
             "onset_offset_seconds",
-            "refined_left_zero",
-            "refined_right_zero",
+            "refined_left_threshold",
+            "refined_right_threshold",
+            "refined_lowest_point_sample",
         }
     )
     assert (refined["refined_end_sample"] >= refined["refined_start_sample"]).all()

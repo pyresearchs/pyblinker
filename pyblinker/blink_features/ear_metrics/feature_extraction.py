@@ -8,11 +8,6 @@ from typing import Dict, List, Optional, Sequence, Tuple
 import numpy as np
 import pandas as pd
 
-from pyblinker.fitutils.ear_crossing import (
-    ThresholdCrossingError,
-    compute_threshold_slopes,
-    find_threshold_crossing_triplet,
-)
 from pyblinker.logging import get_logger
 
 logger = get_logger(__name__)
@@ -77,6 +72,43 @@ def _safe_gradient(values: np.ndarray, dt: float) -> np.ndarray:
     if values.size < 2:
         return np.zeros_like(values, dtype=float)
     return np.gradient(values, dt)
+
+
+def _compute_slopes_from_samples(
+    signal: np.ndarray,
+    start_sample: int,
+    lowest_sample: int,
+    end_sample: int,
+    sfreq: float,
+) -> tuple[float, float]:
+    """Return closing/opening slopes using refined boundaries and lowest point.
+
+    Slopes are derived directly from EAR values at the provided sample indices. When
+    samples are invalid, out of order, or coincide in time, ``nan`` is returned for
+    the corresponding slope.
+    """
+
+    n_samples = signal.shape[0]
+    if (
+        start_sample < 0
+        or end_sample >= n_samples
+        or lowest_sample < start_sample
+        or lowest_sample > end_sample
+    ):
+        return float("nan"), float("nan")
+
+    dt = 1.0 / sfreq
+    closing_duration = (lowest_sample - start_sample) * dt
+    opening_duration = (end_sample - lowest_sample) * dt
+
+    closing_slope = float("nan")
+    opening_slope = float("nan")
+    if closing_duration > 0:
+        closing_slope = float((signal[lowest_sample] - signal[start_sample]) / closing_duration)
+    if opening_duration > 0:
+        opening_slope = float((signal[end_sample] - signal[lowest_sample]) / opening_duration)
+
+    return closing_slope, opening_slope
 
 
 def _compute_base_features(
@@ -217,6 +249,7 @@ def _compute_threshold_features(
     start_sample: int,
     end_sample: int,
     min_sample: int,
+    lowest_point_sample: int | float | None,
     window: np.ndarray,
     threshold: float,
     feature_config: EARFeatureConfig,
@@ -236,6 +269,8 @@ def _compute_threshold_features(
         Refined blink offset sample (inclusive).
     min_sample : int
         Sample index of the minimum EAR within the blink window.
+    lowest_point_sample : int | float | None
+        Refined lowest EAR sample within the blink interval, if available.
     window : np.ndarray
         Blink window slice from ``start_sample`` to ``end_sample`` (inclusive).
     threshold : float
@@ -248,49 +283,39 @@ def _compute_threshold_features(
     Returns
     -------
     dict
-        Metrics tied to the provided threshold, including slopes, durations, AUC,
-        classification outcome (prefers CSV label), computed classification, and
-        crossing metadata.
+        Metrics tied to the provided threshold, including slopes derived from refined
+        boundaries + lowest point, durations, AUC, classification outcome (prefers CSV
+        label), and computed classification.
     """
 
     dt = 1.0 / sfreq
-    slope_metrics: Dict[str, float | str | bool] = {
+    slope_metrics: Dict[str, float] = {
         "ear_threshold_closing_slope": float("nan"),
         "ear_threshold_opening_slope": float("nan"),
-        "ear_threshold_left_time": float("nan"),
-        "ear_threshold_min_time": float("nan"),
-        "ear_threshold_right_time": float("nan"),
-        "ear_threshold_found_by": "unattempted",
-        "ear_threshold_status": "failed",
     }
 
-    try:
-        max_expansion = int(round(feature_config.slope_max_expansion_seconds * sfreq))
-        expansion_step = int(max(1, round(feature_config.slope_expansion_step_seconds * sfreq)))
-        t = np.arange(signal.shape[0]) / sfreq
-        triplet = find_threshold_crossing_triplet(
-            signal,
-            theta=threshold,
-            t=t,
-            window=(start_sample, end_sample),
-            max_expansion=max_expansion,
-            expansion_step=expansion_step,
-            plateau_policy=feature_config.slope_plateau_policy,  # type: ignore[arg-type]
+    resolved_lowest_sample: int | None = None
+    if lowest_point_sample is not None and np.isfinite(lowest_point_sample):
+        candidate = int(lowest_point_sample)
+        if start_sample <= candidate <= end_sample and 0 <= candidate < signal.shape[0]:
+            resolved_lowest_sample = candidate
+    if resolved_lowest_sample is None and start_sample <= min_sample <= end_sample:
+        resolved_lowest_sample = int(min_sample)
+
+    if resolved_lowest_sample is not None:
+        closing_slope, opening_slope = _compute_slopes_from_samples(
+            signal=signal,
+            start_sample=start_sample,
+            lowest_sample=resolved_lowest_sample,
+            end_sample=end_sample,
+            sfreq=sfreq,
         )
-        closing_slope, opening_slope = compute_threshold_slopes(triplet, threshold)
         slope_metrics.update(
             {
                 "ear_threshold_closing_slope": closing_slope,
                 "ear_threshold_opening_slope": opening_slope,
-                "ear_threshold_left_time": triplet.left.time,
-                "ear_threshold_min_time": triplet.minimum_time,
-                "ear_threshold_right_time": triplet.right.time,
-                "ear_threshold_found_by": triplet.found_by,
-                "ear_threshold_status": triplet.status,
             }
         )
-    except ThresholdCrossingError:
-        slope_metrics["ear_threshold_status"] = "failed"
 
     under_threshold_mask = window < threshold
     closed_duration = float(under_threshold_mask.sum() * dt)
@@ -302,7 +327,13 @@ def _compute_threshold_features(
         if feature_config.classification_threshold is not None
         else threshold
     )
-    min_value = float(window[int(min_sample - start_sample)])
+    min_index_for_metrics = (
+        resolved_lowest_sample if resolved_lowest_sample is not None else int(min_sample)
+    )
+    min_offset = min_index_for_metrics - start_sample
+    min_value = float("nan")
+    if 0 <= min_offset < window.size:
+        min_value = float(window[int(min_offset)])
     computed_classification = "full" if min_value < classification_threshold else "partial"
     blink_classification = (
         str(blink_type) if blink_type is not None and str(blink_type) else computed_classification
@@ -329,6 +360,7 @@ def compute_blink_features(
     threshold: float,
     start_sample: int,
     end_sample: int,
+    lowest_point_sample: int | float | None,
     blink_type: Optional[str],
     feature_config: EARFeatureConfig,
 ) -> Dict[str, object]:
@@ -346,6 +378,8 @@ def compute_blink_features(
         Refined blink onset sample (inclusive).
     end_sample : int
         Refined blink offset sample (inclusive).
+    lowest_point_sample : int | float | None
+        Lowest EAR sample within the refined interval, if available.
     blink_type : str | None
         Optional blink label.
     feature_config : EARFeatureConfig
@@ -380,6 +414,7 @@ def compute_blink_features(
         start_sample=start_sample,
         end_sample=end_sample,
         min_sample=min_sample,
+        lowest_point_sample=lowest_point_sample,
         window=window,
         threshold=threshold,
         feature_config=feature_config,
@@ -439,7 +474,7 @@ class EARBlinkFeatureExtractor:
             Input rows augmented with base EAR metrics and threshold-dependent scalars.
         """
 
-        required_cols = {"refined_start_sample", "refined_end_sample"}
+        required_cols = {"refined_start_sample", "refined_end_sample", "refined_lowest_point_sample"}
         missing_cols = required_cols - set(refined.columns)
         if missing_cols:
             raise ValueError(
@@ -462,6 +497,7 @@ class EARBlinkFeatureExtractor:
                 threshold=threshold_value,
                 start_sample=int(row["refined_start_sample"]),
                 end_sample=int(row["refined_end_sample"]),
+                lowest_point_sample=row.get("refined_lowest_point_sample"),
                 blink_type=row.get("blink_type"),
                 feature_config=self.feature_config,
             )

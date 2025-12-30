@@ -58,12 +58,7 @@ def main() -> None:
     print(f"Sampling rate: {sfreq} Hz; signal length: {len(ear_signal)} samples")
 
     # Refine and extract independently for each threshold.
-    extractor = EARBlinkFeatureExtractor(
-        ear_signal,
-        sfreq,
-        threshold=None,
-        feature_config=feature_config,
-    )
+    extractor = EARBlinkFeatureExtractor(ear_signal, sfreq, feature_config=feature_config)
     feature_tables = []
     for idx, theta in enumerate(candidate_thresholds):
         refinement_config = EARRefinementConfig(
@@ -111,17 +106,19 @@ def main() -> None:
 
     report_threshold = candidate_thresholds[2]
     report_df = features.loc[features["threshold_value"] == report_threshold].copy()
-    left_time = pd.to_numeric(report_df["ear_threshold_left_time"], errors="coerce")
-    right_time = pd.to_numeric(report_df["ear_threshold_right_time"], errors="coerce")
-    min_time = pd.to_numeric(report_df["ear_threshold_min_time"], errors="coerce")
+    report_df["ear_threshold_left_sample"] = pd.to_numeric(
+        report_df["refined_left_threshold"], errors="coerce"
+    )
+    report_df["ear_threshold_right_sample"] = pd.to_numeric(
+        report_df["refined_right_threshold"], errors="coerce"
+    )
+    report_df["ear_threshold_min_sample"] = pd.to_numeric(
+        report_df["refined_lowest_point_sample"], errors="coerce"
+    )
 
-    report_df["ear_threshold_left_sample"] = (left_time * sfreq).round()
-    report_df["ear_threshold_right_sample"] = (right_time * sfreq).round()
-    report_df["ear_threshold_min_sample"] = (min_time * sfreq).round()
-
-    missing_left = report_df["refined_left_zero"].isna()
-    missing_right = report_df["refined_right_zero"].isna()
-    missing_min = report_df["ear_threshold_min_sample"].isna()
+    missing_left = report_df["refined_left_threshold"].isna()
+    missing_right = report_df["refined_right_threshold"].isna()
+    missing_min = report_df["refined_lowest_point_sample"].isna()
 
     report_df.loc[missing_left, "ear_threshold_left_sample"] = report_df.loc[
         missing_left, "refined_start_sample"
@@ -142,7 +139,7 @@ def main() -> None:
     report_df["ear_threshold_min_sample"] = (
         report_df["ear_threshold_min_sample"].fillna(report_df["refined_start_sample"]).astype(int)
     )
-    report_df["zero_crossing_found"] = report_df["ear_threshold_status"].eq("ok")
+    report_df["threshold_crossing_found"] = report_df["refinement_succeeded"].astype(bool)
 
     user_plot_threshold = report_threshold
     if save_reports:

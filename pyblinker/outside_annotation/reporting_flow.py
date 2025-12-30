@@ -204,9 +204,9 @@ def build_refined_blink_report(
 
     plotted_count = len(rows)
     skipped_count = max(total_candidates - plotted_count, 0)
-    zero_crossing_failures = None
-    if "zero_crossing_found" in results.columns:
-        zero_crossing_failures = int((~results["zero_crossing_found"].astype(bool)).sum())
+    threshold_crossing_failures = None
+    if "threshold_crossing_found" in results.columns:
+        threshold_crossing_failures = int((~results["threshold_crossing_found"].astype(bool)).sum())
     sampling_rate = float(sfreq)
 
     representative_threshold, threshold_origin = _determine_report_threshold(
@@ -218,42 +218,51 @@ def build_refined_blink_report(
             getattr(
                 row,
                 "ear_threshold_left_sample",
-                getattr(row, "refined_left_zero", getattr(row, "left_zero", 0)),
+                getattr(
+                    row,
+                    "refined_left_threshold",
+                    getattr(row, "left_threshold", getattr(row, "refined_start_sample", 0)),
+                ),
             )
         )
         right = int(
             getattr(
                 row,
                 "ear_threshold_right_sample",
-                getattr(row, "refined_right_zero", getattr(row, "right_zero", 0)),
+                getattr(
+                    row,
+                    "refined_right_threshold",
+                    getattr(row, "right_threshold", getattr(row, "refined_end_sample", 0)),
+                ),
             )
         )
         start = max(0, left - pad_samples)
         end = min(n_samples - 1, right + pad_samples)
 
-        left_time = float(
-            getattr(row, "ear_threshold_left_time", getattr(row, "left_time", left / sfreq))
-        )
-        right_time = float(
-            getattr(row, "ear_threshold_right_time", getattr(row, "right_time", right / sfreq))
-        )
+        left_time_attr = getattr(row, "ear_threshold_left_time", None)
+        left_time = float(left_time_attr) if left_time_attr is not None else left / sfreq
         if not np.isfinite(left_time):
             left_time = left / sfreq
+
+        right_time_attr = getattr(row, "ear_threshold_right_time", None)
+        right_time = float(right_time_attr) if right_time_attr is not None else right / sfreq
         if not np.isfinite(right_time):
             right_time = right / sfreq
 
-        min_time = getattr(row, "ear_threshold_min_time", None)
+        min_time_attr = getattr(row, "ear_threshold_min_time", None)
+        min_time = float(min_time_attr) if min_time_attr is not None else None
         if min_time is not None and (pd.isna(min_time) or np.isinf(min_time)):
             min_time = None
         min_sample = getattr(
             row,
             "ear_threshold_min_sample",
-            getattr(row, "refined_min_zero", getattr(row, "min_zero", None)),
+            getattr(row, "refined_lowest_point_sample", None),
         )
         if min_sample is None and min_time is not None:
             min_sample = int(np.clip(round(min_time * sfreq), 0, n_samples - 1))
         elif min_sample is not None:
             min_sample = int(min_sample)
+            min_sample = int(np.clip(min_sample, 0, n_samples - 1))
             if min_time is None:
                 min_time = min_sample / sfreq
 
@@ -435,20 +444,8 @@ def build_refined_blink_report(
         if handles:
             ax.legend(handles, labels, loc="upper right", fontsize=8)
 
-        threshold_status = None
-        threshold_found_by = None
-        if chosen_threshold is not None:
-            status_key = f"threshold_{float(chosen_threshold):.6g}_ear_threshold_status"
-            found_key = f"threshold_{float(chosen_threshold):.6g}_ear_threshold_found_by"
-            threshold_status = getattr(row, status_key, None)
-            threshold_found_by = getattr(row, found_key, None)
-        if threshold_status is None:
-            threshold_status = getattr(row, "ear_threshold_status", None)
-        if threshold_found_by is None:
-            threshold_found_by = getattr(row, "ear_threshold_found_by", None)
-
         caption = (
-            f"Threshold crossings at {left / sfreq:.3f}s and {right / sfreq:.3f}s. "
+            f"Threshold crossings at {left_time:.3f}s and {right_time:.3f}s. "
             f"Segment {start}–{end} ({(end - start) / sfreq:.3f}s)."
         )
         if chosen_threshold is not None:
@@ -456,10 +453,6 @@ def build_refined_blink_report(
             caption += f" Threshold value: {float(chosen_threshold):.3f}{suffix}."
         if min_time is not None:
             caption += f" Minimum EAR at {float(min_time):.3f}s."
-        if threshold_status is not None and not pd.isna(threshold_status):
-            caption += f" Threshold status: {threshold_status}."
-        if threshold_found_by is not None and not pd.isna(threshold_found_by):
-            caption += f" Found by: {threshold_found_by}."
         report.add_figure(
             fig=fig,
             title=f"Blink {idx}",
@@ -478,26 +471,8 @@ def build_refined_blink_report(
         reason = "max_plots limit" if max_plots is not None else "not plotted"
         summary_rows.append((f"Skipped ({reason})", skipped_count))
     summary_rows.append(("Sampling rate (Hz)", f"{sampling_rate:.2f}"))
-    if zero_crossing_failures is not None:
-        summary_rows.append(("Zero-crossing failures", zero_crossing_failures))
-    if "ear_threshold_status" in results.columns:
-        status_counts = results["ear_threshold_status"].astype(str).value_counts()
-        if not status_counts.empty:
-            summary_rows.append(
-                (
-                    "Threshold status counts",
-                    "; ".join(f"{status}: {count}" for status, count in status_counts.items()),
-                )
-            )
-    if "ear_threshold_found_by" in results.columns:
-        found_counts = results["ear_threshold_found_by"].astype(str).value_counts()
-        if not found_counts.empty:
-            summary_rows.append(
-                (
-                    "Threshold found-by counts",
-                    "; ".join(f"{method}: {count}" for method, count in found_counts.items()),
-                )
-            )
+    if threshold_crossing_failures is not None:
+        summary_rows.append(("Threshold crossing failures", threshold_crossing_failures))
     if representative_threshold is not None:
         label = (
             "Plot threshold (user-provided)" if threshold_origin == "user" else "Plot threshold (auto mode)"
