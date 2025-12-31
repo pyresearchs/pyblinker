@@ -571,11 +571,26 @@ def build_refined_blink_report(
                 interpolated_right_time_value,
             ),
         ):
-            pair = _sample_value(sample)
-            if pair is not None:
-                if time_value is not None:
-                    pair = (float(time_value), pair[1])
-                interpolated_markers.append((label, pair))
+            time_point = _safe_time(time_value)
+            value_at_time: float | None = None
+            if time_point is None:
+                sample_point = _sample_value(sample)
+                if sample_point is None:
+                    continue
+                time_point, sample_value = sample_point
+                value_at_time = sample_value
+            else:
+                sample_point = _sample_value(sample)
+                if sample_point is not None:
+                    _, sample_value = sample_point
+                    value_at_time = sample_value
+            if time_point is None:
+                continue
+            if chosen_threshold is not None:
+                value_at_time = float(chosen_threshold)
+            if value_at_time is None:
+                continue
+            interpolated_markers.append((label, (time_point, float(value_at_time))))
 
         crossing_times = [left_time, right_time]
         if chosen_threshold is not None:
@@ -589,18 +604,6 @@ def build_refined_blink_report(
         if min_time is not None and min_value is not None:
             crossing_times.insert(1, float(min_time))
             crossing_values.insert(1, min_value)
-
-        if mark_threshold_crossings:
-            ax.scatter(
-                crossing_times,
-                crossing_values,
-                color="black",
-                zorder=5,
-                s=32,
-                marker="*",
-                alpha=0.45,
-                label="Interpolated threshold landmarks" if interpolated_times_available else "Threshold landmarks",
-            )
 
         if refined_landmarks:
             colors = {
@@ -756,6 +759,19 @@ def build_refined_blink_report(
             caption += f" Threshold value: {float(chosen_threshold):.3f}{suffix}."
         if min_time is not None:
             caption += f" Minimum EAR at {float(min_time):.3f}s."
+        refined_time_lookup = {label: time for label, (time, _) in refined_landmarks}
+        start_time_caption = refined_time_lookup.get("Refined start")
+        end_time_caption = refined_time_lookup.get("Refined end")
+        lowest_time_caption = refined_time_lookup.get("Refined lowest point")
+        refined_parts = []
+        if start_time_caption is not None:
+            refined_parts.append(f"Refined start at {start_time_caption:.3f}s")
+        if lowest_time_caption is not None:
+            refined_parts.append(f"Refined lowest point at {lowest_time_caption:.3f}s")
+        if end_time_caption is not None:
+            refined_parts.append(f"Refined end at {end_time_caption:.3f}s")
+        if refined_parts:
+            caption += " " + "; ".join(refined_parts) + "."
         report.add_figure(
             fig=fig,
             title=f"Blink {idx}",
