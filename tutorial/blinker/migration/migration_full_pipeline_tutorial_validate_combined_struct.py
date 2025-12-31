@@ -8,7 +8,7 @@ the same parameters as the legacy MATLAB workflow and compare the resulting
 
 Based on
 --------
-test/blinker_migration/test_immitate_full_step.py
+test/blinker_migration/xtest_immitate_full_step.py
 
 Inputs
 ------
