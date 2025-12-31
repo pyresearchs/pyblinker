@@ -455,7 +455,13 @@ def build_refined_blink_report(
         window_times = np.arange(start, end + 1, dtype=float) / sfreq
         window_signal = signal[start : end + 1]
 
-        fig, ax = plt.subplots(figsize=(9, 3))
+        fig, (ax, legend_ax) = plt.subplots(
+            1,
+            2,
+            figsize=(10, 3),
+            gridspec_kw={"width_ratios": [5, 1]},
+        )
+        legend_ax.axis("off")
         if plot_signal_as_scatter:
             ax.scatter(
                 window_times,
@@ -721,7 +727,24 @@ def build_refined_blink_report(
             handles.extend(overlay_handles)
             labels.extend(overlay_labels)
         if handles:
-            ax.legend(handles, labels, loc="upper right", fontsize=8)
+            seen = set()
+            unique_handles = []
+            unique_labels = []
+            for handle, label in zip(handles, labels):
+                if label in seen:
+                    continue
+                seen.add(label)
+                unique_handles.append(handle)
+                unique_labels.append(label)
+            legend_ax.legend(
+                unique_handles,
+                unique_labels,
+                loc="upper left",
+                fontsize=8,
+                frameon=True,
+                borderpad=0.6,
+                labelspacing=0.3,
+            )
 
         caption_prefix = "Interpolated threshold crossings" if interpolated_times_available else "Threshold crossings"
         caption = (
