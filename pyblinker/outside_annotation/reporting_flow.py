@@ -488,9 +488,6 @@ def build_refined_blink_report(
                 color="C0",
                 label=channel_name,
             )
-        ax.axvline(left_time, color="C1", linestyle="--", label="Left threshold crossing")
-        ax.axvline(right_time, color="C2", linestyle="--", label="Right threshold crossing")
-
         chosen_threshold = representative_threshold
         plot_threshold_origin = threshold_origin
         if chosen_threshold is None:
@@ -639,15 +636,6 @@ def build_refined_blink_report(
                     label=label,
                 )
 
-        ax.annotate(
-            "Left threshold crossing",
-            xy=(left_time, crossing_values[0]),
-            xytext=(left_time, crossing_values[0] + y_offset),
-            arrowprops=dict(arrowstyle="->", color="C1"),
-            fontsize=8,
-            ha="center",
-        )
-
         if min_time is not None and min_value is not None:
             ax.annotate(
                 "Minimum EAR",
@@ -657,15 +645,6 @@ def build_refined_blink_report(
                 fontsize=8,
                 ha="center",
             )
-
-        ax.annotate(
-            "Right threshold crossing",
-            xy=(right_time, crossing_values[-1]),
-            xytext=(right_time, crossing_values[-1] - y_offset),
-            arrowprops=dict(arrowstyle="->", color="C2"),
-            fontsize=8,
-            ha="center",
-        )
 
         # Maximum absolute amplitude within the window.
         max_idx = int(np.argmax(np.abs(window_signal)))
