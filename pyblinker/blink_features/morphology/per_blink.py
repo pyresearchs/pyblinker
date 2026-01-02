@@ -1,4 +1,11 @@
-"""Per-blink morphology metrics delegated to the shared blink core."""
+"""Per-blink morphology metrics delegated to the shared blink core.
+All feature calculations rely only on blink onset and blink duration stored in the metadata.
+This design intentionally decouples feature extraction from how blink boundaries are defined.
+
+As a result, users should have full flexibility to define blink onset and duration according to their needs.
+See pyblinker/utils/refinement_utils.py
+
+"""
 
 from __future__ import annotations
 

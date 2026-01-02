@@ -31,6 +31,8 @@ def _init_metadata(
         "blink_duration": [np.nan] * n_epochs,
         "n_blinks": [0] * n_epochs,
     }
+	# Since we may have different ways to define the blink onset per modality, and per crossing like zero crossing, tent crossing, half base crossing.
+	# So here, we just create all the possible fields.
     if have_eeg:
         md["blink_onset_eeg"] = [np.nan] * n_epochs
         md["blink_duration_eeg"] = [np.nan] * n_epochs
@@ -53,13 +55,16 @@ def _init_metadata(
 
 
 def slice_raw_into_mne_epochs_refine_annot(
+    # TODO : We need to enrich this function to support different blink onset selection strategy.
     raw: mne.io.BaseRaw,
     *,
     epoch_len: float = 30.0,
     blink_label: Optional[str] = "blink",
     progress_bar: bool = True,
+	ear_threshold: Optional[float] = None,
 ) -> mne.Epochs:
-    """Convert a continuous recording into equally spaced epochs with refinement."""
+    """When to use this refinement, we use this when user is assume to vizualy do the annotation.
+    Convert a continuous recording into equally spaced epochs with refinement."""
 
     from pyblinker.blink_features.blink_events.blink_dataframe import (
         compute_outer_bounds,
@@ -154,13 +159,18 @@ def slice_raw_into_mne_epochs_refine_annot(
             )
 
         if have_ear and data_ear is not None:
+			# If ear, make sure the threshold is available
+			# When do this, we always assume the EYE ASPECT RATION SIGNAL to be inverted of EEG,MEANING, the eye blink maximum is at minimum point of EAR signal.
+			# assert ear_threshold
+			# if have_ear and ear_threshold is not None:
+			# 	  assert ear_threshold is not None, "EAR threshold must be provided for EAR refinement."
             seg = data_ear[ei].mean(axis=0)
             peaks: List[int] = []
             for sr, er in zip(blink_starts, blink_ends):
                 rs, trough, re = refine_ear_extrema_and_threshold_stub(
                     seg, sr, er, peak_rel_cvat=None
                 )
-                peaks.append(int(trough))
+                peaks.append(int(trough)) # should use the term through for EAR. trough vs peak
                 md["blink_onset_ear"][ei] = append_to_slot(
                     md["blink_onset_ear"][ei], rs / sfreq
                 )
@@ -242,13 +252,11 @@ def refine_ear_extrema_and_threshold_stub(
     signal_segment: np.ndarray,
     start_rel: int,
     end_rel: int,
-    peak_rel_cvat: int | None = None,
-    *,
-    local_max_prominence: float = 0.01,
-    search_expansion_frames: int = 5,
-    value_threshold: float | None = None,
+    peak_rel_cvat: int | None = None
 ) -> Tuple[int, int, int]:
-    """Return a crude EAR trough refinement."""
+    """Return a crude EAR trough refinement.
+    We will return the sample index.
+    Also, for ear, we use all calculation on the interpolation between the threshold horizontal line and the signal."""
 
     valid_trough = peak_rel_cvat
     if not (peak_rel_cvat is not None and 0 <= peak_rel_cvat < len(signal_segment)):

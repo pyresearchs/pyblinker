@@ -2,6 +2,8 @@
 
 Features are computed **per channel**, and column names are suffixed with
 ``_<channel>`` to clearly indicate the source channel.
+
+
 """
 from __future__ import annotations
 from pyblinker.logging import get_logger
@@ -116,6 +118,8 @@ def compute_energy_features(
                 tkeo_vals.append(float(metrics["teager_kaiser_energy"]))
                 lengths.append(float(metrics["line_length"]))
                 vel_ints.append(float(metrics["velocity_integral"]))
+
+			# Lets average the metrics over all blinks in the epoch
             stats_energy = _safe_stats(energies)
             stats_tkeo = _safe_stats(tkeo_vals)
             stats_len = _safe_stats(lengths)
