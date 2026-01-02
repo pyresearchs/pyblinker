@@ -731,15 +731,12 @@ def build_refined_blink_report(
             )
 
         caption_prefix = "Interpolated threshold crossings" if interpolated_times_available else "Threshold crossings"
-        caption = (
-            f"{caption_prefix} at {left_time:.3f}s and {right_time:.3f}s. "
-            f"Segment {start}–{end} ({(end - start) / sfreq:.3f}s)."
-        )
         epoch_value = epoch_label
         if epoch_value is None:
             epoch_from_row = getattr(row, "epoch_index", None)
             if epoch_from_row is not None:
                 epoch_value = f"Epoch {epoch_from_row}"
+        epoch_idx_hint = None
         if epoch_value is None and epoch_duration:
             min_time_attr = getattr(row, "ear_threshold_min_time", None)
             if min_time_attr is not None and pd.notna(min_time_attr):
@@ -748,8 +745,11 @@ def build_refined_blink_report(
                     epoch_value = f"Epoch {epoch_idx_hint}"
                 except (TypeError, ValueError):
                     epoch_value = None
-        if epoch_value is not None:
-            caption = f"{epoch_value}. " + caption
+        caption_epoch = f"Epoch {epoch_idx_hint}" if epoch_idx_hint is not None else (epoch_value or "Epoch")
+        caption = (
+            f"{caption_epoch}. {caption_prefix} at {left_time:.3f}s and {right_time:.3f}s. "
+            f"Segment {start}–{end} ({(end - start) / sfreq:.3f}s)."
+        )
         if chosen_threshold is not None:
             suffix = f" ({plot_threshold_origin})" if plot_threshold_origin else ""
             caption += f" Threshold value: {float(chosen_threshold):.3f}{suffix}."
