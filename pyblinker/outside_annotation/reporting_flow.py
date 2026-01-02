@@ -319,6 +319,7 @@ def build_refined_blink_report(
         "closing_time_zero",
         "reopening_time_zero",
     ),
+    epoch_label: str | None = None,
 ) -> mne.Report:
     """Generate an MNE report visualizing refined blink boundaries and metrics.
 
@@ -733,6 +734,13 @@ def build_refined_blink_report(
             f"{caption_prefix} at {left_time:.3f}s and {right_time:.3f}s. "
             f"Segment {start}–{end} ({(end - start) / sfreq:.3f}s)."
         )
+        epoch_value = epoch_label
+        if epoch_value is None:
+            epoch_from_row = getattr(row, "epoch_index", None)
+            if epoch_from_row is not None:
+                epoch_value = f"Epoch {epoch_from_row}"
+        if epoch_value is not None:
+            caption += f" {epoch_value}."
         if chosen_threshold is not None:
             suffix = f" ({plot_threshold_origin})" if plot_threshold_origin else ""
             caption += f" Threshold value: {float(chosen_threshold):.3f}{suffix}."
