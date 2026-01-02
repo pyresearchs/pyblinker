@@ -53,14 +53,14 @@ def _plot_blink(
     eeg_slice = eeg_data[start_sample : end_sample + 1] if eeg_data is not None else None
 
     fig, ax = plt.subplots(figsize=(12, 6))
-    ax.scatter(slice_time, ear_slice, label="EAR-avg_ear", color="C0", s=28, zorder=3)
-    ax.plot(slice_time, ear_slice, color="C0", alpha=0.35, linewidth=1.1, zorder=2)
+    ax.scatter(slice_time, ear_slice, label="EAR-avg_ear", color="C0", s=28, alpha=0.9, zorder=4)
+    ax.plot(slice_time, ear_slice, color="C0", alpha=0.35, linewidth=0.9, zorder=2)
     ax.set_ylabel("EAR-avg_ear")
     ax.set_xlabel("Time (s)")
     ax.set_title(f"Epoch {epoch_idx} • Blink {blink_idx} • EAR-avg_ear")
 
     if threshold is not None:
-        ax.axhline(threshold, color="0.5", linestyle=":", label=f"Threshold = {threshold:.3f}")
+        ax.axhline(threshold, color="C5", linestyle=":", linewidth=1.0, alpha=0.9, label=f"Threshold = {threshold:.3f}")
 
     def _sample_value(sample: float | int | None) -> tuple[float, float] | None:
         if sample is None or np.isnan(sample):
@@ -79,7 +79,7 @@ def _plot_blink(
             continue
         t, val = point
         if slice_time[0] <= t <= slice_time[-1]:
-            ax.scatter([t], [val], marker=marker, color=color, s=60, zorder=5, label=label)
+            ax.scatter([t], [val], marker=marker, color=color, s=64, zorder=6, alpha=0.95, label=label)
 
     interpolated_markers = []
     if left_interp_time is not None and np.isfinite(left_interp_time):
@@ -102,22 +102,22 @@ def _plot_blink(
                     color=color,
                     marker=marker,
                     s=64,
-                    zorder=6,
+                    zorder=7,
+                    alpha=0.95,
                     label=label,
                 )
 
     if eeg_slice is not None:
         ax2 = ax.twinx()
-        ax2.plot(slice_time, eeg_slice, color="mediumorchid", alpha=0.6, label="EEG-E8")
+        ax2.plot(slice_time, eeg_slice, color="mediumorchid", alpha=0.6, linewidth=1.0, label="EEG-E8")
         ax2.set_ylabel("EEG-E8")
         ax2.grid(False)
         handles, labels = ax.get_legend_handles_labels()
         h2, l2 = ax2.get_legend_handles_labels()
         handles.extend(h2)
         labels.extend(l2)
-        ax2.legend(handles, labels, loc="upper right")
     else:
-        ax.legend(loc="upper right")
+        handles, labels = ax.get_legend_handles_labels()
 
     caption_parts = []
     if left_interp_sample is not None and np.isfinite(left_interp_sample):
@@ -128,6 +128,18 @@ def _plot_blink(
         caption_parts.append(f"Lowest point sample: {int(round(float(refined_lowest)))}")
     if caption_parts:
         ax.set_title(f"Epoch {epoch_idx} • Blink {blink_idx} • EAR-avg_ear\n" + " | ".join(caption_parts))
+
+    if handles:
+        seen: set[str] = set()
+        uniq_handles = []
+        uniq_labels = []
+        for handle, label in zip(handles, labels):
+            if label in seen:
+                continue
+            seen.add(label)
+            uniq_handles.append(handle)
+            uniq_labels.append(label)
+        ax.legend(uniq_handles, uniq_labels, loc="upper right", fontsize=9, ncol=2, frameon=True)
 
     fig.tight_layout()
     return fig
