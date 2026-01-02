@@ -32,8 +32,6 @@ def _plot_blink(
 ) -> plt.Figure:
     """Render a single blink overlay plot."""
 
-    time_axis = np.arange(ear_data.size) / sfreq
-
     refined_start = _slot_value(md_row, "refined_start_sample", blink_idx)
     refined_end = _slot_value(md_row, "refined_end_sample", blink_idx)
     refined_lowest = _slot_value(md_row, "refined_lowest_point_sample", blink_idx)
@@ -41,10 +39,22 @@ def _plot_blink(
     right_interp_time = _slot_value(md_row, "right_interpolated_threshold", blink_idx)
     left_interp_sample = _slot_value(md_row, "left_interpolated_threshold_sample", blink_idx)
     right_interp_sample = _slot_value(md_row, "right_interpolated_threshold_sample", blink_idx)
+    win_start = _slot_value(md_row, "search_window_start_sample", blink_idx)
+    win_end = _slot_value(md_row, "search_window_end_sample", blink_idx)
+
+    total_samples = ear_data.shape[0]
+    start_sample = int(win_start) if win_start is not None and np.isfinite(win_start) else int(refined_start or 0)
+    end_sample = int(win_end) if win_end is not None and np.isfinite(win_end) else int(refined_end or total_samples - 1)
+    start_sample = max(0, min(total_samples - 1, start_sample))
+    end_sample = max(start_sample, min(total_samples - 1, end_sample))
+
+    slice_time = np.arange(start_sample, end_sample + 1) / sfreq
+    ear_slice = ear_data[start_sample : end_sample + 1]
+    eeg_slice = eeg_data[start_sample : end_sample + 1] if eeg_data is not None else None
 
     fig, ax = plt.subplots(figsize=(12, 6))
-    ax.scatter(time_axis, ear_data, label="EAR-avg_ear", color="C0", s=28, zorder=3)
-    ax.plot(time_axis, ear_data, color="C0", alpha=0.35, linewidth=1.1, zorder=2)
+    ax.scatter(slice_time, ear_slice, label="EAR-avg_ear", color="C0", s=28, zorder=3)
+    ax.plot(slice_time, ear_slice, color="C0", alpha=0.35, linewidth=1.1, zorder=2)
     ax.set_ylabel("EAR-avg_ear")
     ax.set_xlabel("Time (s)")
     ax.set_title(f"Epoch {epoch_idx} • Blink {blink_idx} • EAR-avg_ear")
@@ -52,16 +62,24 @@ def _plot_blink(
     if threshold is not None:
         ax.axhline(threshold, color="0.5", linestyle=":", label=f"Threshold = {threshold:.3f}")
 
+    def _sample_value(sample: float | int | None) -> tuple[float, float] | None:
+        if sample is None or np.isnan(sample):
+            return None
+        idx = int(np.clip(round(float(sample)), 0, total_samples - 1))
+        return idx / sfreq, ear_data[idx]
+
     markers = [
         ("Refined start", refined_start, "D", "C3"),
         ("Refined end", refined_end, ">", "C4"),
         ("Refined lowest point", refined_lowest, "p", "C7"),
     ]
     for label, sample, marker, color in markers:
-        if sample is None or np.isnan(sample):
+        point = _sample_value(sample)
+        if point is None:
             continue
-        t = float(sample) / sfreq
-        ax.scatter([t], [np.interp(t, time_axis, ear_data)], marker=marker, color=color, s=60, zorder=5, label=label)
+        t, val = point
+        if slice_time[0] <= t <= slice_time[-1]:
+            ax.scatter([t], [val], marker=marker, color=color, s=60, zorder=5, label=label)
 
     interpolated_markers = []
     if left_interp_time is not None and np.isfinite(left_interp_time):
@@ -76,19 +94,21 @@ def _plot_blink(
         }
         for label, time_val in interpolated_markers:
             marker, color = marker_styles.get(label, ("x", "0.3"))
-            ax.scatter(
-                [time_val],
-                [np.interp(time_val, time_axis, ear_data)],
-                color=color,
-                marker=marker,
-                s=64,
-                zorder=6,
-                label=label,
-            )
+            if slice_time[0] <= time_val <= slice_time[-1]:
+                interp_val = float(np.interp(time_val, slice_time, ear_slice))
+                ax.scatter(
+                    [time_val],
+                    [interp_val],
+                    color=color,
+                    marker=marker,
+                    s=64,
+                    zorder=6,
+                    label=label,
+                )
 
-    if eeg_data is not None:
+    if eeg_slice is not None:
         ax2 = ax.twinx()
-        ax2.plot(time_axis, eeg_data, color="mediumorchid", alpha=0.6, label="EEG-E8")
+        ax2.plot(slice_time, eeg_slice, color="mediumorchid", alpha=0.6, label="EEG-E8")
         ax2.set_ylabel("EEG-E8")
         ax2.grid(False)
         handles, labels = ax.get_legend_handles_labels()
