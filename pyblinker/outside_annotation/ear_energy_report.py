@@ -52,7 +52,13 @@ def _plot_blink(
     ear_slice = ear_data[start_sample : end_sample + 1]
     eeg_slice = eeg_data[start_sample : end_sample + 1] if eeg_data is not None else None
 
-    fig, ax = plt.subplots(figsize=(12, 6))
+    fig, (ax, legend_ax) = plt.subplots(
+        1,
+        2,
+        figsize=(10, 3),
+        gridspec_kw={"width_ratios": [5, 1]},
+    )
+    legend_ax.axis("off")
     ax.scatter(slice_time, ear_slice, label="EAR-avg_ear", color="C0", s=28, alpha=0.9, zorder=4)
     ax.plot(slice_time, ear_slice, color="C0", alpha=0.35, linewidth=0.9, zorder=2)
     ax.set_ylabel("EAR-avg_ear")
@@ -107,17 +113,18 @@ def _plot_blink(
                     label=label,
                 )
 
+    overlay_ax = None
     if eeg_slice is not None:
         ax2 = ax.twinx()
+        overlay_ax = ax2
         ax2.plot(slice_time, eeg_slice, color="mediumorchid", alpha=0.6, linewidth=1.0, label="EEG-E8")
         ax2.set_ylabel("EEG-E8")
         ax2.grid(False)
-        handles, labels = ax.get_legend_handles_labels()
-        h2, l2 = ax2.get_legend_handles_labels()
+    handles, labels = ax.get_legend_handles_labels()
+    if overlay_ax is not None:
+        h2, l2 = overlay_ax.get_legend_handles_labels()
         handles.extend(h2)
         labels.extend(l2)
-    else:
-        handles, labels = ax.get_legend_handles_labels()
 
     caption_parts = []
     if left_interp_sample is not None and np.isfinite(left_interp_sample):
@@ -139,7 +146,18 @@ def _plot_blink(
             seen.add(label)
             uniq_handles.append(handle)
             uniq_labels.append(label)
-        ax.legend(uniq_handles, uniq_labels, loc="upper right", fontsize=9, ncol=2, frameon=True)
+        legend_ax.legend(
+            uniq_handles,
+            uniq_labels,
+            loc="upper left",
+            fontsize=8,
+            frameon=True,
+            borderpad=0.6,
+            labelspacing=0.3,
+            ncol=2,
+        )
+
+    fig.subplots_adjust(wspace=0.05)
 
     fig.tight_layout()
     return fig
