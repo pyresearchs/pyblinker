@@ -744,11 +744,12 @@ def build_refined_blink_report(
             min_time_attr = getattr(row, "ear_threshold_min_time", None)
             if min_time_attr is not None and pd.notna(min_time_attr):
                 try:
-                    epoch_value = f"Epoch {int(float(min_time_attr) // float(epoch_duration))}"
+                    epoch_idx_hint = int(float(min_time_attr) // float(epoch_duration))
+                    epoch_value = f"Epoch {epoch_idx_hint}"
                 except (TypeError, ValueError):
                     epoch_value = None
         if epoch_value is not None:
-            caption += f" {epoch_value}."
+            caption = f"{epoch_value}. " + caption
         if chosen_threshold is not None:
             suffix = f" ({plot_threshold_origin})" if plot_threshold_origin else ""
             caption += f" Threshold value: {float(chosen_threshold):.3f}{suffix}."
