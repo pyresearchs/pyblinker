@@ -320,6 +320,7 @@ def build_refined_blink_report(
         "reopening_time_zero",
     ),
     epoch_label: str | None = None,
+    epoch_duration: float | None = None,
 ) -> mne.Report:
     """Generate an MNE report visualizing refined blink boundaries and metrics.
 
@@ -739,6 +740,13 @@ def build_refined_blink_report(
             epoch_from_row = getattr(row, "epoch_index", None)
             if epoch_from_row is not None:
                 epoch_value = f"Epoch {epoch_from_row}"
+        if epoch_value is None and epoch_duration:
+            min_time_attr = getattr(row, "ear_threshold_min_time", None)
+            if min_time_attr is not None and pd.notna(min_time_attr):
+                try:
+                    epoch_value = f"Epoch {int(float(min_time_attr) // float(epoch_duration))}"
+                except (TypeError, ValueError):
+                    epoch_value = None
         if epoch_value is not None:
             caption += f" {epoch_value}."
         if chosen_threshold is not None:
