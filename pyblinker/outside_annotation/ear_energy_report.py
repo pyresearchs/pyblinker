@@ -154,7 +154,7 @@ def _plot_blink(
             frameon=True,
             borderpad=0.6,
             labelspacing=0.3,
-            ncol=2,
+            ncol=1,
         )
 
     fig.subplots_adjust(wspace=0.05)
