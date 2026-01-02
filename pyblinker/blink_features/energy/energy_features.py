@@ -8,7 +8,7 @@ Features are computed **per channel**, and column names are suffixed with
 from __future__ import annotations
 from pyblinker.logging import get_logger
 
-from typing import Dict, List, Sequence
+from typing import Dict, List, Sequence, Tuple
 
 import mne
 import pandas as pd
@@ -35,6 +35,58 @@ def _make_columns(ch_names: Sequence[str]) -> List[str]:
             for stat in _STATS:
                 columns.append(f"{metric}_{stat}_{ch}")
     return columns
+
+
+def _compute_epoch_channel_energy_stats(
+    *,
+    metadata_row: pd.Series,
+    ch: str,
+    epoch_index: int,
+    signal_1d,
+    sfreq: float,
+    n_times: int,
+) -> Dict[str, Dict[str, float]]:
+    """Compute per-metric summary stats for all blinks in one epoch/channel.
+
+    Returns
+    -------
+    dict
+        Mapping of metric name -> stats dict (mean/std/cv). Stats are NaN if
+        there are no valid blink segments.
+    """
+    windows: List[Tuple[float, float]] = extract_blink_windows(metadata_row, ch, epoch_index)
+
+    energies: List[float] = []
+    tkeo_vals: List[float] = []
+    lengths: List[float] = []
+    vel_ints: List[float] = []
+
+    for onset_s, duration_s in windows:
+        sl = segment_to_samples(onset_s, duration_s, sfreq, n_times)
+        # Guard against zero/negative-length slices.
+        if getattr(sl, "stop", 0) <= getattr(sl, "start", 0):
+            continue
+        segment = signal_1d[sl]
+        if getattr(segment, "size", 0) == 0:
+            continue
+        metrics = compute_energy_metrics(segment, sfreq)
+        energies.append(float(metrics["signal_energy"]))
+        tkeo_vals.append(float(metrics["teager_kaiser_energy"]))
+        lengths.append(float(metrics["line_length"]))
+        vel_ints.append(float(metrics["velocity_integral"]))
+
+    # Average the metrics over all blinks in the epoch.
+    stats_energy = _safe_stats(energies)
+    stats_tkeo = _safe_stats(tkeo_vals)
+    stats_len = _safe_stats(lengths)
+    stats_vel = _safe_stats(vel_ints)
+
+    return {
+        _METRICS[0]: stats_energy,
+        _METRICS[1]: stats_tkeo,
+        _METRICS[2]: stats_len,
+        _METRICS[3]: stats_vel,
+    }
 
 
 def compute_energy_features(
@@ -103,31 +155,15 @@ def compute_energy_features(
         )
         record: Dict[str, float] = {}
         for ci, ch in enumerate(ch_names):
-            windows = extract_blink_windows(metadata_row, ch, ei)
-            energies: List[float] = []
-            tkeo_vals: List[float] = []
-            lengths: List[float] = []
-            vel_ints: List[float] = []
-            for onset_s, duration_s in windows:
-                sl = segment_to_samples(onset_s, duration_s, sfreq, n_times)
-                segment = data[ei, ci, sl]
-                if segment.size == 0:
-                    continue
-                metrics = compute_energy_metrics(segment, sfreq)
-                energies.append(float(metrics["signal_energy"]))
-                tkeo_vals.append(float(metrics["teager_kaiser_energy"]))
-                lengths.append(float(metrics["line_length"]))
-                vel_ints.append(float(metrics["velocity_integral"]))
-
-			# Lets average the metrics over all blinks in the epoch
-            stats_energy = _safe_stats(energies)
-            stats_tkeo = _safe_stats(tkeo_vals)
-            stats_len = _safe_stats(lengths)
-            stats_vel = _safe_stats(vel_ints)
-            for metric, stats in zip(
-                _METRICS,
-                (stats_energy, stats_tkeo, stats_len, stats_vel),
-            ):
+            stats_by_metric = _compute_epoch_channel_energy_stats(
+                metadata_row=metadata_row,
+                ch=ch,
+                epoch_index=ei,
+                signal_1d=data[ei, ci, :],
+                sfreq=sfreq,
+                n_times=n_times,
+            )
+            for metric, stats in stats_by_metric.items():
                 for stat_name, value in stats.items():
                     record[f"{metric}_{stat_name}_{ch}"] = value
         records.append(record)

@@ -25,6 +25,8 @@ However, these are just conventions. You might want to apply the "threshold cros
 *   **`"half_base"`**: Uses the points at half the height of the blink amplitude relative to the base.
 *   **`"half_zero"`**: Uses the points at half the height of the blink amplitude relative to the zero-crossing/threshold.
 
+* However, in some case, we may start with only one definition (e.g., only zero-crossing points), and perhaps, along the way in the pipeline
+    we want to compute other definitions (e.g., base points) for more comprehensive analysis.
 ## Impact on Logic Implementation
 
 The function `pyblinker.utils.refinement_utils.slice_raw_into_mne_epochs_refine_annot` is responsible for slicing raw data into epochs and refining the blink metadata.
