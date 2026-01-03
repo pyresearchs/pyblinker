@@ -78,3 +78,27 @@ graph TD
     *   `energy/` (Signal energy)
     *   `frequency_domain/` (Wavelets)
     *   `blink_events/` (Rate, IBI)
+
+## Tutorials
+
+*   **`tutorial/minimal_blink_feature_tutorial.py`**:
+    A lightweight script showing how to extract a single category of features (e.g., just kinematics). It is useful for integration into pipelines where speed is critical and the full feature set is not required.
+*   **`tutorial/eeg_feature_extraction_tutorial.py`**:
+    Focuses on EEG/EOG signals, demonstrating features like `blink_signal_energy` and `teager_kaiser_energy` which are specific to voltage time-series analysis.
+*   **`test/blink_feature_ear/energy/tutorial.py`**:
+    (Located in test folder) A specific demonstration of energy feature calculation on EAR signals, showing how "energy" concepts translate to the unitless aspect ratio signal.
+
+## Unit Tests
+
+*   **`test/run_all_features_test.py`**:
+    The master runner for the feature subsystem. It ensures that *all* feature aggregators (kinematics, energy, etc.) can run together on a standard dataset without conflict.
+*   **`test/blink_features/kinematics/test_kinematic_features.py`**:
+    Validates formulas for velocity, acceleration, and slope. It likely uses simple geometric shapes (triangles, bells) where the derivative is known to verify the code's accuracy.
+*   **`test/blink_features/energy/test_energy_features.py`**:
+    Tests the calculation of signal energy and TKEO.
+*   **`test/blink_features/blink_events/test_inter_blink_interval.py`**:
+    Checks the statistics of blink timing (IBI). Crucially, it verifies that the code correctly handles epochs with *zero* or *one* blink (where IBI is undefined).
+*   **`test/blink_features/frequency_domain/test_frequency_domain_blink_features.py`**:
+    Verifies the Wavelet decomposition (D1-D4 bands). It ensures the correct wavelet family (`db4`) is used and that the energy summation is correct.
+*   **`test/blink_features/open_eye/test_open_eye_features.py`**:
+    Tests features derived from the "non-blink" periods, such as PERCLOS (percentage of time eyes are closed) and baseline drift.

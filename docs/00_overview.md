@@ -40,3 +40,20 @@ graph TD
 *   **`pyblinker/pipeline.py`**: The main entry point for the feature extraction pipeline. It orchestrates the aggregation of features from different sub-modules.
 *   **`pyblinker/pipeline_steps.py`**: Defines high-level steps often used in scripts.
 *   **`pyblinker/blinker/pyblinker.py`**: Contains the core logic for the legacy BLINKER-style detection.
+
+## Tutorials
+
+*   **`tutorial/1_basic_usage.py`**:
+    The primary "Hello World" entry point. It demonstrates the minimal code required to:
+    1.  Load a sample MNE `Raw` object.
+    2.  Preprocess it (filter/resample) to match expected inputs.
+    3.  Instantiate the `BlinkDetector` class.
+    4.  Run the detection and visualize the resulting annotations on the raw trace.
+    Use this script to verify that your basic installation and MNE dependencies are working correctly.
+
+## Unit Tests
+
+*   **`test/run_all_test.py`**:
+    The master test runner. It discovers and executes all tests in the repository using `pytest`. This is the single command to run for full system verification.
+*   **`test/long_continous_raw/test_long_continous_raw.py`**:
+    A critical system integration test. It simulates a long, continuous recording workflow *without* epoching, ensuring that the legacy BLINKER-style detection logic works robustly on large datasets (simulating the behavior of the original MATLAB toolbox on continuous EEG).

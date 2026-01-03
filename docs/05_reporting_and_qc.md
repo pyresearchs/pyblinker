@@ -39,3 +39,17 @@ graph TD
 *   **`pyblinker/viz/blink_report.py`**: Main utility for generating MNE reports for blink detection.
 *   **`pyblinker/viz/ear_report.py`**: Specialized reporting for EAR signals.
 *   **`pyblinker/viz/report_utils.py`**: Helper functions for plot generation.
+
+## Tutorials
+
+*   **`tutorial/refined_blink_report_tutorial.py`**:
+    The main guide for QC. It shows how to generate an HTML report that overlays the *refined* blink boundaries (start/peak/end) on top of the raw signal. This allows the user to visually confirm if the refinement logic is snapping to the correct signal features.
+
+## Unit Tests
+
+*   **`test/epoch_blink_finder/test_blink_report.py`**:
+    Verifies the report generation pipeline. It checks that:
+    1.  The `MNE.Report` object is created successfully.
+    2.  Figures (matplotlib plots) are correctly added to the report.
+    3.  The final HTML file can be saved to disk without errors.
+    This ensures that the visualization tools remain compatible with the installed version of `matplotlib` and `mne`.

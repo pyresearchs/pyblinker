@@ -1,4 +1,4 @@
-# Epoch-Based Pipeline
+. # Epoch-Based Pipeline
 
 ## Purpose
 While blinks occur in a continuous stream, `pyblinker` emphasizes an **epoch-based** workflow. This approach aligns with standard MNE-Python practices and offers significant advantages for analysis and quality control.
@@ -40,3 +40,22 @@ graph TD
 
 *   **`pyblinker/utils/epoch_utils.py`**: Utilities for slicing raw data and managing epoch structures.
 *   **`pyblinker/utils/refinement_utils.py`**: Specifically `slice_raw_into_mne_epochs_refine_annot`, which handles the simultaneous creation of epochs and alignment of refined blink metadata.
+
+## Tutorials
+
+*   **`tutorial/epoching_and_blink_validation_report.py`**:
+    The comprehensive guide to the epoching workflow. It demonstrates:
+    1.  Defining epoch length (e.g., 30s).
+    2.  Calling `slice_raw_into_mne_epochs_refine_annot`.
+    3.  Inspecting the resulting `epochs.metadata` to see how blink onsets (originally in absolute time) have been converted to epoch-relative time.
+
+## Unit Tests
+
+*   **`test/epoch_blink_finder/test_blink_finder.py`**:
+    Tests the logic that detects blinks *within* already-epoched data, ensuring that the boundaries of the epoch do not artificially cut off blink detection.
+*   **`test/epoch_blink_finder/test_blink_finder_drop.py`**:
+    Specifically validates the logic for **dropping** epochs. For instance, if a blink is detected but its signal quality is too poor (e.g., extreme amplitude), this test ensures the corresponding epoch is flagged or removed.
+*   **`test/utils/test_slice_raw_into_mne_epochs.py`**:
+    Unit tests for the `slice_raw_...` utility. Checks that sample indices are calculated correctly to avoid one-sample off errors when cutting continuous data.
+*   **`test/utils/test_metadata_utils.py`**:
+    Tests the helper functions that attach the complex blink metadata (lists of start/end times per epoch) to the MNE Epochs object, ensuring serialization and retrieval work as expected.
