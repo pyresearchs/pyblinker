@@ -38,6 +38,18 @@ REPORT_OUT_PATH = Path("blink_validation_report.html")
 # 4) Load the raw recording
 logger.info("Loading raw data from: %s", RAW_FIF_PATH)
 raw = mne.io.read_raw_fif(RAW_FIF_PATH, preload=True, verbose=False)
+ear_channel = "EAR-avg_ear"
+eeg_channel = "EEG-E8"
+eog_channel = "EOG-EEG-eog_vert_left"
+for required in (ear_channel, eeg_channel, eog_channel):
+    if required not in raw.ch_names:
+        raise ValueError(f"Required channel '{required}' not found in raw data.")
+
+SEGMENT_CONFIG = {
+    "ear": {"channel": ear_channel},
+    "eeg": {"channel": eeg_channel},
+    "eog": {"channel": eog_channel},
+}
 
 # 5) Create epochs and refine blink annotations
 #    Treat all annotations as blink candidates (demo file doesn't label them "blink").
@@ -47,7 +59,8 @@ epochs = slice_raw_into_mne_epochs_refine_annot(
     epoch_len=EPOCH_LEN_SECONDS,
     blink_label=None,
     progress_bar=PROGRESS_BAR,
-    )
+    segmentation_type=SEGMENT_CONFIG,
+)
 logger.info("Created %d epochs", len(epochs))
 
 # 6) Load ground-truth blink counts CSV and prepare metadata for comparison

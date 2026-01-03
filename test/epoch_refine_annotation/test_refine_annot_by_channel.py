@@ -11,6 +11,7 @@ import pandas as pd
 import mne
 
 from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
+from test.segment_config import build_segment_config
 
 # ---------- config / paths ----------
 
@@ -48,8 +49,13 @@ class TestFromFile(unittest.TestCase):
         )
         self.raw = mne.io.read_raw_fif(raw_path, preload=True, verbose=False)
         self.epoch_len = 30.0
+        segmentation_config = build_segment_config(self.raw)
         self.epochs = slice_raw_into_mne_epochs_refine_annot(
-            self.raw, epoch_len=self.epoch_len, blink_label=None, progress_bar=False
+            self.raw,
+            epoch_len=self.epoch_len,
+            blink_label=None,
+            progress_bar=False,
+            segmentation_type=segmentation_config,
         )
         self.sfreq = float(self.raw.info["sfreq"])
 

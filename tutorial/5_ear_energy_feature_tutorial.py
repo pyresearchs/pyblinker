@@ -54,6 +54,7 @@ for required in (ear_channel, eeg_channel):
 raw.pick([ear_channel, eeg_channel])
 SEGMENT_CONFIG = {
     "ear": {
+        "channel": ear_channel,
         "seg_type": "threshold_interpolation",
         "threshold": 0.260,
         "annotation_time_unit": "seconds",
@@ -64,6 +65,7 @@ SEGMENT_CONFIG = {
         "extend_after": True,
     },
     "eeg": {
+        "channel": eeg_channel,
         "seg_type": [],
         "threshold": None,
     },

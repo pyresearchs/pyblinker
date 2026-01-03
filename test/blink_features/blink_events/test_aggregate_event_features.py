@@ -19,6 +19,7 @@ from pyblinker.blink_features.blink_events.event_features import (
     aggregate_blink_event_features,
 )
 from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
+from test.segment_config import build_segment_config
 from test.blink_features.utils.helpers import assert_df_has_columns
 
 logger = logging.getLogger(__name__)
@@ -41,8 +42,13 @@ class TestAggregateBlinkFeatures(unittest.TestCase):
             / "ear_eog_raw.fif"
         )
         raw = mne.io.read_raw_fif(raw_path, preload=True, verbose=False)
+        segmentation_config = build_segment_config(raw)
         self.epochs = slice_raw_into_mne_epochs_refine_annot(
-            raw, epoch_len=30.0, blink_label=None, progress_bar=False
+            raw,
+            epoch_len=30.0,
+            blink_label=None,
+            progress_bar=False,
+            segmentation_type=segmentation_config,
         )
         csv_path = (
             PROJECT_ROOT / "test" / "test_files" / "ear_eog_blink_count_epoch.csv"

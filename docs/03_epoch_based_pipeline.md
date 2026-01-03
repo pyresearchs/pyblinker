@@ -15,6 +15,15 @@ The transition from continuous data to epochs involves:
 1.  **Slicing**: The raw data is cut into fixed-length segments (default 30s) or segments locked to experimental events.
 2.  **Metadata Alignment**: `pyblinker` calculates which blinks fall into which epoch and updates the epoch metadata with `blink_onset`, `blink_duration`, and other properties relative to the epoch start.
 
+### Channel selection per modality
+Epoch creation now expects an explicit, single-channel configuration per modality via the segmentation settings passed to `slice_raw_into_mne_epochs_refine_annot`:
+
+* **EAR**: A `"channel"` is required; missing or ambiguous entries raise `ValueError`.
+* **EEG/EOG**: Optional. Omitting the channel disables refinement for that modality; invalid or multi-match channels raise `ValueError`.
+* The helper `_prepare_epochs_and_modalities` (in `pyblinker/segmentation/refinement.py`) creates epochs, filters annotations by `blink_label`, and extracts per-epoch data with shape `(n_epochs, 1, n_times)` so downstream refinement works on 1D vectors.
+
+This keeps modality pipelines independent and deterministic while preserving existing epoch layouts.
+
 ## Epoch Rejection
 Bad epochs (due to muscle noise, disconnects, or excessive movement) should be excluded from analysis.
 
@@ -55,6 +64,8 @@ graph TD
     Tests the logic that detects blinks *within* already-epoched data, ensuring that the boundaries of the epoch do not artificially cut off blink detection.
 *   **`test/epoch_blink_finder/test_blink_finder_drop.py`**:
     Specifically validates the logic for **dropping** epochs. For instance, if a blink is detected but its signal quality is too poor (e.g., extreme amplitude), this test ensures the corresponding epoch is flagged or removed.
+*   **`test/segmentation/test_ear_refinement_outputs.py`**:
+    Confirms that channel-explicit epoching preserves reference FIF/CSV outputs when EAR, EEG, and EOG are configured independently.
 *   **`test/utils/test_slice_raw_into_mne_epochs.py`**:
     Unit tests for the `slice_raw_...` utility. Checks that sample indices are calculated correctly to avoid one-sample off errors when cutting continuous data.
 *   **`test/utils/test_metadata_utils.py`**:
