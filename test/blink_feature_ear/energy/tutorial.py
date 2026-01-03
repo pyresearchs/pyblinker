@@ -80,6 +80,16 @@ epochs = slice_raw_into_mne_epochs_refine_annot(
     segmentation_type=SEGMENT_CONFIG,
 )
 
+# # Persist the computed epochs for inspection/reuse
+# epochs_out_path = (
+#     PROJECT_ROOT
+#     / "manual_annotation_feature_calculation_data"
+#     / "ear_metadata_threshold_interpolation.fif"
+# )
+# epochs_out_path.parent.mkdir(parents=True, exist_ok=True)
+# # MNE accepts pathlib.Path, but using str keeps compatibility with older versions.
+# epochs.save(str(epochs_out_path), overwrite=True)
+
 report_dir = PROJECT_ROOT / "tutorial_outputs" / "ear_energy"
 report_path = report_dir / "ear_energy_report.html"
 

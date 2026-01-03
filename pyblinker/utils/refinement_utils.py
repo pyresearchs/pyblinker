@@ -193,7 +193,7 @@ def _refine_ear_blinks_for_epoch(
 
     ear_config = (segmentation_config or {}).get("ear", {}) if segmentation_config is not None else {}
     seg_type = _select_seg_type(ear_config.get("seg_type"))
-    use_threshold_interpolation = seg_type == "threshold_interpolation"
+    use_threshold_interpolation = seg_type
 
     def _fallback_refinement(coarse_start: int, coarse_end: int) -> Dict[str, Any]:
         n = len(segment)
