@@ -6,7 +6,7 @@ from copy import deepcopy
 from typing import Any, Dict
 
 import mne
-
+# In the test files, there are only 3 channels, which are EAR-avg_ear, EEG-E8, and EOG-EEG-eog_vert_left. This is to make the file smaller and easier to manage.
 DEFAULT_EAR_CHANNEL = "EAR-avg_ear"
 DEFAULT_EEG_CHANNEL = "EEG-E8"
 DEFAULT_EOG_CHANNEL = "EOG-EEG-eog_vert_left"
