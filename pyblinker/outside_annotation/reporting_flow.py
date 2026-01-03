@@ -319,6 +319,8 @@ def build_refined_blink_report(
         "closing_time_zero",
         "reopening_time_zero",
     ),
+    epoch_label: str | None = None,
+    epoch_duration: float | None = None,
 ) -> mne.Report:
     """Generate an MNE report visualizing refined blink boundaries and metrics.
 
@@ -729,8 +731,17 @@ def build_refined_blink_report(
             )
 
         caption_prefix = "Interpolated threshold crossings" if interpolated_times_available else "Threshold crossings"
+        epoch_idx_hint = None
+        if epoch_duration and min_time is not None:
+            try:
+                epoch_idx_hint = int(float(min_time) // float(epoch_duration))
+            except (TypeError, ValueError):
+                epoch_idx_hint = None
+        if epoch_idx_hint is None and epoch_label is not None:
+            epoch_idx_hint = epoch_label
+        caption_epoch = f"Epoch {epoch_idx_hint}" if epoch_idx_hint is not None else "Epoch"
         caption = (
-            f"{caption_prefix} at {left_time:.3f}s and {right_time:.3f}s. "
+            f"{caption_epoch}. {caption_prefix} at {left_time:.3f}s and {right_time:.3f}s. "
             f"Segment {start}–{end} ({(end - start) / sfreq:.3f}s)."
         )
         if chosen_threshold is not None:

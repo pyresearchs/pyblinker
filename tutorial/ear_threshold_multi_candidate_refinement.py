@@ -127,6 +127,7 @@ def main() -> None:
             overlay_sfreq=overlay_sfreq,
             overlay_label="EEG-E8",
             output_path=user_report_path,
+            epoch_duration=30.0,
         )
 
         auto_report_path = output_dir / "ear_multi_threshold_refined_blink_report_auto.html"
@@ -143,6 +144,7 @@ def main() -> None:
             overlay_sfreq=overlay_sfreq,
             overlay_label="EEG-E8",
             output_path=auto_report_path,
+            epoch_duration=30.0,
         )
 
     n_success = int(features["refinement_succeeded"].sum())
