@@ -58,7 +58,7 @@ def main() -> None:
     fif_path = data_dir / "ear_eog.fif"
 
     # User-tunable parameters
-    ear_threshold = 0.23
+    ear_threshold = 0.26
     refinement_config = EARRefinementConfig(
         threshold=ear_threshold,
         annotation_time_unit="seconds",
