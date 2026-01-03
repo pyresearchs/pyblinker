@@ -16,6 +16,8 @@ This directory contains detailed documentation for the `pyblinker` package. The 
     *   Comprehensive list of computed features (Kinematics, Energy, EAR).
 6.  [**Reporting and QC**](05_reporting_and_qc.md)
     *   Generating HTML reports for quality control.
+7.  [**MATLAB Migration**](06_matlab_migration_and_replication.md)
+    *   Details on the 1:1 port of the legacy BLINKER toolbox and validation tests.
 
 ## Appendices
 

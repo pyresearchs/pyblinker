@@ -1,7 +1,7 @@
 # pyblinker
 `pyblinker` is a Python package primarily intended for automated detection of eye-blink artifacts in diverse biosignals, 
 including electroencephalography (EEG), electrooculography (EOG), and Eye Aspect Ratio (EAR). It addresses the limitations of 
-existing MATLAB-based tools like [BLINKER](https://github.com/VisLab/EEG-Blinks), 
+existing MATLAB-based tools like [BLINKER]( https://github.com/VisLab/EEG-Blinks), 
 offering a Python-based, open-source solution for researchers analyzing various types of physiological data.
 
 A key benefit of `pyblinker` is its enhanced functionality and broader applicability compared to `BLINKER`.  
