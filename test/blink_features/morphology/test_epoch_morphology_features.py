@@ -10,6 +10,7 @@ import numpy as np
 from pyblinker.blink_features.morphology import compute_epoch_morphology_features
 from pyblinker.blink_features.morphology.per_blink import compute_blink_waveform_metrics
 from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
+from test.segment_config import build_segment_config
 
 from ..utils.helpers import (
     assert_df_has_columns,
@@ -26,8 +27,13 @@ class TestEpochMorphologyFeatures(unittest.TestCase):
     def setUp(self) -> None:  # noqa: D401
         raw_path = PROJECT_ROOT / "test" / "test_files" / "ear_eog_raw.fif"
         raw = mne.io.read_raw_fif(raw_path, preload=True, verbose=False)
+        segmentation_config = build_segment_config(raw)
         self.epochs = slice_raw_into_mne_epochs_refine_annot(
-            raw, epoch_len=30.0, blink_label=None, progress_bar=False
+            raw,
+            epoch_len=30.0,
+            blink_label=None,
+            progress_bar=False,
+            segmentation_type=segmentation_config,
         )
 
     def test_schema_and_alignment(self) -> None:

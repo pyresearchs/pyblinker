@@ -24,6 +24,7 @@ import pandas as pd
 
 from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
 from pyblinker.segment_blink_properties import compute_segment_blink_properties
+from test.segment_config import build_segment_config
 from test.utils.blink_compare_utils import (
     report_mismatches,
     scalarize,
@@ -41,8 +42,13 @@ class TestSegmentBlinkPropertiesLong(unittest.TestCase):
         """Load test epochs and reference blink properties."""
         raw_path = PROJECT_ROOT / "test" / "test_files" / "ear_eog_raw.fif"
         raw = mne.io.read_raw_fif(raw_path, preload=True, verbose=False)
+        segmentation_config = build_segment_config(raw)
         self.epochs = slice_raw_into_mne_epochs_refine_annot(
-            raw, epoch_len=30.0, blink_label=None, progress_bar=False
+            raw,
+            epoch_len=30.0,
+            blink_label=None,
+            progress_bar=False,
+            segmentation_type=segmentation_config,
         )
         self.params = {
             "base_fraction": 0.5,

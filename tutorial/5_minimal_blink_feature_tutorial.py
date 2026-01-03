@@ -39,6 +39,18 @@ FEATURE_FAMILIES = (
 # --- 1) Load Raw recording ---
 print(f"Reading raw FIF from: {RAW_PATH}")
 raw = mne.io.read_raw_fif(RAW_PATH, preload=True, verbose=False)
+ear_channel = "EAR-avg_ear"
+eeg_channel = "EEG-E8"
+eog_channel = "EOG-EEG-eog_vert_left"
+for required in (ear_channel, eeg_channel, eog_channel):
+    if required not in raw.ch_names:
+        raise ValueError(f"Required channel '{required}' not found in raw data.")
+
+SEGMENT_CONFIG = {
+    "ear": {"channel": ear_channel},
+    "eeg": {"channel": eeg_channel},
+    "eog": {"channel": eog_channel},
+}
 
 # --- 2) Slice into epochs ---
 print(f"Slicing into epochs of {EPOCH_LEN:.1f} s...")
@@ -47,6 +59,7 @@ epochs = slice_raw_into_mne_epochs_refine_annot(
     epoch_len=EPOCH_LEN,
     blink_label=None,
     progress_bar=False,
+    segmentation_type=SEGMENT_CONFIG,
 )
 print(f"Created {len(epochs)} epochs.")
 

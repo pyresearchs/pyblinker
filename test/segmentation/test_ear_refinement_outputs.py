@@ -73,6 +73,7 @@ def test_slice_raw_into_mne_epochs_matches_reference() -> None:
 
     segmentation_config = {
         "ear": {
+            "channel": ear_channel,
             "seg_type": "threshold_interpolation",
             "threshold": 0.260,
             "annotation_time_unit": "seconds",
@@ -82,7 +83,7 @@ def test_slice_raw_into_mne_epochs_matches_reference() -> None:
             "extend_before": True,
             "extend_after": True,
         },
-        "eeg": {"seg_type": [], "threshold": None},
+        "eeg": {"channel": eeg_channel, "seg_type": [], "threshold": None},
         "eog": {"seg_type": [], "threshold": None},
     }
     epochs = slice_raw_into_mne_epochs_refine_annot(

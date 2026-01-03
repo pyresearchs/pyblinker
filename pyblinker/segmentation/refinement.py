@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 import mne
@@ -10,7 +11,6 @@ import pandas as pd
 from tqdm import tqdm
 
 from pyblinker.logging import get_logger
-from pyblinker.utils.channel_utils import pick_ear_channels_from_raw
 from pyblinker.utils.dict_utils import append_to_slot
 
 from .ear import (
@@ -158,17 +158,114 @@ def _append_peak_refinements(
     _append_outer_bounds_from_peaks(md, epoch_index, peaks, key_prefix, n_samp_epoch)
 
 
-def slice_raw_into_mne_epochs_refine_annot(
-    # TODO : We need to enrich this function to support different blink onset selection strategy.
+@dataclass
+class EpochPreparationResult:
+    """Container for epoch-level data and modality picks."""
+
+    epochs: mne.Epochs
+    sfreq: float
+    n_epochs: int
+    n_samp_epoch: int
+    data_ear: np.ndarray | None
+    data_eeg: np.ndarray | None
+    data_eog: np.ndarray | None
+    have_ear: bool
+    have_eeg: bool
+    have_eog: bool
+    blink_onsets_sec: np.ndarray
+    blink_durs_sec: np.ndarray
+
+
+def _resolve_single_channel_pick(
+    raw: mne.io.BaseRaw,
+    config: Dict[str, Any],
+    modality: str,
+    *,
+    required: bool,
+) -> int | None:
+    """Validate and return the index for a single modality channel.
+
+    Args:
+        raw: Raw recording containing channel names.
+        config: Segmentation configuration for the modality.
+        modality: Modality key such as ``"ear"``, ``"eeg"``, or ``"eog"``.
+        required: Whether the modality must be present.
+
+    Returns:
+        The integer channel index if enabled, otherwise ``None``.
+
+    Raises:
+        ValueError: If a required channel is missing, not found in ``raw``,
+            or resolves to multiple indices.
+    """
+
+    channel_value = (config or {}).get("channel")
+    if channel_value is None or (isinstance(channel_value, str) and not channel_value.strip()):
+        if required:
+            raise ValueError(f"{modality.upper()} refinement requires a single channel set via segmentation config.")
+        return None
+
+    if isinstance(channel_value, Sequence) and not isinstance(channel_value, str):
+        if len(channel_value) != 1:
+            raise ValueError(
+                f"{modality.upper()} refinement expects exactly one channel, but got {len(channel_value)} entries."
+            )
+        channel_name = str(channel_value[0])
+    else:
+        channel_name = str(channel_value)
+
+    picks = [idx for idx, name in enumerate(raw.ch_names) if name == channel_name]
+    if not picks:
+        raise ValueError(f"Configured {modality.upper()} channel '{channel_name}' not found in raw data.")
+    if len(picks) > 1:
+        raise ValueError(
+            f"{modality.upper()} refinement expects a single channel, but multiple matches were found for "
+            f"'{channel_name}'."
+        )
+    return picks[0]
+
+
+def _prepare_epochs_and_modalities(
     raw: mne.io.BaseRaw,
     *,
-    epoch_len: float = 30.0,
-    blink_label: Optional[str] = "blink",
-    progress_bar: bool = True,
-    segmentation_type: Optional[dict] = None,
-    ear_threshold: Optional[float] = None,
-) -> mne.Epochs:
-    """Convert a continuous recording into equally spaced epochs with refinement."""
+    epoch_len: float,
+    blink_label: str | None,
+    segment_config: Dict[str, Any],
+) -> EpochPreparationResult:
+    """Create epochs, resolve modality channels, and filter annotations.
+
+    Workflow
+    --------
+    1. Fixed-length events are created with :func:`mne.make_fixed_length_events`.
+    2. Epochs are instantiated over the full recording with ``tmin=0`` and
+       ``tmax=epoch_len - 1/sfreq`` to preserve the previous inclusive/exclusive
+       boundaries.
+    3. Each modality resolves an explicit, single channel from ``segment_config``:
+       - EAR must provide exactly one ``"channel"`` entry. Missing, empty, or
+         multi-channel values raise ``ValueError``.
+       - EEG and EOG are optional. If ``"channel"`` is missing/None/empty, the
+         modality is disabled (``have_eeg/eog=False``) and the returned data is
+         ``None``. If provided but not found or not singular, ``ValueError`` is
+         raised.
+    4. Epoch data are extracted with ``epochs.get_data(picks=[idx])`` so each
+       enabled modality yields an array shaped ``(n_epochs, 1, n_times)``. The
+       function retains ``None`` for disabled modalities.
+    5. Blink annotations are filtered by ``blink_label``. ``None`` keeps all
+       annotations; otherwise, descriptions are matched case-insensitively.
+
+    Returns
+    -------
+    EpochPreparationResult
+        Contains epochs, sampling frequency, derived counts, per-modality data,
+        modality enable flags, and blink onset/duration arrays (seconds).
+
+    Notes
+    -----
+    * ``blink_onsets_sec`` and ``blink_durs_sec`` are in **seconds** relative to
+      the raw object. ``n_samp_epoch`` refers to samples within each epoch.
+    * Errors intentionally fail fast for misconfigured channels to avoid
+      silently averaging or inferring modalities.
+    """
 
     events = mne.make_fixed_length_events(raw, duration=epoch_len)
     sfreq = float(raw.info["sfreq"])
@@ -182,17 +279,17 @@ def slice_raw_into_mne_epochs_refine_annot(
         verbose=False,
     )
 
-    picks_eeg = mne.pick_types(raw.info, eeg=True, eog=False, misc=False)
-    picks_eog = mne.pick_types(raw.info, eeg=False, eog=True, misc=False)
-    picks_ear = pick_ear_channels_from_raw(raw)
+    ear_idx = _resolve_single_channel_pick(raw, segment_config.get("ear", {}), "ear", required=True)
+    eeg_idx = _resolve_single_channel_pick(raw, segment_config.get("eeg", {}), "eeg", required=False)
+    eog_idx = _resolve_single_channel_pick(raw, segment_config.get("eog", {}), "eog", required=False)
 
-    have_eeg = len(picks_eeg) > 0
-    have_eog = len(picks_eog) > 0
-    have_ear = len(picks_ear) > 0
+    have_ear = ear_idx is not None
+    have_eeg = eeg_idx is not None
+    have_eog = eog_idx is not None
 
-    data_eeg = epochs.get_data(picks=picks_eeg) if have_eeg else None
-    data_eog = epochs.get_data(picks=picks_eog) if have_eog else None
-    data_ear = epochs.get_data(picks=picks_ear) if have_ear else None
+    data_ear = epochs.get_data(picks=[ear_idx]) if have_ear else None
+    data_eeg = epochs.get_data(picks=[eeg_idx]) if have_eeg else None
+    data_eog = epochs.get_data(picks=[eog_idx]) if have_eog else None
 
     n_epochs = len(epochs)
     n_samp_epoch = (
@@ -213,90 +310,206 @@ def slice_raw_into_mne_epochs_refine_annot(
     blink_onsets_sec = np.array(ann.onset)[sel]
     blink_durs_sec = np.array(ann.duration)[sel]
 
-    segment_config = _prepare_segmentation_config(segmentation_type, ear_threshold)
-    md = _init_metadata(n_epochs, have_eeg, have_eog, have_ear)
+    return EpochPreparationResult(
+        epochs=epochs,
+        sfreq=sfreq,
+        n_epochs=n_epochs,
+        n_samp_epoch=n_samp_epoch,
+        data_ear=data_ear,
+        data_eeg=data_eeg,
+        data_eog=data_eog,
+        have_ear=have_ear,
+        have_eeg=have_eeg,
+        have_eog=have_eog,
+        blink_onsets_sec=blink_onsets_sec,
+        blink_durs_sec=blink_durs_sec,
+    )
 
-    iterator = range(n_epochs)
+
+def _refine_epoch_modalities(
+    *,
+    epoch_index: int,
+    epoch_len: float,
+    epochs: mne.Epochs,
+    sfreq: float,
+    n_samp_epoch: int,
+    blink_onsets_sec: np.ndarray,
+    blink_durs_sec: np.ndarray,
+    data_ear: np.ndarray | None,
+    data_eeg: np.ndarray | None,
+    data_eog: np.ndarray | None,
+    have_ear: bool,
+    have_eeg: bool,
+    have_eog: bool,
+    segment_config: dict,
+    md: Dict[str, List[Any]],
+) -> None:
+    """Refine blink metadata for a single epoch across modalities.
+
+    Args:
+        epoch_index: Index of the epoch to refine.
+        epoch_len: Epoch duration in seconds.
+        epochs: The epoched object containing metadata and events.
+        sfreq: Sampling frequency in Hz.
+        n_samp_epoch: Number of samples per epoch.
+        blink_onsets_sec: Raw-level blink onsets (seconds).
+        blink_durs_sec: Raw-level blink durations (seconds).
+        data_ear/eeg/eog: Arrays shaped ``(n_epochs, 1, n_times)`` or ``None``
+            when the modality is disabled.
+        have_ear/eeg/eog: Flags indicating whether each modality is enabled.
+        segment_config: Segmentation configuration passed to EAR refinement.
+        md: Metadata dictionary to mutate in-place.
+
+    Behavior
+    --------
+    * Epoch-relative blink bounds are derived with
+      :func:`_compute_epoch_blink_bounds`.
+    * ``md["n_blinks"]`` is updated regardless of enabled modalities.
+    * When no blinks fall inside the epoch, the function returns early without
+      populating modality-specific metadata.
+    * EAR refinement validates that exactly one channel sample is available,
+      flattens to ``(n_times,)``, and appends detailed thresholds/search fields.
+    * EEG and EOG refinements operate on single-channel 1D vectors without
+      averaging. Disabled modalities are skipped independently.
+
+    Raises:
+        ValueError: If any enabled modality provides more than one channel for
+            the epoch or unexpected shapes are encountered.
+    """
+
+    epoch_start_samp = int(epochs.events[epoch_index, 0])
+    epoch_start_sec = epoch_start_samp / sfreq
+    epoch_end_sec = epoch_start_sec + epoch_len
+
+    blink_starts, blink_ends = _compute_epoch_blink_bounds(
+        blink_onsets_sec,
+        blink_durs_sec,
+        epoch_start_sec,
+        epoch_end_sec,
+        sfreq,
+        n_samp_epoch,
+    )
+
+    n_blinks = len(blink_starts)
+    md["n_blinks"][epoch_index] = n_blinks
+    if n_blinks == 0:
+        return
+
+    for sr, er in zip(blink_starts, blink_ends):
+        onset_sec_rel = sr / sfreq
+        duration_sec_rel = max(0.0, (er - sr) / sfreq)
+        md["blink_onset"][epoch_index] = append_to_slot(
+            md["blink_onset"][epoch_index], onset_sec_rel
+        )
+        md["blink_duration"][epoch_index] = append_to_slot(
+            md["blink_duration"][epoch_index], duration_sec_rel
+        )
+
+    if have_ear and data_ear is not None:
+        seg_raw = data_ear[epoch_index]
+        if seg_raw.ndim != 2 or seg_raw.shape[0] != 1:
+            raise ValueError(
+                f"EAR refinement expects a single channel, but epoch {epoch_index} contains shape {seg_raw.shape}."
+            )
+        seg = seg_raw.reshape(-1)
+        refinements = _refine_ear_blinks_for_epoch(
+            seg,
+            blink_starts,
+            blink_ends,
+            sfreq,
+            segment_config,
+        )
+        _append_ear_refinements(md, epoch_index, refinements, sfreq, n_samp_epoch)
+
+    if have_eeg and data_eeg is not None:
+        seg_raw = data_eeg[epoch_index]
+        if seg_raw.ndim != 2 or seg_raw.shape[0] != 1:
+            raise ValueError(
+                f"EEG refinement expects a single channel, but epoch {epoch_index} contains shape {seg_raw.shape}."
+            )
+        seg = seg_raw.reshape(-1)
+        _append_peak_refinements(
+            md,
+            epoch_index,
+            seg,
+            blink_starts,
+            blink_ends,
+            sfreq,
+            "eeg",
+            refine_local_maximum_stub,
+            n_samp_epoch,
+        )
+
+    if have_eog and data_eog is not None:
+        seg_raw = data_eog[epoch_index]
+        if seg_raw.ndim != 2 or seg_raw.shape[0] != 1:
+            raise ValueError(
+                f"EOG refinement expects a single channel, but epoch {epoch_index} contains shape {seg_raw.shape}."
+            )
+        seg = seg_raw.reshape(-1)
+        _append_peak_refinements(
+            md,
+            epoch_index,
+            seg,
+            blink_starts,
+            blink_ends,
+            sfreq,
+            "eog",
+            refine_local_maximum_stub,
+            n_samp_epoch,
+        )
+
+
+def slice_raw_into_mne_epochs_refine_annot(
+    # TODO : We need to enrich this function to support different blink onset selection strategy.
+    raw: mne.io.BaseRaw,
+    *,
+    epoch_len: float = 30.0,
+    blink_label: Optional[str] = "blink",
+    progress_bar: bool = True,
+    segmentation_type: Optional[dict] = None,
+    ear_threshold: Optional[float] = None,
+) -> mne.Epochs:
+    """Convert a continuous recording into equally spaced epochs with refinement."""
+
+    segment_config = _prepare_segmentation_config(segmentation_type, ear_threshold)
+    prep = _prepare_epochs_and_modalities(
+        raw,
+        epoch_len=epoch_len,
+        blink_label=blink_label,
+        segment_config=segment_config,
+    )
+    md = _init_metadata(prep.n_epochs, prep.have_eeg, prep.have_eog, prep.have_ear)
+
+    iterator = range(prep.n_epochs)
     if progress_bar:
         iterator = tqdm(iterator, desc="Refining blink metadata", unit="epoch")
 
     for ei in iterator:
-        epoch_start_samp = int(epochs.events[ei, 0])
-        epoch_start_sec = epoch_start_samp / sfreq
-        epoch_end_sec = epoch_start_sec + epoch_len
-
-        blink_starts, blink_ends = _compute_epoch_blink_bounds(
-            blink_onsets_sec,
-            blink_durs_sec,
-            epoch_start_sec,
-            epoch_end_sec,
-            sfreq,
-            n_samp_epoch,
+        _refine_epoch_modalities(
+            epoch_index=ei,
+            epoch_len=epoch_len,
+            epochs=prep.epochs,
+            sfreq=prep.sfreq,
+            n_samp_epoch=prep.n_samp_epoch,
+            blink_onsets_sec=prep.blink_onsets_sec,
+            blink_durs_sec=prep.blink_durs_sec,
+            data_ear=prep.data_ear,
+            data_eeg=prep.data_eeg,
+            data_eog=prep.data_eog,
+            have_ear=prep.have_ear,
+            have_eeg=prep.have_eeg,
+            have_eog=prep.have_eog,
+            segment_config=segment_config,
+            md=md,
         )
 
-        n_blinks = len(blink_starts)
-        md["n_blinks"][ei] = n_blinks
-        if n_blinks == 0:
-            continue
-
-        for sr, er in zip(blink_starts, blink_ends):
-            onset_sec_rel = sr / sfreq
-            duration_sec_rel = max(0.0, (er - sr) / sfreq)
-            md["blink_onset"][ei] = append_to_slot(md["blink_onset"][ei], onset_sec_rel)
-            md["blink_duration"][ei] = append_to_slot(
-                md["blink_duration"][ei], duration_sec_rel
-            )
-
-        if have_ear and data_ear is not None:
-            seg_raw = data_ear[ei]
-            if seg_raw.ndim == 2 and seg_raw.shape[0] > 1:
-                raise ValueError(
-                    f"EAR refinement expects a single channel, but epoch {ei} contains {seg_raw.shape[0]} EAR channels."
-                )
-            seg = seg_raw.reshape(-1)
-            refinements = _refine_ear_blinks_for_epoch(
-                seg,
-                blink_starts,
-                blink_ends,
-                sfreq,
-                segment_config,
-            )
-            _append_ear_refinements(md, ei, refinements, sfreq, n_samp_epoch)
-
-        if have_eeg and data_eeg is not None:
-            seg = data_eeg[ei].mean(axis=0)
-            _append_peak_refinements(
-                md,
-                ei,
-                seg,
-                blink_starts,
-                blink_ends,
-                sfreq,
-                "eeg",
-                refine_local_maximum_stub,
-                n_samp_epoch,
-            )
-
-        if have_eog and data_eog is not None:
-            seg = data_eog[ei].mean(axis=0)
-            _append_peak_refinements(
-                md,
-                ei,
-                seg,
-                blink_starts,
-                blink_ends,
-                sfreq,
-                "eog",
-                refine_local_maximum_stub,
-                n_samp_epoch,
-            )
-
     metadata = pd.DataFrame(md)
-    epochs.metadata = metadata
+    prep.epochs.metadata = metadata
 
     logger.debug("Epoch metadata head: %s", metadata.head())
     logger.debug("Exiting slice_raw_into_mne_epochs_refine_annot")
-    return epochs
+    return prep.epochs
 
 
 def refine_local_maximum_stub(

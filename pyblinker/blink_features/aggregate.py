@@ -255,6 +255,8 @@ def aggregate_blink_features(
     waveform_params: Mapping[str, Any] | None = None,
     waveform_run_fit: bool = True,
     metadata_csv_path: str | Path | None = None,
+    segmentation_type: Mapping[str, Any] | None = None,
+    ear_threshold: float | None = None,
 ) -> pd.DataFrame:
     """Return consolidated blink features across modalities and families.
 
@@ -280,6 +282,14 @@ def aggregate_blink_features(
         Whether to run the blink waveform fitting routine.
     metadata_csv_path : str | Path | None, optional
         Optional CSV file containing per-epoch metadata to merge.
+    segmentation_type : Mapping[str, Any] | None, optional
+        Required when ``raw_or_epochs`` is a Raw instance. Provides explicit
+        single-channel selections per modality under ``"ear"``, ``"eeg"``, and
+        ``"eog"``.
+    ear_threshold : float | None, optional
+        Convenience override passed to
+        :func:`slice_raw_into_mne_epochs_refine_annot` when ``raw_or_epochs`` is
+        raw input.
 
     Returns
     -------
@@ -290,11 +300,17 @@ def aggregate_blink_features(
     if isinstance(raw_or_epochs, mne.io.BaseRaw):
         from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
 
+        if segmentation_type is None:
+            raise ValueError(
+                "segmentation_type must be provided with explicit single-channel selections for raw inputs."
+            )
         epochs = slice_raw_into_mne_epochs_refine_annot(
             raw_or_epochs,
             epoch_len=epoch_len,
             blink_label=blink_label,
             progress_bar=progress_bar,
+            segmentation_type=dict(segmentation_type),
+            ear_threshold=ear_threshold,
         )
     elif isinstance(raw_or_epochs, mne.Epochs):
         epochs = raw_or_epochs

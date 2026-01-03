@@ -39,6 +39,20 @@ graph TD
     G --> H[Update Epoch Metadata]
 ```
 
+## Single-channel modality configuration
+
+`slice_raw_into_mne_epochs_refine_annot` now requires an explicit, single-channel selection per modality. The helper `_prepare_epochs_and_modalities` in `pyblinker/segmentation/refinement.py` enforces:
+
+* **EAR**: A `"channel"` entry is mandatory. Missing/empty values or multiple matches raise `ValueError`.
+* **EEG/EOG**: Optional. Supplying no channel disables refinement for that modality; supplying an invalid or non-unique channel raises `ValueError`.
+* Each enabled modality extracts epoch data with `epochs.get_data(picks=[idx])`, so downstream refinement receives a 1D vector per epoch—no implicit averaging across channels.
+* Blink annotations are filtered by `blink_label` prior to per-epoch refinement; onsets/durations stay in seconds, while epoch-local bounds remain in samples.
+
+### Verification
+* Code: `pyblinker/segmentation/refinement.py` (`_prepare_epochs_and_modalities`, `_refine_epoch_modalities`, `slice_raw_into_mne_epochs_refine_annot`).
+* Tutorials: `tutorial/05c_minimal_blink_feature_tutorial.py`, `tutorial/5_ear_energy_feature_tutorial.py`.
+* Tests: `test/segmentation/test_ear_refinement_outputs.py`, `test/epoch_refine_annotation/test_refine_annot_by_channel.py`.
+
 ## Related Code
 
 *   **`pyblinker/segmentation/refinement.py`**: The core module for refinement. Contains `slice_raw_into_mne_epochs_refine_annot` and shared peak-refinement helpers.

@@ -24,6 +24,7 @@ from pathlib import Path
 import mne
 from pyblinker.blink_features.energy.energy_features import compute_energy_features
 from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
+from test.segment_config import build_segment_config
 from test.blink_features.utils.helpers import assert_df_has_columns
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -53,8 +54,14 @@ class TestEnergyFeatures(unittest.TestCase):
         if channel not in raw.ch_names:
             raise ValueError(f"Required channel '{channel}' not found in raw data.")
         raw.pick([channel, "EEG-E8", "EOG-EEG-eog_vert_left"])
+        segmentation_config = build_segment_config(raw)
         self.epochs = slice_raw_into_mne_epochs_refine_annot(
-            raw, epoch_len=30.0, blink_label=None, progress_bar=False, ear_threshold=0.22
+            raw,
+            epoch_len=30.0,
+            blink_label=None,
+            progress_bar=False,
+            segmentation_type=segmentation_config,
+            ear_threshold=0.22,
         )
 
 
