@@ -35,13 +35,10 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 DATA_URL = "https://figshare.com/ndownloader/files/12400409"
 
-# 3) Input filenames (provided by the dataset)
-MAT_FILENAME = "CLA-SubjectJ-170510-3St-LRHand-Inter.mat"
-CSV_FILENAME = "CLA-SubjectJ-170510-3St-LRHand-Inter_annotations.csv"
-
-# 4) Full input paths (MAT EEG and its manual-annotation CSV live next to this script)
-MAT_PATH = SCRIPT_DIR / MAT_FILENAME
-CSV_PATH = SCRIPT_DIR / CSV_FILENAME
+# 3) Full input paths (files now live in test/test_files)
+TEST_FILES_DIR = SCRIPT_DIR.parent / "test" / "test_files"
+MAT_PATH = TEST_FILES_DIR / "CLA-SubjectJ-170510-3St-LRHand-Inter.mat"
+CSV_PATH = TEST_FILES_DIR / "CLA-SubjectJ-170510-3St-LRHand-Inter_annotations.csv"
 
 # 5) Configuration parameters (tweak as needed)
 SAMPLING_RATE_HZ = 200.0                 # sampling rate for the loaded MAT data
