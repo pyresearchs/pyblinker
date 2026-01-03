@@ -18,7 +18,7 @@ import pandas as pd
 from pyblinker.blink_features.blink_events.event_features import (
     aggregate_blink_event_features,
 )
-from pyblinker.utils.refinement_utils import slice_raw_into_mne_epochs_refine_annot
+from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
 from test.blink_features.utils.helpers import assert_df_has_columns
 
 logger = logging.getLogger(__name__)

@@ -11,7 +11,7 @@ import pandas as pd
 
 from pyblinker.blink_features.kinematics import compute_kinematic_features
 from pyblinker.blink_features.kinematics.per_blink import compute_segment_kinematics
-from pyblinker.utils.refinement_utils import slice_raw_into_mne_epochs_refine_annot
+from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
 
 from ..utils.helpers import assert_df_has_columns, assert_numeric_or_nan
 

@@ -39,7 +39,7 @@ graph TD
 ## Related Code
 
 *   **`pyblinker/utils/epoch_utils.py`**: Utilities for slicing raw data and managing epoch structures.
-*   **`pyblinker/utils/refinement_utils.py`**: Specifically `slice_raw_into_mne_epochs_refine_annot`, which handles the simultaneous creation of epochs and alignment of refined blink metadata.
+*   **`pyblinker/segmentation/refinement.py`**: Contains `slice_raw_into_mne_epochs_refine_annot`, which handles the simultaneous creation of epochs and alignment of refined blink metadata.
 
 ## Tutorials
 

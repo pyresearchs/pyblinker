@@ -288,9 +288,7 @@ def aggregate_blink_features(
     """
 
     if isinstance(raw_or_epochs, mne.io.BaseRaw):
-        from pyblinker.utils.refinement_utils import (
-            slice_raw_into_mne_epochs_refine_annot,
-        )
+        from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
 
         epochs = slice_raw_into_mne_epochs_refine_annot(
             raw_or_epochs,

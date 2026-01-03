@@ -8,7 +8,7 @@ import mne
 import numpy as np
 import pandas as pd
 
-from pyblinker.utils.refinement_utils import slice_raw_into_mne_epochs_refine_annot
+from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
 from pyblinker.segment_blink_properties import compute_segment_blink_properties
 from pyblinker.utils.metadata_utils import attach_blink_metadata
 

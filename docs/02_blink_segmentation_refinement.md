@@ -41,9 +41,10 @@ graph TD
 
 ## Related Code
 
-*   **`pyblinker/utils/refinement_utils.py`**: The core module for refinement. Contains `slice_raw_into_mne_epochs_refine_annot` and specific refinement functions like `refine_ear_extrema_and_threshold_stub`.
+*   **`pyblinker/segmentation/refinement.py`**: The core module for refinement. Contains `slice_raw_into_mne_epochs_refine_annot` and shared peak-refinement helpers.
+*   **`pyblinker/segmentation/ear.py`**: EAR-specific interpolation helpers used by the segmentation pipeline.
 *   **`pyblinker/fitutils/`**: Contains utility functions for fitting shapes and finding crossings (e.g., `ear_crossing.py`).
-*   **`pyblinker/blink_features/ear_metrics/refinement.py`**: Implementation of EAR-specific refinement logic (referenced by `refinement_utils`).
+*   **`pyblinker/blink_features/ear_metrics/refinement.py`**: Implementation of EAR-specific refinement logic used by the segmentation helpers.
 
 ## Tutorials
 
@@ -58,6 +59,8 @@ graph TD
 
 ## Unit Tests
 
+*   **`test/segmentation/test_ear_refinement_outputs.py`**:
+    Verifies that EAR-based epoch slicing and multi-threshold refinement outputs match the stored FIF and CSV reference artifacts.
 *   **`test/test_refined_blink_flow.py`**:
     The primary integration test for the refinement module. It mocks a user workflow: Input coarse annotations -> Run Refinement -> Check output metadata.
 *   **`test/test_ear_threshold_refinement.py`**:

@@ -4,7 +4,7 @@ import mne
 from pyblinker.blink_features.energy.energy_features import compute_energy_features
 from pyblinker.outside_annotation import build_ear_energy_report
 from pyblinker.utils.evaluation import mat_data
-from pyblinker.utils.refinement_utils import (
+from pyblinker.segmentation.refinement import (
     slice_raw_into_mne_epochs_refine_annot,
 )
 

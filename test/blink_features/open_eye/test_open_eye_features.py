@@ -7,7 +7,7 @@ from pathlib import Path
 import mne
 import numpy as np
 
-from pyblinker.utils.refinement_utils import slice_raw_into_mne_epochs_refine_annot
+from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
 from pyblinker.utils.open_eye_baseline import compute_open_eye_baseline_features
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]

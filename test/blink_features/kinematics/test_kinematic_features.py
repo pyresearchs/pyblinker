@@ -15,7 +15,7 @@ from pyblinker.blink_features.energy.helpers import (
     segment_to_samples,
     _safe_stats,
 )
-from pyblinker.utils.refinement_utils import slice_raw_into_mne_epochs_refine_annot
+from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
 
 from ..utils.helpers import assert_df_has_columns, assert_numeric_or_nan
 

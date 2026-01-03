@@ -7,7 +7,7 @@ from pathlib import Path
 import mne
 import pandas as pd
 import numpy as np
-from pyblinker.utils.refinement_utils import slice_raw_into_mne_epochs_refine_annot
+from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
 from pyblinker.utils.report_utils import add_blink_plots_to_report
 
 # 2) Basic logging setup (prints progress info to the console)
