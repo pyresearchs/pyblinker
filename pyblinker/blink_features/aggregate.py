@@ -287,9 +287,8 @@ def aggregate_blink_features(
         single-channel selections per modality under ``"ear"``, ``"eeg"``, and
         ``"eog"``.
     ear_threshold : float | None, optional
-        Convenience override passed to
-        :func:`slice_raw_into_mne_epochs_refine_annot` when ``raw_or_epochs`` is
-        raw input.
+        Convenience override merged into the EAR segmentation config when
+        ``raw_or_epochs`` is raw input.
 
     Returns
     -------
@@ -304,13 +303,18 @@ def aggregate_blink_features(
             raise ValueError(
                 "segmentation_type must be provided with explicit single-channel selections for raw inputs."
             )
+        segmentation_config = dict(segmentation_type)
+        if ear_threshold is not None:
+            ear_config = dict(segmentation_config.get("ear", {}))
+            ear_config.setdefault("threshold", ear_threshold)
+            ear_config.setdefault("seg_type", "threshold_interpolation")
+            segmentation_config["ear"] = ear_config
         epochs = slice_raw_into_mne_epochs_refine_annot(
             raw_or_epochs,
             epoch_len=epoch_len,
             blink_label=blink_label,
             progress_bar=progress_bar,
-            segmentation_type=dict(segmentation_type),
-            ear_threshold=ear_threshold,
+            segmentation_type=segmentation_config,
         )
     elif isinstance(raw_or_epochs, mne.Epochs):
         epochs = raw_or_epochs

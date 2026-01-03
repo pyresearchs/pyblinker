@@ -43,7 +43,10 @@ def main() -> None:
     fif_path = data_dir / "ear_eog.fif"
 
     # Evaluate several EAR thresholds per blink.
-    candidate_thresholds = [0.18, 0.2, 0.22, 0.24, 0.26]
+    candidate_thresholds = [
+        # 0.18, 0.2, 0.22, 0.24,
+        0.26,
+    ]
 
     feature_config = EARFeatureConfig(
         baseline_window=0.25,
@@ -106,7 +109,7 @@ def main() -> None:
     eeg_overlay = raw.get_data(picks="EEG-E8")[0]
     overlay_sfreq = float(raw.info["sfreq"])
 
-    report_threshold = candidate_thresholds[2]
+    report_threshold = candidate_thresholds[0]
     report_df = prepare_threshold_report_dataframe(features, sfreq, report_threshold)
     user_plot_threshold = report_threshold
 

@@ -48,6 +48,11 @@ graph TD
 * Each enabled modality extracts epoch data with `epochs.get_data(picks=[idx])`, so downstream refinement receives a 1D vector per epoch—no implicit averaging across channels.
 * Blink annotations are filtered by `blink_label` prior to per-epoch refinement; onsets/durations stay in seconds, while epoch-local bounds remain in samples.
 
+### EAR threshold configuration
+* `slice_raw_into_mne_epochs_refine_annot` no longer accepts an `ear_threshold` convenience argument; EAR thresholds must be defined inside the segmentation config under the `"ear"` key (including `seg_type="threshold_interpolation"` and extension/padding settings) before calling the helper. The configuration in `tutorial/5_ear_energy_feature_tutorial.py` shows the full set of recommended EAR parameters alongside optional EEG/EOG entries.
+* Code: `pyblinker/segmentation/refinement.py` (`_prepare_segmentation_config`, `slice_raw_into_mne_epochs_refine_annot`).
+* Unit tests: `test/blink_feature_ear/energy/test_energy_features.py` builds the explicit EAR segmentation config when refining epochs for energy metrics.
+
 ### Verification
 * Code: `pyblinker/segmentation/refinement.py` (`_prepare_epochs_and_modalities`, `_refine_epoch_modalities`, `slice_raw_into_mne_epochs_refine_annot`).
 * Tutorials: `tutorial/05c_minimal_blink_feature_tutorial.py`, `tutorial/5_ear_energy_feature_tutorial.py`.

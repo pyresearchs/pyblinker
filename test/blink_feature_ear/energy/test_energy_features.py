@@ -54,14 +54,20 @@ class TestEnergyFeatures(unittest.TestCase):
         if channel not in raw.ch_names:
             raise ValueError(f"Required channel '{channel}' not found in raw data.")
         raw.pick([channel, "EEG-E8", "EOG-EEG-eog_vert_left"])
-        segmentation_config = build_segment_config(raw)
+        base_config = {
+            "ear": {
+                "seg_type": "threshold_interpolation",
+                "threshold": 0.22,
+                "annotation_time_unit": "seconds",
+            },
+        }
+        segmentation_config = build_segment_config(raw, base_config=base_config)
         self.epochs = slice_raw_into_mne_epochs_refine_annot(
             raw,
             epoch_len=30.0,
             blink_label=None,
             progress_bar=False,
             segmentation_type=segmentation_config,
-            ear_threshold=0.22,
         )
 
 

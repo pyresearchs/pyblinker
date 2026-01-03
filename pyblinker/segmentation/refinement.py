@@ -80,16 +80,13 @@ def _init_metadata(
 
 def _prepare_segmentation_config(
     segmentation_type: Optional[dict],
-    ear_threshold: Optional[float],
 ) -> Dict[str, Any]:
-    """Merge segmentation settings with convenience parameters."""
+    """Return a defensive copy of the segmentation settings."""
 
     config: Dict[str, Any] = dict(segmentation_type or {})
-    ear_config = dict(config.get("ear", {}))
-    if ear_threshold is not None:
-        ear_config.setdefault("threshold", ear_threshold)
-        ear_config.setdefault("seg_type", "threshold_interpolation")
-        config["ear"] = ear_config
+    for modality in ("ear", "eeg", "eog"):
+        if modality in config and isinstance(config[modality], dict):
+            config[modality] = dict(config[modality])
     return config
 
 
@@ -468,11 +465,10 @@ def slice_raw_into_mne_epochs_refine_annot(
     blink_label: Optional[str] = "blink",
     progress_bar: bool = True,
     segmentation_type: Optional[dict] = None,
-    ear_threshold: Optional[float] = None,
 ) -> mne.Epochs:
     """Convert a continuous recording into equally spaced epochs with refinement."""
 
-    segment_config = _prepare_segmentation_config(segmentation_type, ear_threshold)
+    segment_config = _prepare_segmentation_config(segmentation_type)
     prep = _prepare_epochs_and_modalities(
         raw,
         epoch_len=epoch_len,
