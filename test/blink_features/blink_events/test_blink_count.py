@@ -4,7 +4,7 @@ Epochs are generated with ``slice_raw_into_mne_epochs_refine_annot`` and blink
 counts are strictly compared against the ground-truth CSV
 ``ear_eog_blink_count_epoch.csv``. Rows 31 and 55 in the CSV are known
 discrepancies and are excluded from comparisons. See
-``tutorial/4_epoching_and_blink_validation_report.py`` for details.
+``tutorial/04_epoching_and_blink_validation_report.py`` for details.
 """
 
 import logging
@@ -29,7 +29,7 @@ class TestBlinkCount(unittest.TestCase):
     """Unit tests for blink counting from ``mne.Epochs`` metadata.
 
     Blink counts are validated against the CSV ground truth with rows 31 and 55
-    excluded. See ``tutorial/4_epoching_and_blink_validation_report.py`` for
+    excluded. See ``tutorial/04_epoching_and_blink_validation_report.py`` for
     context on these exceptions.
     """
 
@@ -90,12 +90,12 @@ class TestBlinkCount(unittest.TestCase):
             len(expected),
             len(computed),
             "Length mismatch after dropping rows 31 and 55; see "
-            "tutorial/4_epoching_and_blink_validation_report.py.",
+            "tutorial/04_epoching_and_blink_validation_report.py.",
         )
         self.assertTrue(
             expected.index.equals(computed.index),
             "Index mismatch after dropping rows 31 and 55; see "
-            "tutorial/4_epoching_and_blink_validation_report.py.",
+            "tutorial/04_epoching_and_blink_validation_report.py.",
         )
         pd.testing.assert_series_equal(computed, expected, check_names=False)
         self.assertTrue(np.issubdtype(df["blink_count_eeg"].dtype, np.number))

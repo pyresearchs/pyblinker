@@ -43,7 +43,7 @@ graph TD
 
 ## Tutorials
 
-*   **`tutorial/4_epoching_and_blink_validation_report.py`**:
+*   **`tutorial/04_epoching_and_blink_validation_report.py`**:
     The comprehensive guide to the epoching workflow. It demonstrates:
     1.  Defining epoch length (e.g., 30s).
     2.  Calling `slice_raw_into_mne_epochs_refine_annot`.
