@@ -86,5 +86,5 @@ graph TD
     Tests the robustness of the threshold search. It includes test cases for edge conditions: signals that barely cross the threshold, signals that cross multiple times, and signals that start below the threshold.
 *   **`test/test_ear_crossing.py`**:
     Validates the low-level math functions (like `find_threshold_crossing_triplet`). It ensures that the sub-sample interpolation is mathematically correct.
-*   **`test/epoch_refine_annotation/test_refine_annot_by_channel.py`**:
+*   **`test/segmentation/test_refine_annot_by_channel.py`**:
     Verifies that refinement can be applied independently to different channels (e.g., refining an EEG blink using EEG data while simultaneously refining an EAR blink using video data) without cross-contamination.
