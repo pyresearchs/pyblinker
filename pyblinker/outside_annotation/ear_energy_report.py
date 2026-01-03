@@ -43,10 +43,24 @@ def _plot_blink(
     win_end = _slot_value(md_row, "search_window_end_sample", blink_idx)
 
     total_samples = ear_data.shape[0]
-    start_sample = int(win_start) if win_start is not None and np.isfinite(win_start) else int(refined_start or 0)
-    end_sample = int(win_end) if win_end is not None and np.isfinite(win_end) else int(refined_end or total_samples - 1)
-    start_sample = max(0, min(total_samples - 1, start_sample))
-    end_sample = max(start_sample, min(total_samples - 1, end_sample))
+    left_candidates = [
+        refined_start,
+        left_interp_sample,
+        win_start,
+    ]
+    right_candidates = [
+        refined_end,
+        right_interp_sample,
+        win_end,
+    ]
+    left_anchor = min(int(x) for x in left_candidates if x is not None and np.isfinite(x)) if any(
+        x is not None and np.isfinite(x) for x in left_candidates
+    ) else 0
+    right_anchor = max(int(x) for x in right_candidates if x is not None and np.isfinite(x)) if any(
+        x is not None and np.isfinite(x) for x in right_candidates
+    ) else total_samples - 1
+    start_sample = max(0, min(total_samples - 1, left_anchor - 6))
+    end_sample = max(start_sample, min(total_samples - 1, right_anchor + 6))
 
     slice_time = np.arange(start_sample, end_sample + 1) / sfreq
     ear_slice = ear_data[start_sample : end_sample + 1]
