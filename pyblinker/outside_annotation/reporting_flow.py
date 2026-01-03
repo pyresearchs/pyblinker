@@ -731,21 +731,15 @@ def build_refined_blink_report(
             )
 
         caption_prefix = "Interpolated threshold crossings" if interpolated_times_available else "Threshold crossings"
-        epoch_value = epoch_label
-        if epoch_value is None:
-            epoch_from_row = getattr(row, "epoch_index", None)
-            if epoch_from_row is not None:
-                epoch_value = f"Epoch {epoch_from_row}"
         epoch_idx_hint = None
-        if epoch_value is None and epoch_duration:
-            min_time_attr = getattr(row, "ear_threshold_min_time", None)
-            if min_time_attr is not None and pd.notna(min_time_attr):
-                try:
-                    epoch_idx_hint = int(float(min_time_attr) // float(epoch_duration))
-                    epoch_value = f"Epoch {epoch_idx_hint}"
-                except (TypeError, ValueError):
-                    epoch_value = None
-        caption_epoch = f"Epoch {epoch_idx_hint}" if epoch_idx_hint is not None else (epoch_value or "Epoch")
+        if epoch_duration and min_time is not None:
+            try:
+                epoch_idx_hint = int(float(min_time) // float(epoch_duration))
+            except (TypeError, ValueError):
+                epoch_idx_hint = None
+        if epoch_idx_hint is None and epoch_label is not None:
+            epoch_idx_hint = epoch_label
+        caption_epoch = f"Epoch {epoch_idx_hint}" if epoch_idx_hint is not None else "Epoch"
         caption = (
             f"{caption_epoch}. {caption_prefix} at {left_time:.3f}s and {right_time:.3f}s. "
             f"Segment {start}–{end} ({(end - start) / sfreq:.3f}s)."
