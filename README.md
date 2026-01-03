@@ -70,7 +70,7 @@ python -m pyblinker.outside_annotation.cli \
 For a guided example that also generates `refined_blink_report.html`, run:
 
 ```bash
-python tutorial/refined_blink_report_tutorial.py
+python tutorial/6_refined_blink_report_tutorial.py
 ```
 
 Both commands rely on the bundled `manual_annotation_feature_calculation_data/ear_eog.*` files. They produce:

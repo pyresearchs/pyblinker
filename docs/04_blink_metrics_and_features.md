@@ -81,9 +81,9 @@ graph TD
 
 ## Tutorials
 
-*   **`tutorial/minimal_blink_feature_tutorial.py`**:
+*   **`tutorial/5_minimal_blink_feature_tutorial.py`**:
     A lightweight script showing how to extract a single category of features (e.g., just kinematics). It is useful for integration into pipelines where speed is critical and the full feature set is not required.
-*   **`tutorial/eeg_feature_extraction_tutorial.py`**:
+*   **`tutorial/5_eeg_feature_extraction_tutorial.py`**:
     Focuses on EEG/EOG signals, demonstrating features like `blink_signal_energy` and `teager_kaiser_energy` which are specific to voltage time-series analysis.
 *   **`tutorial/5_ear_energy_feature_tutorial.py`**:
     A stage 5 (feature extraction) walkthrough that refines EAR annotations, slices epochs, and calculates energy features on the EAR channel to show how "energy" concepts translate to the unitless aspect ratio signal.

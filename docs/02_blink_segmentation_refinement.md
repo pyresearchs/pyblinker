@@ -48,13 +48,13 @@ graph TD
 
 ## Tutorials
 
-*   **`tutorial/ear_threshold_crossing_tutorial.py`**:
+*   **`tutorial/3_ear_threshold_crossing_tutorial.py`**:
     A detailed, executable exploration of the "threshold interpolation" strategy. It generates synthetic EAR signals and visualizes exactly how the "left crossing", "minimum", and "right crossing" are calculated using linear interpolation between samples.
-*   **`tutorial/ear_threshold_blink_refinement.py`**:
+*   **`tutorial/3_ear_threshold_blink_refinement.py`**:
     Shows how to apply the refinement logic to real data. It demonstrates the effect of changing the `threshold` parameter on the detected blink duration.
-*   **`tutorial/ear_threshold_multi_candidate_refinement.py`**:
+*   **`tutorial/3_ear_threshold_multi_candidate_refinement.py`**:
     Covers complex scenarios: what happens when a single candidate region actually contains two distinct blinks (double blink)? This tutorial demonstrates the logic that splits or selects the appropriate event.
-*   **`tutorial/understand_diff_in_blink_position.py`**:
+*   **`tutorial/3_understand_diff_in_blink_position.py`**:
     A comparative script that runs different segmentation strategies (e.g., "zero-crossing" vs. "50% recovery") on the same blink, printing the start/end times side-by-side to highlight the impact of the chosen definition.
 
 ## Unit Tests
