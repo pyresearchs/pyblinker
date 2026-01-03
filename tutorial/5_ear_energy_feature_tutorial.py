@@ -11,7 +11,7 @@ from pyblinker.segmentation.refinement import (
 # -----------------------------------------------------------------------------
 # Project paths
 # -----------------------------------------------------------------------------
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 # -----------------------------------------------------------------------------
 # Load raw data and annotations
