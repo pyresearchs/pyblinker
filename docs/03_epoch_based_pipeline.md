@@ -1,0 +1,42 @@
+# Epoch-Based Pipeline
+
+## Purpose
+While blinks occur in a continuous stream, `pyblinker` emphasizes an **epoch-based** workflow. This approach aligns with standard MNE-Python practices and offers significant advantages for analysis and quality control.
+
+## Why Epochs?
+
+1.  **Stationarity**: Processing shorter segments (e.g., 30 seconds) reduces the impact of long-term signal drift and non-stationarity.
+2.  **Quality Control**: It is easier to visualize, assess, and accept/reject discrete chunks of data than to scour hours of continuous recording.
+3.  **Aggregation**: Features can be easily aggregated per trial or condition (e.g., "average blink duration during the 'fatigue' condition").
+4.  **MNE Integration**: MNE's `Epochs` object provides a robust structure for handling metadata, channel selection, and rejection.
+
+## Epoch Creation and Alignment
+The transition from continuous data to epochs involves:
+1.  **Slicing**: The raw data is cut into fixed-length segments (default 30s) or segments locked to experimental events.
+2.  **Metadata Alignment**: `pyblinker` calculates which blinks fall into which epoch and updates the epoch metadata with `blink_onset`, `blink_duration`, and other properties relative to the epoch start.
+
+## Epoch Rejection
+Bad epochs (due to muscle noise, disconnects, or excessive movement) should be excluded from analysis.
+
+*   **Manual Rejection**: Users can scroll through epochs in MNE's visualizer and mark bad ones (`epochs.plot()`).
+*   **Automatic Rejection**: While `pyblinker` does not enforce a specific auto-rejection algorithm, users often employ standard MNE methods (peak-to-peak amplitude rejection) or external MNE-compatible libraries like **Autoreject** (which learns rejection thresholds automatically).
+
+### Flowchart
+
+```mermaid
+graph TD
+    A[Continuous Raw Data] --> B[Slice into Epochs]
+    C[Refined Blink List] --> D[Map Blinks to Epochs]
+    B --> D
+    D --> E[Epochs Object with Metadata]
+    E --> F{Rejection?}
+    F -- Manual --> G[User Marks Bad Epochs]
+    F -- Auto --> H[Amplitude Threshold / Autoreject]
+    G --> I[Clean Epochs]
+    H --> I
+```
+
+## Related Code
+
+*   **`pyblinker/utils/epoch_utils.py`**: Utilities for slicing raw data and managing epoch structures.
+*   **`pyblinker/utils/refinement_utils.py`**: Specifically `slice_raw_into_mne_epochs_refine_annot`, which handles the simultaneous creation of epochs and alignment of refined blink metadata.
