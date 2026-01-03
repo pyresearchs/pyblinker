@@ -12,7 +12,7 @@ import mne
 import pandas as pd
 
 from pyblinker.blink_features.energy.energy_features import compute_energy_features
-from pyblinker.utils.refinement_utils import slice_raw_into_mne_epochs_refine_annot
+from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
 from test.blink_features.utils.energy_manual import manual_epoch_energy_features
 from ..utils.helpers import assert_df_has_columns, assert_numeric_or_nan
 

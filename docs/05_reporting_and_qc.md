@@ -42,7 +42,7 @@ graph TD
 
 ## Tutorials
 
-*   **`tutorial/refined_blink_report_tutorial.py`**:
+*   **`tutorial/06_refined_blink_report_tutorial.py`**:
     The main guide for QC. It shows how to generate an HTML report that overlays the *refined* blink boundaries (start/peak/end) on top of the raw signal. This allows the user to visually confirm if the refinement logic is snapping to the correct signal features.
 
 ## Unit Tests

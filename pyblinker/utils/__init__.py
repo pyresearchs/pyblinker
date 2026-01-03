@@ -17,14 +17,12 @@ from .feature_dataframe import to_epoch_indexed
 from .io_utils import prepare_refined_segments, save_epoch_raws
 from .metadata_utils import onset_entry_to_blinks
 from .modality import infer_modality
-from .refinement_utils import (
-    plot_refined_blinks,
+from .ear import select_auto_threshold
+from pyblinker.segmentation import (
     refine_blinks_from_epochs,
-    refine_ear_extrema_and_threshold_stub,
     refine_local_maximum_stub,
     slice_raw_into_mne_epochs_refine_annot,
 )
-from .ear import select_auto_threshold
 from .report_utils import add_blink_plots_to_report, generate_epoch_report
 from .statistics_utils import (
     calculate_good_ratio,
@@ -50,11 +48,6 @@ __all__ = [
     "to_epoch_indexed",
     "generate_epoch_report",
     "add_blink_plots_to_report",
-    "refine_ear_extrema_and_threshold_stub",
-    "refine_local_maximum_stub",
-    "refine_blinks_from_epochs",
-    "plot_refined_blinks",
-    "slice_raw_into_mne_epochs_refine_annot",
     "onset_entry_to_blinks",
     "calculate_within_range",
     "calculate_good_ratio",
@@ -64,4 +57,7 @@ __all__ = [
     "average_velocity",
     "infer_modality",
     "select_auto_threshold",
+    "refine_local_maximum_stub",
+    "refine_blinks_from_epochs",
+    "slice_raw_into_mne_epochs_refine_annot",
 ]

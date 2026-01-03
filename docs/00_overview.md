@@ -43,7 +43,7 @@ graph TD
 
 ## Tutorials
 
-*   **`tutorial/1_basic_usage.py`**:
+*   **`tutorial/01a_basic_usage.py`**:
     The primary "Hello World" entry point. It demonstrates the minimal code required to:
     1.  Load a sample MNE `Raw` object.
     2.  Preprocess it (filter/resample) to match expected inputs.

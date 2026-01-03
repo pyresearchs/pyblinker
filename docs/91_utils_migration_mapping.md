@@ -10,8 +10,8 @@ The table below maps legacy utility modules to their new canonical homes. Deprec
 | `pyblinker.utils.blink_refinement_helpers` | `pyblinker.utils.dict_utils` |
 | `pyblinker.utils.segments` | `pyblinker.utils.epoch_utils` |
 | `pyblinker.utils.epochs` | `pyblinker.utils.epoch_utils`, `pyblinker.utils.io_utils`, `pyblinker.utils.report_utils` |
-| `pyblinker.utils.refine_util` | `pyblinker.utils.refinement_utils` |
-| `pyblinker.utils.refinement` | `pyblinker.utils.refinement_utils` |
+| `pyblinker.utils.refine_util` | `pyblinker.segmentation.refinement` |
+| `pyblinker.utils.refinement` | `pyblinker.segmentation.refinement` |
 | `pyblinker.utils.raw_preprocessing` | `pyblinker.utils.io_utils` |
 | `pyblinker.utils.report` | `pyblinker.utils.report_utils` |
 | `pyblinker.utils.blink_statistics` | `pyblinker.utils.statistics_utils` |
@@ -26,7 +26,8 @@ New supporting modules introduced during the consolidation:
 - `pyblinker.utils.metadata_utils`
 - `pyblinker.utils.epoch_utils`
 - `pyblinker.utils.io_utils`
-- `pyblinker.utils.refinement_utils`
+- `pyblinker.segmentation.refinement`
+- `pyblinker.segmentation.ear`
 - `pyblinker.utils.report_utils`
 - `pyblinker.utils.statistics_utils`
 - `pyblinker.utils.velocity_utils`

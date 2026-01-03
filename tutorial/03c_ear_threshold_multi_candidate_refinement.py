@@ -1,6 +1,6 @@
 """Tutorial: Evaluate multiple EAR thresholds by refining + extracting per candidate.
 
-This example mirrors ``tutorial/ear_threshold_blink_refinement.py`` but runs the full
+This example mirrors ``tutorial/03a_ear_threshold_blink_refinement.py`` but runs the full
 refinement + feature extraction pipeline independently for each EAR threshold. The
 resulting table contains one row per threshold + coarse annotation pair instead of
 flattened per-threshold columns.

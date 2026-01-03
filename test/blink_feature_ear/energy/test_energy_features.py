@@ -23,7 +23,7 @@ from pathlib import Path
 
 import mne
 from pyblinker.blink_features.energy.energy_features import compute_energy_features
-from pyblinker.utils.refinement_utils import slice_raw_into_mne_epochs_refine_annot
+from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
 from test.blink_features.utils.helpers import assert_df_has_columns
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]

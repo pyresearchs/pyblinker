@@ -3,7 +3,7 @@
 Epochs are produced by ``slice_raw_into_mne_epochs_refine_annot`` and blink
 totals are validated against ``ear_eog_blink_count_epoch.csv``. Rows 31 and 55
 are known mismatches and are excluded from comparisons; see
-``tutorial/epoching_and_blink_validation_report.py`` for background.
+``tutorial/04_epoching_and_blink_validation_report.py`` for background.
 """
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ import pandas as pd
 from pyblinker.blink_features.blink_events.event_features import (
     aggregate_blink_event_features,
 )
-from pyblinker.utils.refinement_utils import slice_raw_into_mne_epochs_refine_annot
+from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
 from test.blink_features.utils.helpers import assert_df_has_columns
 
 logger = logging.getLogger(__name__)
@@ -29,7 +29,7 @@ class TestAggregateBlinkFeatures(unittest.TestCase):
     """Validate aggregation of blink features from epochs.
 
     Blink totals are checked against the ground-truth CSV with rows 31 and 55
-    excluded. See ``tutorial/epoching_and_blink_validation_report.py`` for
+    excluded. See ``tutorial/04_epoching_and_blink_validation_report.py`` for
     context on these exceptions.
     """
 
@@ -96,12 +96,12 @@ class TestAggregateBlinkFeatures(unittest.TestCase):
             len(expected),
             len(computed),
             "Length mismatch after dropping rows 31 and 55; see "
-            "tutorial/epoching_and_blink_validation_report.py.",
+            "tutorial/04_epoching_and_blink_validation_report.py.",
         )
         self.assertTrue(
             expected.index.equals(computed.index),
             "Index mismatch after dropping rows 31 and 55; see "
-            "tutorial/epoching_and_blink_validation_report.py.",
+            "tutorial/04_epoching_and_blink_validation_report.py.",
         )
         pd.testing.assert_series_equal(computed, expected, check_names=False)
 
@@ -170,4 +170,3 @@ class TestAggregateBlinkFeatures(unittest.TestCase):
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     unittest.main()
-
