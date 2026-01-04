@@ -5,21 +5,20 @@ from pyblinker.logging import get_logger
 from typing import Dict, List, Sequence
 
 import mne
-import numpy as np
 import pandas as pd
 
 from .per_blink import compute_blink_waveform_metrics
+from .._core_blink import CANONICAL_METRIC_STEMS
 from ..energy.helpers import extract_blink_windows, segment_to_samples, _safe_stats
 from ...utils.epoch_utils import build_metric_stat_columns, resolve_channels
 from ...utils.modality import infer_modality
 
 logger = get_logger(__name__)
 
-_BASE_METRICS = tuple(compute_blink_waveform_metrics(np.zeros(3), 1.0).keys())
-
-# Derive metric and statistic names instead of hardcoding
+_BASE_METRICS = tuple(f"{stem}_base" for stem in CANONICAL_METRIC_STEMS)
+# Derive metric and statistic names instead of hardcoding; morphology uses base-only
 _METRICS = _BASE_METRICS + ("duration",)
-_STATS = tuple(_safe_stats([]).keys())
+_STATS = ("mean", "std", "cv")
 
 
 def _default_morphology_channels(epochs: mne.Epochs) -> List[str]:
