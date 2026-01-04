@@ -19,12 +19,27 @@ import pandas as pd
 from .per_blink import compute_segment_kinematics
 from ..energy.helpers import extract_blink_windows, segment_to_samples, _safe_stats
 from ...utils.epoch_utils import build_metric_stat_columns, resolve_channels
+from ...utils.channel_utils import normalize_picks
 
 logger = get_logger(__name__)
 
 # Derive metric and statistic names from helper functions to avoid hardcoding
 _METRICS = tuple(compute_segment_kinematics(np.zeros(3), 1.0).keys())
 _STATS = tuple(_safe_stats([]).keys())
+
+
+def _infer_modality(channel_name: str, info: mne.Info) -> str:
+    """Infer modality label (ear/eeg/eog) from channel metadata."""
+
+    ch_type = info.get_channel_types(picks=[channel_name])[0]
+    ch_lower = channel_name.lower()
+    if "ear" in ch_lower:
+        return "ear"
+    if ch_type == "eog" or "eog" in ch_lower:
+        return "eog"
+    if ch_type == "eeg" or "eeg" in ch_lower:
+        return "eeg"
+    return ch_type.lower()
 
 
 def compute_kinematic_features(
@@ -53,7 +68,13 @@ def compute_kinematic_features(
     are ``NaN``.
     """
 
-    ch_names = resolve_channels(epochs, picks)
+    # Resolve channel names and infer modality per channel to avoid defaulting to EEG.
+    raw_picks = resolve_channels(epochs, picks, default=lambda ep: normalize_picks(ep.ch_names))
+    ch_names: List[str] = []
+    modalities: List[str] = []
+    for ch in raw_picks:
+        ch_names.append(ch)
+        modalities.append(_infer_modality(ch, epochs.info))
 
     sfreq = float(epochs.info["sfreq"])
     n_epochs = len(epochs)
@@ -82,12 +103,13 @@ def compute_kinematic_features(
         for ci, ch in enumerate(ch_names):
             windows = extract_blink_windows(metadata_row, ch, ei)
             per_metric: Dict[str, List[float]] = {m: [] for m in _METRICS}
+            modality = modalities[ci]
             for onset_s, duration_s in windows:
                 sl = segment_to_samples(onset_s, duration_s, sfreq, n_times)
                 segment = data[ei, ci, sl]
                 if segment.size == 0:
                     continue
-                metrics = compute_segment_kinematics(segment, sfreq)
+                metrics = compute_segment_kinematics(segment, sfreq, modality=modality)
                 for m in _METRICS:
                     per_metric[m].append(metrics[m])
             for metric, values in per_metric.items():

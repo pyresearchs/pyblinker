@@ -15,6 +15,7 @@ logger = get_logger(__name__)
 #: not have zero-crossings and therefore omit the ``zero`` variants.
 METHODS_BY_MODALITY: Dict[str, Sequence[str]] = {
     "eeg": ("base", "zero", "tent", "half_base", "half_zero"),
+    "eog": ("base", "zero", "tent", "half_base", "half_zero"),
     "ear": ("base", "tent", "half_base"),
 }
 
@@ -270,4 +271,3 @@ __all__ = [
     "compute_blink_core",
     "core_nan_dict",
 ]
-

@@ -97,10 +97,11 @@ graph TD
 ## Kinematic channel flexibility
 
 *Feature/change*: Kinematic feature extraction now explicitly supports EAR-only, EEG-only, mixed, and partial `SEGMENT_CONFIG` inputs without requiring dummy modality keys. Channel validation is skipped for omitted modalities, while provided channels are still validated strictly.
+Automatic modality inference per channel prevents EEG defaults when processing EAR or EOG inputs, ensuring the correct metric variants are applied.
 
 *Related Code*:
 *   `pyblinker/segmentation/refinement.py` (modality gating and channel resolution during segmentation)
-*   `pyblinker/blink_features/kinematics/kinematic_features.py` (channel selection and aggregation)
+*   `pyblinker/blink_features/kinematics/kinematic_features.py` (channel selection, modality inference, and aggregation)
 
 *Tutorials*:
 *   `tutorial/06a_ear_kinematics_feature_tutorial.py`
