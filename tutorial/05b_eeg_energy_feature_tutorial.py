@@ -31,9 +31,9 @@ raw.set_annotations(mat_data.read_annotations_as_mne(csv_path))
 # Select EEG (required) and optional EOG channels
 # -----------------------------------------------------------------------------
 eeg_channel = "EEG-E8"
-eog_channel = "EOG-EEG-eog_vert_left"
+eog_channel = "EOG-EEG-eog_vert_left"  # set to None or remove from picks to ignore EOG
 
-picks = [ch for ch in (eeg_channel, eog_channel) if ch in raw.ch_names]
+picks = [ch for ch in (eeg_channel, eog_channel) if ch and ch in raw.ch_names]
 if not picks:
     raise ValueError(
         f"EEG channel '{eeg_channel}' not found in raw data. "
@@ -50,7 +50,7 @@ SEGMENT_CONFIG = {
     }
 }
 
-if eog_channel in picks:
+if eog_channel and eog_channel in picks:
     SEGMENT_CONFIG["eog"] = {
         "channel": eog_channel,
         "seg_type": "base",
