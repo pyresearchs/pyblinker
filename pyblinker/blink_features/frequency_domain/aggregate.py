@@ -176,17 +176,13 @@ class FrequencyDomainBlinkFeatureExtractor:
                 modality_channels=modality_channels,
                 modality_order=modality_order,
             )
+            record["ep"] = index[ei]
             records.append(record)
 
-        columns = [
-            f"wavelet_energy_d{lvl}_{modality}" for modality in modality_order for lvl in range(1, 5)
-        ]
         df = pd.DataFrame.from_records(
             records,
             index=index,
-            columns=columns,
         )
-        df.insert(0, "ep", df.index.to_numpy())
         logger.debug("Frequency-domain feature DataFrame shape: %s", df.shape)
         return df
 
