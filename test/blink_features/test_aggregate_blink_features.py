@@ -90,7 +90,7 @@ class TestAggregateBlinkFeatures(unittest.TestCase):
         expected_some = [
             "EOG__events__blink_total",
             "EAR__energy__blink_signal_energy_mean_EAR-avg_ear",
-            "EEG__freq__wavelet_energy_d1",
+            "EEG__freq__wavelet_energy_d1_eeg",
             "EEG__wave__peak_time_tent_EEG-E8",
             "EEG__wave__pos_amp_vel_ratio_tent_EEG-E8",
         ]
