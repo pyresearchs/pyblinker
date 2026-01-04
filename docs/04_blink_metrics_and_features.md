@@ -52,7 +52,9 @@ Unless noted otherwise:
 *   **`blink_line_length`**: Waveform complexity/fractal dimension.
 
 #### B. Frequency Domain
-*   **`wavelet_energy_d1..d4`**: Energy in discrete wavelet bands. Blinks are typically low-frequency (D3-D4); high-frequency energy (D1) suggests muscle noise.
+*   **`wavelet_energy_d1..d4`** (per modality): Energy in discrete wavelet bands, computed separately for each modality and labeled as ``wavelet_energy_d{level}_{modality}`` (e.g., ``wavelet_energy_d2_ear``, ``wavelet_energy_d3_eeg``). Blinks are typically low-frequency (D3-D4); high-frequency energy (D1) suggests muscle noise.
+    *   Implementation: `pyblinker/blink_features/frequency_domain/aggregate.py` computes wavelet energies per channel and then aggregates them by modality without averaging channels together.
+    *   Unit tests: `test/blink_features/frequency_domain/test_frequency_domain_blink_features_ear_eeg_eog.py` verifies EAR/EEG/EOG outputs contain modality-specific wavelet energy columns.
 
 ### Flowchart
 
@@ -98,7 +100,11 @@ graph TD
     Tests the calculation of signal energy and TKEO.
 *   **`test/blink_features/blink_events/test_inter_blink_interval.py`**:
     Checks the statistics of blink timing (IBI). Crucially, it verifies that the code correctly handles epochs with *zero* or *one* blink (where IBI is undefined).
-*   **`test/blink_features/frequency_domain/test_frequency_domain_blink_features.py`**:
-    Verifies the Wavelet decomposition (D1-D4 bands). It ensures the correct wavelet family (`db4`) is used and that the energy summation is correct.
+*   **Frequency-domain blink feature tests**:
+    *   `test/blink_features/frequency_domain/test_frequency_domain_blink_features_ear_only.py`
+    *   `test/blink_features/frequency_domain/test_frequency_domain_blink_features_eeg_only.py`
+    *   `test/blink_features/frequency_domain/test_frequency_domain_blink_features_eog_only.py`
+    *   `test/blink_features/frequency_domain/test_frequency_domain_blink_features_ear_eeg_eog.py`
+    These validate the Wavelet decomposition (D1-D4 bands) across EAR, EEG, EOG, and combined modalities, ensuring the correct wavelet family (`db4`) is used and that the energy summation is correct. The EEG-only suite also checks that channel-level energies are aggregated per modality rather than averaging signals across channels.
 *   **`test/blink_features/open_eye/test_open_eye_features.py`**:
     Tests features derived from the "non-blink" periods, such as PERCLOS (percentage of time eyes are closed) and baseline drift.
