@@ -1,4 +1,4 @@
-"""Unit tests for wavelet-based blink frequency features."""
+"""EAR-only unit tests for wavelet-based blink frequency features."""
 
 from __future__ import annotations
 
@@ -12,7 +12,6 @@ from pyblinker.blink_features.frequency_domain import (
     aggregate_frequency_domain_features,
 )
 from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
-from test.segment_config import build_segment_config
 
 from ..utils.helpers import assert_df_has_columns, assert_numeric_or_nan
 
@@ -20,15 +19,19 @@ from ..utils.helpers import assert_df_has_columns, assert_numeric_or_nan
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 
-class TestFrequencyDomainBlinkFeatures(unittest.TestCase):
-    """Validate DWT energy features per epoch."""
+class TestFrequencyDomainBlinkFeaturesEAROnly(unittest.TestCase):
+    """Validate DWT energy features per epoch for EAR-only inputs."""
 
     def setUp(self) -> None:  # noqa: D401
-        raw_path = (
-            PROJECT_ROOT / "test" / "test_files" / "ear_eog_raw.fif"
-        )
+        raw_path = PROJECT_ROOT / "test" / "test_files" / "ear_eog_raw.fif"
         raw = mne.io.read_raw_fif(raw_path, preload=True, verbose=False)
-        segmentation_config = build_segment_config(raw)
+        ear_channel = "EAR-avg_ear"
+        raw.pick([ear_channel])
+        segmentation_config = {
+            "ear": {
+                "channel": ear_channel,
+            }
+        }
         self.epochs = slice_raw_into_mne_epochs_refine_annot(
             raw,
             epoch_len=30.0,
@@ -36,11 +39,12 @@ class TestFrequencyDomainBlinkFeatures(unittest.TestCase):
             progress_bar=False,
             segmentation_type=segmentation_config,
         )
+        self.ear_channel = ear_channel
 
     def test_schema_and_rows(self) -> None:
         """DataFrame has expected columns and indexing for first epochs."""
         df = aggregate_frequency_domain_features(
-            self.epochs, picks="EAR-avg_ear", progress_bar=False
+            self.epochs, picks=self.ear_channel, progress_bar=False
         )
         assert_df_has_columns(
             self,
@@ -64,7 +68,7 @@ class TestFrequencyDomainBlinkFeatures(unittest.TestCase):
         epochs = self.epochs.copy().resample(20.0, npad="auto")
         with self.assertLogs("pyblinker", level="WARNING") as cm:
             df = aggregate_frequency_domain_features(
-                epochs, picks="EAR-avg_ear", progress_bar=False
+                epochs, picks=self.ear_channel, progress_bar=False
             )
         self.assertTrue(
             any(
@@ -81,7 +85,7 @@ class TestFrequencyDomainBlinkFeatures(unittest.TestCase):
     def test_no_blink_epochs(self) -> None:
         """Epochs without blinks yield NaN energies."""
         df = aggregate_frequency_domain_features(
-            self.epochs, picks="EAR-avg_ear", progress_bar=False
+            self.epochs, picks=self.ear_channel, progress_bar=False
         )
         no_blink_idx = self.epochs.metadata.index[
             self.epochs.metadata["blink_onset"].isna()

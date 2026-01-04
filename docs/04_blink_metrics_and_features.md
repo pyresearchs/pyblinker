@@ -98,7 +98,11 @@ graph TD
     Tests the calculation of signal energy and TKEO.
 *   **`test/blink_features/blink_events/test_inter_blink_interval.py`**:
     Checks the statistics of blink timing (IBI). Crucially, it verifies that the code correctly handles epochs with *zero* or *one* blink (where IBI is undefined).
-*   **`test/blink_features/frequency_domain/test_frequency_domain_blink_features.py`**:
-    Verifies the Wavelet decomposition (D1-D4 bands). It ensures the correct wavelet family (`db4`) is used and that the energy summation is correct.
+*   **Frequency-domain blink feature tests**:
+    *   `test/blink_features/frequency_domain/test_frequency_domain_blink_features_ear_only.py`
+    *   `test/blink_features/frequency_domain/test_frequency_domain_blink_features_eeg_only.py`
+    *   `test/blink_features/frequency_domain/test_frequency_domain_blink_features_eog_only.py`
+    *   `test/blink_features/frequency_domain/test_frequency_domain_blink_features_ear_eeg_eog.py`
+    These validate the Wavelet decomposition (D1-D4 bands) across EAR, EEG, EOG, and combined modalities, ensuring the correct wavelet family (`db4`) is used and that the energy summation is correct.
 *   **`test/blink_features/open_eye/test_open_eye_features.py`**:
     Tests features derived from the "non-blink" periods, such as PERCLOS (percentage of time eyes are closed) and baseline drift.
