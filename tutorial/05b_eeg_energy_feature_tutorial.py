@@ -6,6 +6,14 @@ requiring EAR data. The segmentation config enables EEG refinement by omitting
 would disable the modality entirely.
 """
 from pathlib import Path
+import sys
+
+# ruff: noqa: E402
+
+# Ensure repository root is importable when running directly
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 import mne
 
@@ -16,7 +24,6 @@ from pyblinker.utils.evaluation import mat_data
 # -----------------------------------------------------------------------------
 # Project paths
 # -----------------------------------------------------------------------------
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 # -----------------------------------------------------------------------------
 # Load raw data and annotations
