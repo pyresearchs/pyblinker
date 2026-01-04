@@ -43,17 +43,21 @@ raw.set_annotations(
 )
 
 # -----------------------------------------------------------------------------
-# Select EAR channel
+# Select channels (EAR required, EEG optional)
 # -----------------------------------------------------------------------------
 ear_channel = "EAR-avg_ear"
 eeg_channel = "EEG-E8"
-for required in (ear_channel, eeg_channel):
-    if required not in raw.ch_names:
-        raise ValueError(
-            f"Required channel '{required}' not found in raw data."
-        )
+eog_channel = "EOG-EEG-eog_vert_left"
 
-raw.pick([ear_channel, eeg_channel])
+if ear_channel not in raw.ch_names:
+    raise ValueError(
+        f"Required EAR channel '{ear_channel}' not found in raw data. "
+        "Update `ear_channel` to match your recording before running this tutorial."
+    )
+
+picks = [ch for ch in (ear_channel, eeg_channel, eog_channel) if ch in raw.ch_names]
+raw.pick(picks)
+
 SEGMENT_CONFIG = {
     "ear": {
         "channel": ear_channel,
@@ -66,16 +70,23 @@ SEGMENT_CONFIG = {
         "extend_before": True,
         "extend_after": True,
     },
-    "eeg": {
-        "channel": eeg_channel,
-        "seg_type": [],
-        "threshold": None,
-    },
-    "eog": {
-        "seg_type": [],
-        "threshold": None,
-    },
 }
+
+if eeg_channel in picks:
+    SEGMENT_CONFIG["eeg"] = {
+        "channel": eeg_channel,
+        # ``seg_type=[]`` disables EEG refinement but keeps the channel available
+        # for plotting in the report.
+        "seg_type": [],
+        "threshold": None,
+    }
+
+if eog_channel in picks:
+    SEGMENT_CONFIG["eog"] = {
+        "channel": eog_channel,
+        "seg_type": [],
+        "threshold": None,
+    }
 # Slice raw data into epochs
 epochs = slice_raw_into_mne_epochs_refine_annot(
     raw,
@@ -107,7 +118,7 @@ df = compute_energy_features(
 build_ear_energy_report(
     epochs=epochs,
     ear_channel=ear_channel,
-    eeg_channel=eeg_channel,
+    eeg_channel=eeg_channel if eeg_channel in picks else None,
     threshold=SEGMENT_CONFIG["ear"]["threshold"],
     output_path=report_path,
 )

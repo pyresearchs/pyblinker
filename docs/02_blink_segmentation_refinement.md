@@ -47,6 +47,7 @@ graph TD
 * When enabled, each modality still requires an explicit, single-channel selection; missing/empty or non-unique channels raise `ValueError`.
 * Each enabled modality extracts epoch data with `epochs.get_data(picks=[idx])`, so downstream refinement receives a 1D vector per epoch—no implicit averaging across channels.
 * Blink annotations are filtered by `blink_label` prior to per-epoch refinement; onsets/durations stay in seconds, while epoch-local bounds remain in samples.
+* **Practical example**: `tutorial/05a_ear_energy_feature_tutorial.py` shows how to build a segmentation config when only EAR is available, or when optional EEG/EOG channels are present but left as no-op.
 
 ### EAR threshold configuration
 * `slice_raw_into_mne_epochs_refine_annot` no longer accepts an `ear_threshold` convenience argument; EAR thresholds must be defined inside the segmentation config under the `"ear"` key (including `seg_type="threshold_interpolation"` and extension/padding settings) before calling the helper. The configuration in `tutorial/5_ear_energy_feature_tutorial.py` shows the full set of recommended EAR parameters alongside optional EEG/EOG entries.
