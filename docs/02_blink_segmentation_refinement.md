@@ -41,12 +41,15 @@ graph TD
 
 ## Single-channel modality configuration
 
-`slice_raw_into_mne_epochs_refine_annot` now requires an explicit, single-channel selection per modality. The helper `_prepare_epochs_and_modalities` in `pyblinker/segmentation/refinement.py` enforces:
+`slice_raw_into_mne_epochs_refine_annot` now treats modality blocks as opt-in. The helper `_prepare_epochs_and_modalities` in `pyblinker/segmentation/refinement.py` enforces:
 
-* **EAR**: A `"channel"` entry is mandatory. Missing/empty values or multiple matches raise `ValueError`.
-* **EEG/EOG**: Optional. Supplying no channel disables refinement for that modality; supplying an invalid or non-unique channel raises `ValueError`.
+* Modalities missing from the segmentation config, marked as no-op (`seg_type=[]` or `""`), or carrying `channel=None` are skipped without attempting channel validation or data picking.
+* When enabled, each modality still requires an explicit, single-channel selection; missing/empty or non-unique channels raise `ValueError`.
 * Each enabled modality extracts epoch data with `epochs.get_data(picks=[idx])`, so downstream refinement receives a 1D vector per epoch—no implicit averaging across channels.
 * Blink annotations are filtered by `blink_label` prior to per-epoch refinement; onsets/durations stay in seconds, while epoch-local bounds remain in samples.
+* **Practical examples**:
+  * `tutorial/05a_ear_energy_feature_tutorial.py` shows how to build a segmentation config when only EAR is available, or when optional EEG/EOG channels are present but left as no-op.
+  * `tutorial/05b_eeg_energy_feature_tutorial.py` shows an EEG-focused setup; omitting ``seg_type`` (or providing a non-empty value) keeps EEG refinement enabled, while ``seg_type=[]`` disables EEG entirely.
 
 ### EAR threshold configuration
 * `slice_raw_into_mne_epochs_refine_annot` no longer accepts an `ear_threshold` convenience argument; EAR thresholds must be defined inside the segmentation config under the `"ear"` key (including `seg_type="threshold_interpolation"` and extension/padding settings) before calling the helper. The configuration in `tutorial/5_ear_energy_feature_tutorial.py` shows the full set of recommended EAR parameters alongside optional EEG/EOG entries.
@@ -54,9 +57,9 @@ graph TD
 * Unit tests: `test/blink_feature_ear/energy/test_energy_features.py` builds the explicit EAR segmentation config when refining epochs for energy metrics.
 
 ### Verification
-* Code: `pyblinker/segmentation/refinement.py` (`_prepare_epochs_and_modalities`, `_refine_epoch_modalities`, `slice_raw_into_mne_epochs_refine_annot`).
+* Code: `pyblinker/segmentation/refinement.py` (`_prepare_epochs_and_modalities`, `_modality_enabled`, `_refine_epoch_modalities`, `slice_raw_into_mne_epochs_refine_annot`).
 * Tutorials: `tutorial/05c_minimal_blink_feature_tutorial.py`, `tutorial/5_ear_energy_feature_tutorial.py`.
-* Tests: `test/segmentation/test_ear_refinement_outputs.py`, `test/epoch_refine_annotation/test_refine_annot_by_channel.py`.
+* Tests: `test/segmentation/test_ear_refinement_outputs.py`, `test/segmentation/test_refine_annot_by_channel.py`, `test/segmentation/test_slice_raw_config_variants.py`.
 
 ## Related Code
 
@@ -88,3 +91,5 @@ graph TD
     Validates the low-level math functions (like `find_threshold_crossing_triplet`). It ensures that the sub-sample interpolation is mathematically correct.
 *   **`test/segmentation/test_refine_annot_by_channel.py`**:
     Verifies that refinement can be applied independently to different channels (e.g., refining an EEG blink using EEG data while simultaneously refining an EAR blink using video data) without cross-contamination.
+*   **`test/segmentation/test_slice_raw_config_variants.py`**:
+    Confirms that `slice_raw_into_mne_epochs_refine_annot` safely handles partial or no-op segmentation configs without attempting to validate or pick missing modalities.

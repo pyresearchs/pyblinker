@@ -84,10 +84,40 @@ def _prepare_segmentation_config(
     """Return a defensive copy of the segmentation settings."""
 
     config: Dict[str, Any] = dict(segmentation_type or {})
-    for modality in ("ear", "eeg", "eog"):
-        if modality in config and isinstance(config[modality], dict):
-            config[modality] = dict(config[modality])
+    for modality, modality_config in list(config.items()):
+        if isinstance(modality_config, dict):
+            config[modality] = dict(modality_config)
     return config
+
+
+def _is_noop_segmentation(modality_config: Dict[str, Any]) -> bool:
+    """Return True when segmentation is explicitly disabled for a modality."""
+
+    seg_type = modality_config.get("seg_type")
+    if isinstance(seg_type, str):
+        return not seg_type.strip()
+    if isinstance(seg_type, Sequence) and not isinstance(seg_type, str):
+        return len(seg_type) == 0
+    return False
+
+
+def _modality_enabled(segment_config: Dict[str, Any], modality: str) -> bool:
+    """Return True when a modality should be refined."""
+
+    modality_config = segment_config.get(modality)
+    if not isinstance(modality_config, dict):
+        return False
+    if _is_noop_segmentation(modality_config):
+        return False
+
+    channel_value = modality_config.get("channel")
+    if channel_value is None:
+        return False
+    if isinstance(channel_value, str):
+        return bool(channel_value.strip())
+    if isinstance(channel_value, Sequence) and not isinstance(channel_value, str):
+        return len(channel_value) > 0
+    return False
 
 
 def _compute_epoch_blink_bounds(
@@ -238,12 +268,12 @@ def _prepare_epochs_and_modalities(
        ``tmax=epoch_len - 1/sfreq`` to preserve the previous inclusive/exclusive
        boundaries.
     3. Each modality resolves an explicit, single channel from ``segment_config``:
-       - EAR must provide exactly one ``"channel"`` entry. Missing, empty, or
-         multi-channel values raise ``ValueError``.
-       - EEG and EOG are optional. If ``"channel"`` is missing/None/empty, the
-         modality is disabled (``have_eeg/eog=False``) and the returned data is
-         ``None``. If provided but not found or not singular, ``ValueError`` is
-         raised.
+       - Modalities missing from ``segment_config`` or marked as no-op
+         (``seg_type=[]``/``""``) are skipped entirely.
+       - Modalities whose ``"channel"`` entry is missing/``None``/empty are
+         treated as disabled without attempting channel validation.
+       - When enabled, a single ``"channel"`` value is validated; missing or
+         non-unique channels raise ``ValueError``.
     4. Epoch data are extracted with ``epochs.get_data(picks=[idx])`` so each
        enabled modality yields an array shaped ``(n_epochs, 1, n_times)``. The
        function retains ``None`` for disabled modalities.
@@ -276,17 +306,29 @@ def _prepare_epochs_and_modalities(
         verbose=False,
     )
 
-    ear_idx = _resolve_single_channel_pick(raw, segment_config.get("ear", {}), "ear", required=True)
-    eeg_idx = _resolve_single_channel_pick(raw, segment_config.get("eeg", {}), "eeg", required=False)
-    eog_idx = _resolve_single_channel_pick(raw, segment_config.get("eog", {}), "eog", required=False)
+    have_ear = _modality_enabled(segment_config, "ear")
+    have_eeg = _modality_enabled(segment_config, "eeg")
+    have_eog = _modality_enabled(segment_config, "eog")
 
-    have_ear = ear_idx is not None
-    have_eeg = eeg_idx is not None
-    have_eog = eog_idx is not None
+    ear_idx = (
+        _resolve_single_channel_pick(raw, segment_config.get("ear", {}), "ear", required=True)
+        if have_ear
+        else None
+    )
+    eeg_idx = (
+        _resolve_single_channel_pick(raw, segment_config.get("eeg", {}), "eeg", required=False)
+        if have_eeg
+        else None
+    )
+    eog_idx = (
+        _resolve_single_channel_pick(raw, segment_config.get("eog", {}), "eog", required=False)
+        if have_eog
+        else None
+    )
 
-    data_ear = epochs.get_data(picks=[ear_idx]) if have_ear else None
-    data_eeg = epochs.get_data(picks=[eeg_idx]) if have_eeg else None
-    data_eog = epochs.get_data(picks=[eog_idx]) if have_eog else None
+    data_ear = epochs.get_data(picks=[ear_idx]) if have_ear and ear_idx is not None else None
+    data_eeg = epochs.get_data(picks=[eeg_idx]) if have_eeg and eeg_idx is not None else None
+    data_eog = epochs.get_data(picks=[eog_idx]) if have_eog and eog_idx is not None else None
 
     n_epochs = len(epochs)
     n_samp_epoch = (

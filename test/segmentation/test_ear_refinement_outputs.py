@@ -26,6 +26,14 @@ from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_a
 from pyblinker.utils.evaluation import mat_data
 
 
+def _drop_modality_columns(metadata: pd.DataFrame, modality: str) -> pd.DataFrame:
+    """Remove modality-specific columns (e.g., *_eeg) from a metadata frame."""
+
+    suffix = f"_{modality}"
+    columns_to_drop = [col for col in metadata.columns if col.endswith(suffix)]
+    return metadata.drop(columns=columns_to_drop, errors="ignore")
+
+
 def _assert_metadata_equivalent(actual: pd.DataFrame, expected: pd.DataFrame, *, atol: float = 1e-8) -> None:
     pdt.assert_index_equal(actual.index, expected.index)
     pdt.assert_index_equal(actual.columns, expected.columns)
@@ -104,7 +112,10 @@ def test_slice_raw_into_mne_epochs_matches_reference() -> None:
         rtol=0,
         atol=1e-8,
     )
-    _assert_metadata_equivalent(epochs.metadata, reference_epochs.metadata)
+    # EEG refinement is explicitly disabled (``seg_type=[]``), so EEG metadata
+    # columns are omitted even though the channel is present.
+    expected_metadata = _drop_modality_columns(reference_epochs.metadata, "eeg")
+    _assert_metadata_equivalent(epochs.metadata, expected_metadata)
 
 
 def test_multi_threshold_refinement_matches_reference_csv() -> None:
