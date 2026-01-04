@@ -53,7 +53,7 @@ SEGMENT_CONFIG = {
     "eeg": {
         "channel": eeg_channel,
         # Leaving ``seg_type`` empty (e.g., []) disables EEG refinement. Omit it
-        # or provide any non-empty value to keep EEG metadata columns available. Currently,it seem no refinement is applied for EEG.
+        # or, provide any non-empty value to keep EEG metadata columns available. Currently,it seem no refinement is applied for EEG.
     }
 }
 
