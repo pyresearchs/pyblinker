@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import unittest
 from pathlib import Path
 
 import mne
@@ -15,34 +16,44 @@ EEG_CHANNEL = "EEG-E8"
 EOG_CHANNEL = "EOG-EEG-eog_vert_left"
 
 
-def test_eeg_only_runs_without_ear_channel() -> None:
-    """EEG-only config (with optional EOG) runs and yields EEG outputs."""
+class TestEegOnlyKinematicPipeline(unittest.TestCase):
+    """EEG-only kinematic pipeline coverage."""
 
-    raw_path = PROJECT_ROOT / "test" / "test_files" / "ear_eog_raw.fif"
-    raw = mne.io.read_raw_fif(raw_path, preload=True, verbose=False)
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.raw_path = PROJECT_ROOT / "test" / "test_files" / "ear_eog_raw.fif"
 
-    segment_config = {
-        "eeg": {
-            "channel": EEG_CHANNEL,
-            "seg_type": "base",
-        },
-        "eog": {
-            "channel": EOG_CHANNEL,
-            "seg_type": "base",
-        },
-    }
+    def test_eeg_only_runs_without_ear_channel(self) -> None:
+        """EEG-only config (with optional EOG) runs and yields EEG outputs."""
 
-    epochs = slice_raw_into_mne_epochs_refine_annot(
-        raw,
-        epoch_len=30.0,
-        blink_label=None,
-        progress_bar=False,
-        segmentation_type=segment_config,
-    )
+        raw = mne.io.read_raw_fif(self.raw_path, preload=True, verbose=False)
 
-    df = compute_kinematic_features(epochs, picks=EEG_CHANNEL)
+        segment_config = {
+            "eeg": {
+                "channel": EEG_CHANNEL,
+                "seg_type": "base",
+            },
+            "eog": {
+                "channel": EOG_CHANNEL,
+                "seg_type": "base",
+            },
+        }
 
-    assert "blink_onset_ear" not in epochs.metadata.columns
-    assert "blink_onset_eeg" in epochs.metadata.columns
-    assert all(col.endswith(f"_{EEG_CHANNEL}") for col in df.columns)
-    assert df.notna().sum().sum() > 0
+        epochs = slice_raw_into_mne_epochs_refine_annot(
+            raw,
+            epoch_len=30.0,
+            blink_label=None,
+            progress_bar=False,
+            segmentation_type=segment_config,
+        )
+
+        df = compute_kinematic_features(epochs, picks=EEG_CHANNEL)
+
+        self.assertNotIn("blink_onset_ear", epochs.metadata.columns)
+        self.assertIn("blink_onset_eeg", epochs.metadata.columns)
+        self.assertTrue(all(col.endswith(f"_{EEG_CHANNEL}") for col in df.columns))
+        self.assertGreater(df.notna().sum().sum(), 0)
+
+
+if __name__ == "__main__":
+    unittest.main()

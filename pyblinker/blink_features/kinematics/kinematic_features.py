@@ -13,9 +13,9 @@ from typing import Dict, List, Sequence
 
 
 import mne
-import numpy as np
 import pandas as pd
 
+from .._core_blink import CANONICAL_METRIC_STEMS
 from .per_blink import compute_segment_kinematics
 from ..energy.helpers import extract_blink_windows, segment_to_samples, _safe_stats
 from ...utils.epoch_utils import build_metric_stat_columns, resolve_channels
@@ -23,9 +23,9 @@ from ...utils.channel_utils import normalize_picks
 
 logger = get_logger(__name__)
 
-# Derive metric and statistic names from helper functions to avoid hardcoding
-_METRICS = tuple(compute_segment_kinematics(np.zeros(3), 1.0).keys())
-_STATS = tuple(_safe_stats([]).keys())
+# Base-method metric and statistic names (kinematics defaults to base per modality)
+_METRICS = tuple(f"{stem}_base" for stem in CANONICAL_METRIC_STEMS)
+_STATS = ("mean", "std", "cv")
 
 
 def _infer_modality(channel_name: str, info: mne.Info) -> str:
