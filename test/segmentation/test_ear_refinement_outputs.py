@@ -7,7 +7,7 @@ import sys
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
-DATA_DIR = PROJECT_ROOT / "manual_annotation_feature_calculation_data"
+DATA_DIR = PROJECT_ROOT / "test" / "test_files"
 
 import mne
 import numpy as np
@@ -60,7 +60,7 @@ def _assert_metadata_equivalent(actual: pd.DataFrame, expected: pd.DataFrame, *,
 
 
 def test_slice_raw_into_mne_epochs_matches_reference() -> None:
-    raw_path = DATA_DIR / "ear_eog.fif"
+    raw_path = DATA_DIR / "ear_eog_raw.fif"
     csv_path = DATA_DIR / "ear_eog.csv"
     reference_path = DATA_DIR / "ear_metadata_threshold_interpolation.fif"
 
@@ -109,7 +109,7 @@ def test_slice_raw_into_mne_epochs_matches_reference() -> None:
 
 def test_multi_threshold_refinement_matches_reference_csv() -> None:
     annotation_csv = DATA_DIR / "ear_eog.csv"
-    fif_path = DATA_DIR / "ear_eog.fif"
+    fif_path = DATA_DIR / "ear_eog_raw.fif"
     reference_csv = DATA_DIR / "ear_multi_threshold_refined_blinks.csv"
 
     annotations = load_coarse_blinks(annotation_csv)

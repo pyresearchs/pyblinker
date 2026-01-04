@@ -18,12 +18,14 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 # -----------------------------------------------------------------------------
 raw_path = (
     PROJECT_ROOT
-    / "manual_annotation_feature_calculation_data"
-    / "ear_eog.fif"
+    / "test"
+    / "test_files"
+    / "ear_eog_raw.fif"
 )
 csv_path = (
     PROJECT_ROOT
-    / "manual_annotation_feature_calculation_data"
+    / "test"
+    / "test_files"
     / "ear_eog.csv"
 )
 
@@ -85,7 +87,8 @@ epochs = slice_raw_into_mne_epochs_refine_annot(
 # # Persist the computed epochs for inspection/reuse
 # epochs_out_path = (
 #     PROJECT_ROOT
-#     / "manual_annotation_feature_calculation_data"
+#     / "test"
+#     / "test_files"
 #     / "ear_metadata_threshold_interpolation.fif"
 # )
 # epochs_out_path.parent.mkdir(parents=True, exist_ok=True)

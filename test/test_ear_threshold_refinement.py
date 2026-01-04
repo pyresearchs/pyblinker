@@ -19,9 +19,9 @@ from pyblinker.blink_features.ear_metrics import (
 
 @pytest.fixture(scope="module")
 def ear_data() -> tuple[np.ndarray, float, pd.DataFrame]:
-    data_dir = Path(__file__).resolve().parents[1] / "manual_annotation_feature_calculation_data"
+    data_dir = Path(__file__).resolve().parents[1] / "test" / "test_files"
     annotation_csv = data_dir / "ear_eog.csv"
-    fif_path = data_dir / "ear_eog.fif"
+    fif_path = data_dir / "ear_eog_raw.fif"
 
     if not annotation_csv.exists() or not fif_path.exists():
         pytest.skip("EAR tutorial inputs are missing")

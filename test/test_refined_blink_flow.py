@@ -10,9 +10,9 @@ from pyblinker.outside_annotation import BlinkRegionRefinementFlow, RefinementCo
 
 @pytest.fixture(scope="module")
 def flow_results() -> pd.DataFrame:
-    data_dir = Path(__file__).resolve().parents[1] / "manual_annotation_feature_calculation_data"
+    data_dir = Path(__file__).resolve().parents[1] / "test" / "test_files"
     annotations = data_dir / "ear_eog.csv"
-    fif_path = data_dir / "ear_eog.fif"
+    fif_path = data_dir / "ear_eog_raw.fif"
 
     if not annotations.exists() or not fif_path.exists():
         pytest.skip("Required blink annotation or FIF inputs are missing")
