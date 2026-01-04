@@ -89,6 +89,25 @@ graph TD
     Focuses on EEG/EOG signals, demonstrating features like `blink_signal_energy` and `teager_kaiser_energy` which are specific to voltage time-series analysis.
 *   **`tutorial/05a_ear_energy_feature_tutorial.py`**:
     A stage 5 (feature extraction) walkthrough that refines EAR annotations, slices epochs, and calculates energy features on the EAR channel to show how "energy" concepts translate to the unitless aspect ratio signal.
+*   **`tutorial/06a_ear_kinematics_feature_tutorial.py`**:
+    Demonstrates EAR-only kinematic calculations without requiring EEG channels or placeholder SEGMENT_CONFIG entries.
+*   **`tutorial/06b_eeg_kinematics_feature_tutorial.py`**:
+    Shows EEG/EOG kinematic aggregation with SEGMENT_CONFIG containing only the voltage modalities that are present.
+
+## Kinematic channel flexibility
+
+*Feature/change*: Kinematic feature extraction now explicitly supports EAR-only, EEG-only, mixed, and partial `SEGMENT_CONFIG` inputs without requiring dummy modality keys. Channel validation is skipped for omitted modalities, while provided channels are still validated strictly.
+
+*Related Code*:
+*   `pyblinker/segmentation/refinement.py` (modality gating and channel resolution during segmentation)
+*   `pyblinker/blink_features/kinematics/kinematic_features.py` (channel selection and aggregation)
+
+*Tutorials*:
+*   `tutorial/06a_ear_kinematics_feature_tutorial.py`
+*   `tutorial/06b_eeg_kinematics_feature_tutorial.py`
+
+*Unit Tests*:
+*   `test/blink_features/kinematics/test_optional_channels_and_configs.py`: Exercises EAR-only, EEG-only, combined, and incomplete `SEGMENT_CONFIG` shapes to ensure channel picking and refinement do not crash when modalities are missing.
 
 ## Unit Tests
 
@@ -96,6 +115,18 @@ graph TD
     The master runner for the feature subsystem. It ensures that *all* feature aggregators (kinematics, energy, etc.) can run together on a standard dataset without conflict.
 *   **`test/blink_features/kinematics/test_kinematic_features.py`**:
     Validates formulas for velocity, acceleration, and slope. It likely uses simple geometric shapes (triangles, bells) where the derivative is known to verify the code's accuracy.
+*   **`test/blink_features/kinematics/test_optional_channels_and_configs.py`**:
+    Confirms kinematic aggregation accepts EAR-only, EEG-only, mixed, and partial `SEGMENT_CONFIG` inputs without placeholder channels.
+*   **`test/blink_features/kinematics/test_kinematics_ear_only_config.py`**:
+    Scenario A coverage for EAR-only refinement and feature aggregation without EEG keys or placeholders.
+*   **`test/blink_features/kinematics/test_kinematics_eeg_only_config.py`**:
+    Scenario B coverage showing EEG (with optional EOG) can run without EAR configuration.
+*   **`test/blink_features/kinematics/test_kinematics_eog_only_config.py`**:
+    EOG-only segmentation and aggregation to confirm the modality runs independently.
+*   **`test/blink_features/kinematics/test_kinematics_ear_eeg_eog.py`**:
+    Full EAR+EEG+EOG config ensures all modalities remain supported together.
+*   **`test/blink_features/kinematics/test_kinematics_incomplete_config.py`**:
+    Scenario D coverage demonstrating omitted modality keys do not block processing of configured channels.
 *   **`test/blink_features/energy/test_energy_features.py`**:
     Tests the calculation of signal energy and TKEO.
 *   **`test/blink_features/blink_events/test_inter_blink_interval.py`**:
