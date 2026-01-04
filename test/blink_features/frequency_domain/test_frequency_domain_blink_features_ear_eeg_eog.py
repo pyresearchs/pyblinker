@@ -12,7 +12,6 @@ from pyblinker.blink_features.frequency_domain import (
     aggregate_frequency_domain_features,
 )
 from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
-from test.segment_config import build_segment_config
 
 from ..utils.helpers import assert_df_has_columns, assert_numeric_or_nan
 
@@ -28,7 +27,21 @@ class TestFrequencyDomainBlinkFeaturesAllModalities(unittest.TestCase):
         raw = mne.io.read_raw_fif(raw_path, preload=True, verbose=False)
         channels = ["EAR-avg_ear", "EEG-E8", "EOG-EEG-eog_vert_left"]
         raw.pick(channels)
-        segmentation_config = build_segment_config(raw)
+        segmentation_config = {
+            "ear": {
+                "channel": "EAR-avg_ear",
+                "seg_type": "threshold_interpolation",
+                "threshold": 0.260,
+                "annotation_time_unit": "seconds",
+                "max_extension": 0.35,
+                "extension_step": 0.05,
+                "padding": 0.05,
+                "extend_before": True,
+                "extend_after": True,
+            },
+            "eeg": {"channel": "EEG-E8"},
+            "eog": {"channel": "EOG-EEG-eog_vert_left"},
+        }
         self.epochs = slice_raw_into_mne_epochs_refine_annot(
             raw,
             epoch_len=30.0,

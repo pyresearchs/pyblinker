@@ -30,6 +30,14 @@ class TestFrequencyDomainBlinkFeaturesEAROnly(unittest.TestCase):
         segmentation_config = {
             "ear": {
                 "channel": ear_channel,
+                "seg_type": "threshold_interpolation",
+                "threshold": 0.260,
+                "annotation_time_unit": "seconds",
+                "max_extension": 0.35,
+                "extension_step": 0.05,
+                "padding": 0.05,
+                "extend_before": True,
+                "extend_after": True,
             }
         }
         self.epochs = slice_raw_into_mne_epochs_refine_annot(
