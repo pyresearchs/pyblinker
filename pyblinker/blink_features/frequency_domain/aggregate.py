@@ -3,7 +3,7 @@
 from __future__ import annotations
 from pyblinker.logging import get_logger
 
-from typing import Dict, List, Sequence
+from typing import Dict, List, Mapping, Sequence
 
 import mne
 import numpy as np
@@ -28,6 +28,46 @@ def _infer_modality(channel_name: str, info: mne.Info) -> str:
     if ch_type == "eeg" or "eeg" in ch_lower:
         return "eeg"
     return ch_type.lower()
+
+
+def _compute_epoch_wavelet_record(
+    *,
+    epoch_index: int,
+    metadata_row: pd.Series | Mapping[str, object],
+    sfreq: float,
+    n_times: int,
+    channel_data: Dict[str, np.ndarray],
+    modality_channels: Dict[str, List[str]],
+    modality_order: List[str],
+) -> Dict[str, float]:
+    """Compute modality-aggregated wavelet energies for a single epoch."""
+
+    record: Dict[str, float] = {}
+    for modality in modality_order:
+        modality_levels: Dict[int, List[float]] = {i: [] for i in range(1, 5)}
+        for ch in modality_channels[modality]:
+            windows = extract_blink_windows(metadata_row, ch, epoch_index)
+            level_vals: Dict[int, List[float]] = {i: [] for i in range(1, 5)}
+            for onset_s, duration_s in windows:
+                sl = segment_to_samples(onset_s, duration_s, sfreq, n_times)
+                segment = channel_data[ch][epoch_index, sl]
+                energies = _compute_wavelet_energies(segment, sfreq)
+                for lvl, val in enumerate(energies, start=1):
+                    level_vals[lvl].append(val)
+            for lvl in range(1, 5):
+                vals = level_vals[lvl]
+                if not vals or np.all(np.isnan(vals)):
+                    modality_levels[lvl].append(float("nan"))
+                else:
+                    modality_levels[lvl].append(float(np.nanmean(vals)))
+        for lvl in range(1, 5):
+            vals = modality_levels[lvl]
+            key = f"wavelet_energy_d{lvl}_{modality}"
+            if not vals or np.all(np.isnan(vals)):
+                record[key] = float("nan")
+            else:
+                record[key] = float(np.nanmean(vals))
+    return record
 
 
 class FrequencyDomainBlinkFeatureExtractor:
@@ -127,31 +167,15 @@ class FrequencyDomainBlinkFeatureExtractor:
                 if isinstance(self.epochs.metadata, pd.DataFrame)
                 else pd.Series(dtype=float)
             )
-            record: Dict[str, float] = {}
-            for modality in modality_order:
-                modality_levels: Dict[int, List[float]] = {i: [] for i in range(1, 5)}
-                for ch in modality_channels[modality]:
-                    windows = extract_blink_windows(metadata_row, ch, ei)
-                    level_vals: Dict[int, List[float]] = {i: [] for i in range(1, 5)}
-                    for onset_s, duration_s in windows:
-                        sl = segment_to_samples(onset_s, duration_s, sfreq, n_times)
-                        segment = channel_data[ch][ei, sl]
-                        energies = _compute_wavelet_energies(segment, sfreq)
-                        for lvl, val in enumerate(energies, start=1):
-                            level_vals[lvl].append(val)
-                    for lvl in range(1, 5):
-                        vals = level_vals[lvl]
-                        if not vals or np.all(np.isnan(vals)):
-                            modality_levels[lvl].append(float("nan"))
-                        else:
-                            modality_levels[lvl].append(float(np.nanmean(vals)))
-                for lvl in range(1, 5):
-                    vals = modality_levels[lvl]
-                    key = f"wavelet_energy_d{lvl}_{modality}"
-                    if not vals or np.all(np.isnan(vals)):
-                        record[key] = float("nan")
-                    else:
-                        record[key] = float(np.nanmean(vals))
+            record = _compute_epoch_wavelet_record(
+                epoch_index=ei,
+                metadata_row=metadata_row,
+                sfreq=sfreq,
+                n_times=n_times,
+                channel_data=channel_data,
+                modality_channels=modality_channels,
+                modality_order=modality_order,
+            )
             records.append(record)
 
         columns = [
