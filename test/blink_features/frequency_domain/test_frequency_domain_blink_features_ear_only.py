@@ -57,7 +57,7 @@ class TestFrequencyDomainBlinkFeaturesEAROnly(unittest.TestCase):
         assert_df_has_columns(
             self,
             df,
-            ["ep"] + [f"wavelet_energy_d{i}" for i in range(1, 5)],
+            ["ep"] + [f"wavelet_energy_d{i}_ear" for i in range(1, 5)],
         )
         self.assertEqual(len(df), len(self.epochs))
         for idx in range(4):
@@ -85,9 +85,9 @@ class TestFrequencyDomainBlinkFeaturesEAROnly(unittest.TestCase):
             ),
             msg="Expected warning log missing",
         )
-        self.assertTrue(df["wavelet_energy_d1"].isna().all())
+        self.assertTrue(df["wavelet_energy_d1_ear"].isna().all())
         assert_df_has_columns(
-            self, df, ["ep"] + [f"wavelet_energy_d{i}" for i in range(2, 5)]
+            self, df, ["ep"] + [f"wavelet_energy_d{i}_ear" for i in range(2, 5)]
         )
 
     def test_no_blink_epochs(self) -> None:
@@ -99,7 +99,7 @@ class TestFrequencyDomainBlinkFeaturesEAROnly(unittest.TestCase):
             self.epochs.metadata["blink_onset"].isna()
         ][0]
         self.assertTrue(
-            df.loc[no_blink_idx, [f"wavelet_energy_d{i}" for i in range(1, 5)]].isna().all()
+            df.loc[no_blink_idx, [f"wavelet_energy_d{i}_ear" for i in range(1, 5)]].isna().all()
         )
 
 

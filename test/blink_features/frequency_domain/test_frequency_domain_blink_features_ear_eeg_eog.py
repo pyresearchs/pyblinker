@@ -56,16 +56,29 @@ class TestFrequencyDomainBlinkFeaturesAllModalities(unittest.TestCase):
         df = aggregate_frequency_domain_features(
             self.epochs, picks=self.channels, progress_bar=False
         )
+        expected_cols = [
+            "ep",
+            *[
+                f"wavelet_energy_d{i}_{modality}"
+                for modality in ("ear", "eeg", "eog")
+                for i in range(1, 5)
+            ],
+        ]
         assert_df_has_columns(
             self,
             df,
-            ["ep"] + [f"wavelet_energy_d{i}" for i in range(1, 5)],
+            expected_cols,
         )
         self.assertEqual(len(df), len(self.epochs))
         for idx in range(4):
             self.assertIn(idx, df.index)
             self.assertEqual(df.iloc[idx]["ep"], idx)
             assert_numeric_or_nan(self, df.iloc[idx].drop(labels="ep"))
+        # Ensure modality-specific energies differ (no channel averaging)
+        self.assertTrue(
+            (df["wavelet_energy_d2_ear"] != df["wavelet_energy_d2_eeg"]).any()
+            or (df["wavelet_energy_d2_ear"].isna() & df["wavelet_energy_d2_eeg"].isna()).all(),
+        )
 
     def test_requires_mne_object(self) -> None:
         """Extractor must have epochs or raw defined."""
@@ -87,9 +100,16 @@ class TestFrequencyDomainBlinkFeaturesAllModalities(unittest.TestCase):
             ),
             msg="Expected warning log missing",
         )
-        self.assertTrue(df["wavelet_energy_d1"].isna().all())
+        self.assertTrue(df["wavelet_energy_d1_ear"].isna().all())
+        self.assertTrue(df["wavelet_energy_d1_eeg"].isna().all())
+        self.assertTrue(df["wavelet_energy_d1_eog"].isna().all())
         assert_df_has_columns(
-            self, df, ["ep"] + [f"wavelet_energy_d{i}" for i in range(2, 5)]
+            self,
+            df,
+            [
+                "ep",
+                *[f"wavelet_energy_d{i}_{modality}" for modality in ("ear", "eeg", "eog") for i in range(2, 5)],
+            ],
         )
 
     def test_no_blink_epochs(self) -> None:
@@ -101,7 +121,7 @@ class TestFrequencyDomainBlinkFeaturesAllModalities(unittest.TestCase):
             self.epochs.metadata["blink_onset"].isna()
         ][0]
         self.assertTrue(
-            df.loc[no_blink_idx, [f"wavelet_energy_d{i}" for i in range(1, 5)]].isna().all()
+            df.loc[no_blink_idx, [f"wavelet_energy_d{i}_{modality}" for modality in ("ear", "eeg", "eog") for i in range(1, 5)]].isna().all()
         )
 
 

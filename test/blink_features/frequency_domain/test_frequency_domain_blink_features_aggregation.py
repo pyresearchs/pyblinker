@@ -49,7 +49,7 @@ class TestFrequencyDomainAggregation(unittest.TestCase):
             self,
             df,
             ["ep"]
-            + [f"wavelet_energy_d{i}" for i in range(1, 5)]
+            + [f"wavelet_energy_d{i}_ear" for i in range(1, 5)]
             + ["blink_count"],
         )
         assert_numeric_or_nan(self, df.drop(columns=["ep"]).iloc[0])

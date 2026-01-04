@@ -6,11 +6,14 @@ import unittest
 from pathlib import Path
 
 import mne
+import numpy as np
+import pandas as pd
 
 from pyblinker.blink_features.frequency_domain import (
     FrequencyDomainBlinkFeatureExtractor,
     aggregate_frequency_domain_features,
 )
+from pyblinker.blink_features.frequency_domain.features import _compute_wavelet_energies
 from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
 
 from ..utils.helpers import assert_df_has_columns, assert_numeric_or_nan
@@ -49,7 +52,7 @@ class TestFrequencyDomainBlinkFeaturesEEGOnly(unittest.TestCase):
         assert_df_has_columns(
             self,
             df,
-            ["ep"] + [f"wavelet_energy_d{i}" for i in range(1, 5)],
+            ["ep"] + [f"wavelet_energy_d{i}_eeg" for i in range(1, 5)],
         )
         self.assertEqual(len(df), len(self.epochs))
         for idx in range(4):
@@ -77,9 +80,9 @@ class TestFrequencyDomainBlinkFeaturesEEGOnly(unittest.TestCase):
             ),
             msg="Expected warning log missing",
         )
-        self.assertTrue(df["wavelet_energy_d1"].isna().all())
+        self.assertTrue(df["wavelet_energy_d1_eeg"].isna().all())
         assert_df_has_columns(
-            self, df, ["ep"] + [f"wavelet_energy_d{i}" for i in range(2, 5)]
+            self, df, ["ep"] + [f"wavelet_energy_d{i}_eeg" for i in range(2, 5)]
         )
 
     def test_no_blink_epochs(self) -> None:
@@ -91,8 +94,38 @@ class TestFrequencyDomainBlinkFeaturesEEGOnly(unittest.TestCase):
             self.epochs.metadata["blink_onset"].isna()
         ][0]
         self.assertTrue(
-            df.loc[no_blink_idx, [f"wavelet_energy_d{i}" for i in range(1, 5)]].isna().all()
+            df.loc[no_blink_idx, [f"wavelet_energy_d{i}_eeg" for i in range(1, 5)]].isna().all()
         )
+
+    def test_multiple_eeg_channels_aggregated_by_modality(self) -> None:
+        """Energies are computed per channel then aggregated by modality."""
+        sfreq = 100.0
+        n_times = 200
+        t = np.arange(n_times) / sfreq
+        sine = np.sin(2 * np.pi * 5 * t)  # non-zero energy channel
+        zeros = np.zeros_like(sine)  # zero-energy channel
+        data = np.stack([sine, zeros])[np.newaxis, ...]
+
+        info = mne.create_info(ch_names=["EEG-1", "EEG-2"], sfreq=sfreq, ch_types="eeg")
+        events = np.array([[0, 0, 1]])
+        metadata = pd.DataFrame({"blink_onset": [0.0], "blink_duration": [2.0]})
+        epochs = mne.EpochsArray(
+            data, info, events=events, event_id={"blink": 1}, metadata=metadata, verbose=False
+        )
+
+        df = aggregate_frequency_domain_features(
+            epochs, picks=["EEG-1", "EEG-2"], progress_bar=False
+        )
+        energies = df.iloc[0][[f"wavelet_energy_d{i}_eeg" for i in range(1, 5)]].to_numpy()
+
+        ch1_energy = _compute_wavelet_energies(sine, sfreq)
+        ch2_energy = _compute_wavelet_energies(zeros, sfreq)
+        expected_modal = np.nanmean(np.vstack([ch1_energy, ch2_energy]), axis=0)
+        np.testing.assert_allclose(energies, expected_modal, rtol=1e-6, atol=1e-6)
+
+        averaged_signal = (sine + zeros) / 2.0
+        averaged_energy = _compute_wavelet_energies(averaged_signal, sfreq)
+        self.assertFalse(np.allclose(energies, averaged_energy, rtol=1e-6, atol=1e-6))
 
 
 if __name__ == "__main__":
