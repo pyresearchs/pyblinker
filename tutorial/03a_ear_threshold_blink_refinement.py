@@ -49,13 +49,13 @@ from pyblinker.outside_annotation import build_refined_blink_report  # noqa: E40
 def main() -> None:
     save_reports = os.environ.get("PYBLINKER_SAVE_REPORTS", "1") != "0"
     project_root = PROJECT_ROOT
-    data_dir = project_root / "manual_annotation_feature_calculation_data"
+    data_dir = project_root / "test" / "test_files"
     output_dir = project_root / "tutorial_outputs"
     if save_reports:
         output_dir.mkdir(parents=True, exist_ok=True)
 
     annotation_csv = data_dir / "ear_eog.csv"
-    fif_path = data_dir / "ear_eog.fif"
+    fif_path = data_dir / "ear_eog_raw.fif"
 
     # User-tunable parameters
     ear_threshold = 0.26

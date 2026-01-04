@@ -2,8 +2,8 @@
 
 What this tutorial does (high level)
 ------------------------------------
-1. Loads manual blink annotations from ``manual_annotation_feature_calculation_data/ear_eog.csv``.
-2. Loads the corresponding MNE FIF recording at ``manual_annotation_feature_calculation_data/ear_eog.fif``.
+1. Loads manual blink annotations from ``test/test_files/ear_eog.csv``.
+2. Loads the corresponding MNE FIF recording at ``test/test_files/ear_eog_raw.fif``.
 3. Runs the blink refinement pipeline (zero-crossings, optional fitting, and properties) on the
    ``EEG-E8`` channel.
 4. Writes the merged metrics to ``tutorial_outputs/refined_blink_metrics.csv`` for inspection.
@@ -36,9 +36,9 @@ from pyblinker.outside_annotation import (
 
 
 def main() -> None:
-    data_dir = Path(__file__).resolve().parents[1] / "manual_annotation_feature_calculation_data"
+    data_dir = Path(__file__).resolve().parents[1] / "test" / "test_files"
     annotations = data_dir / "ear_eog.csv"
-    fif_path = data_dir / "ear_eog.fif"
+    fif_path = data_dir / "ear_eog_raw.fif"
 
     output_dir = Path(__file__).resolve().parents[1] / "tutorial_outputs"
     output_dir.mkdir(parents=True, exist_ok=True)

@@ -6,21 +6,16 @@ This document maps the files located in `test/test_files/` to the Python scripts
 
 ### `ear_eog_raw.fif`
 *   **Description**: A short raw recording (MNE FIF format) containing both EAR (Eye Aspect Ratio) and EEG/EOG channels, with manual blink annotations.
-*   **Primary Use**: The main dataset for tutorials and feature extraction tests.
+*   **Primary Use**: The main dataset for tutorials and feature extraction tests. Tests that require an *unannotated* recording clear annotations programmatically to mirror the previous `ear_eog_without_annotation_raw.fif` fixture.
 *   **Used By**:
+    *   `test/epoch_blink_finder/test_blink_finder.py`
+    *   `test/epoch_blink_finder/test_blink_finder_drop.py`
+    *   `test/epoch_blink_finder/test_blink_report.py`
     *   `tutorial/05b_eeg_feature_extraction_tutorial.py`
     *   `tutorial/05c_minimal_blink_feature_tutorial.py`
     *   `tutorial/04_epoching_and_blink_validation_report.py`
     *   `test/blink_features/*` (Most feature aggregation tests)
     *   `test/utils/test_slice_raw_into_mne_epochs.py`
-
-### `ear_eog_without_annotation_raw.fif`
-*   **Description**: Same as `ear_eog_raw.fif` but stripped of annotations.
-*   **Primary Use**: Validating *automated* blink detection workflows where the system must find blinks from scratch without existing ground truth.
-*   **Used By**:
-    *   `test/epoch_blink_finder/test_blink_finder.py`
-    *   `test/epoch_blink_finder/test_blink_finder_drop.py`
-    *   `test/epoch_blink_finder/test_blink_report.py`
 
 ### `mne_sample_audvis_raw.edf`
 *   **Description**: An EDF file exported from the standard MNE sample dataset.
@@ -40,6 +35,32 @@ This document maps the files located in `test/test_files/` to the Python scripts
     *   `test/blink_features/blink_events/test_aggregate_event_features.py`
     *   `test/epoch_blink_finder/test_blink_finder.py`
     *   `tutorial/05b_eeg_feature_extraction_tutorial.py`
+
+### `ear_eog.csv`
+*   **Description**: Manual blink annotations (onset, duration, description) aligned to `ear_eog_raw.fif`.
+*   **Primary Use**: Attaching coarse annotations before refinement and feature extraction.
+*   **Used By**:
+    *   `test/blink_feature_ear/energy/test_energy_features.py`
+    *   `test/segmentation/test_ear_refinement_outputs.py`
+    *   `test/test_ear_threshold_refinement.py`
+    *   `test/test_refined_blink_flow.py`
+    *   `tutorial/03a_ear_threshold_blink_refinement.py`
+    *   `tutorial/03c_ear_threshold_multi_candidate_refinement.py`
+    *   `tutorial/05a_ear_energy_feature_tutorial.py`
+    *   `tutorial/06_refined_blink_report_tutorial.py`
+
+### `ear_metadata_threshold_interpolation.fif`
+*   **Description**: Reference epochs produced from `ear_eog_raw.fif` using threshold interpolation; includes metadata for regression checks.
+*   **Primary Use**: Ensuring the segmentation pipeline yields stable epoch structures and metadata.
+*   **Used By**:
+    *   `test/segmentation/test_ear_refinement_outputs.py`
+
+### `ear_multi_threshold_refined_blinks.csv`
+*   **Description**: Reference table of refined EAR blinks across multiple candidate thresholds.
+*   **Primary Use**: Validating EAR threshold sweeps and downstream feature calculations.
+*   **Used By**:
+    *   `test/segmentation/test_ear_refinement_outputs.py`
+    *   `tutorial/03c_ear_threshold_multi_candidate_refinement.py`
 
 ## Intermediate Data (Pickles & Numpy)
 
@@ -71,3 +92,14 @@ This document maps the files located in `test/test_files/` to the Python scripts
 *   **Description**: Data used to validate the automatic channel selection logic.
 *   **Used By**:
     *   `test/data_setup.py` (Registry)
+
+## Relocation and cleanup
+
+*   **Change**: Consolidated all EAR/EOG sample assets under `test/test_files/` and removed duplicate FIF recordings.
+*   **Related Code**:
+    *   `test/data_setup.py` (test asset registry)
+    *   `pyblinker/outside_annotation/cli.py` (sample CLI defaults)
+    *   `tutorial/03a_ear_threshold_blink_refinement.py`, `tutorial/03c_ear_threshold_multi_candidate_refinement.py`, `tutorial/05a_ear_energy_feature_tutorial.py`, `tutorial/06_refined_blink_report_tutorial.py`
+*   **Verification**:
+    *   Unit tests: `test/epoch_blink_finder/test_blink_finder.py`, `test/segmentation/test_ear_refinement_outputs.py`, `test/test_ear_threshold_refinement.py`
+    *   Tutorials: EAR refinement tutorials listed above load assets from `test/test_files/`

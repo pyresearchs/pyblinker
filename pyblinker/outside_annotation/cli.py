@@ -14,13 +14,13 @@ def parse_args() -> RefinementConfig:
     parser.add_argument(
         "--annotations",
         type=Path,
-        default=Path("manual_annotation_feature_calculation_data/ear_eog.csv"),
+        default=Path("test/test_files/ear_eog.csv"),
         help="Path to blink region annotations CSV.",
     )
     parser.add_argument(
         "--fif",
         type=Path,
-        default=Path("manual_annotation_feature_calculation_data/ear_eog.fif"),
+        default=Path("test/test_files/ear_eog_raw.fif"),
         help="Path to raw FIF file containing the blink channel.",
     )
     parser.add_argument(
@@ -38,7 +38,7 @@ def parse_args() -> RefinementConfig:
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path("manual_annotation_feature_calculation_data/refined_blink_metrics.csv"),
+        default=Path("test/test_files/refined_blink_metrics.csv"),
         help="Destination for the refined blink metrics (CSV).",
     )
     parser.add_argument(

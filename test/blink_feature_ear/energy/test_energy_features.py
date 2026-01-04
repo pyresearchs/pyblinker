@@ -35,8 +35,9 @@ class TestEnergyFeatures(unittest.TestCase):
 
     def setUp(self) -> None:
         """Load test epochs with blink metadata."""
-        raw_path = PROJECT_ROOT / "manual_annotation_feature_calculation_data" / "ear_eog.fif"
-        csv_path = PROJECT_ROOT / "manual_annotation_feature_calculation_data" / "ear_eog.csv"
+        data_dir = PROJECT_ROOT / "test" / "test_files"
+        raw_path = data_dir / "ear_eog_raw.fif"
+        csv_path = data_dir / "ear_eog.csv"
 
         raw = mne.io.read_raw_fif(raw_path, preload=True, verbose=False)
 

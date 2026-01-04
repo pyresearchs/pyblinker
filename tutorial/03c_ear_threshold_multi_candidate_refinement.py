@@ -34,13 +34,13 @@ from pyblinker.viz import prepare_threshold_report_dataframe  # noqa: E402
 
 def main() -> None:
 	save_reports = os.environ.get("PYBLINKER_SAVE_REPORTS", "1") != "0"
-	data_dir = PROJECT_ROOT / "manual_annotation_feature_calculation_data"
+	data_dir = PROJECT_ROOT / "test" / "test_files"
 	output_dir = PROJECT_ROOT / "tutorial_outputs"
 	if save_reports:
 		output_dir.mkdir(parents=True, exist_ok=True)
 
 	annotation_csv = data_dir / "ear_eog.csv"
-	fif_path = data_dir / "ear_eog.fif"
+	fif_path = data_dir / "ear_eog_raw.fif"
 
 	# Evaluate several EAR thresholds per blink.
 	candidate_thresholds = [

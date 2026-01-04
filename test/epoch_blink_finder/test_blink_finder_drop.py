@@ -49,10 +49,12 @@ class TestBlinkFinderWithDrop(unittest.TestCase):
     """Blink detection after dropping some epochs."""
 
     def setUp(self) -> None:
-        raw_path = PROJECT_ROOT / "test" / "test_files" / "ear_eog_without_annotation_raw.fif"
-        csv_path = PROJECT_ROOT / "test" / "test_files" / "ear_eog_blink_count_epoch.csv"
+        data_dir = PROJECT_ROOT / "test" / "test_files"
+        raw_path = data_dir / "ear_eog_raw.fif"
+        csv_path = data_dir / "ear_eog_blink_count_epoch.csv"
 
         self.raw = mne.io.read_raw_fif(raw_path, preload=True, verbose=False)
+        self.raw.set_annotations(mne.Annotations([], [], []))
         events = mne.make_fixed_length_events(self.raw, id=1, duration=30.0)
         self.epochs = mne.Epochs(
             self.raw,
