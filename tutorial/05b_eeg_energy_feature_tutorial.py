@@ -38,7 +38,7 @@ raw.set_annotations(mat_data.read_annotations_as_mne(csv_path))
 # Select EEG (required) and optional EOG channels
 # -----------------------------------------------------------------------------
 eeg_channel = "EEG-E8"
-eog_channel = "EOG-EEG-eog_vert_left"  # set to None or remove from picks to ignore EOG
+eog_channel = None  # set to None or remove from picks to ignore EOG
 
 picks = [ch for ch in (eeg_channel, eog_channel) if ch and ch in raw.ch_names]
 if not picks:
@@ -53,7 +53,7 @@ SEGMENT_CONFIG = {
     "eeg": {
         "channel": eeg_channel,
         # Leaving ``seg_type`` empty (e.g., []) disables EEG refinement. Omit it
-        # or provide any non-empty value to keep EEG metadata columns available.
+        # or provide any non-empty value to keep EEG metadata columns available. Currently,it seem no refinement is applied for EEG.
     }
 }
 
