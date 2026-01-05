@@ -40,6 +40,15 @@ If you add a new "Slope Asymmetry" feature to the metrics module:
 3.  Append the new files to the "Related Code" section.
 4.  Add the new test to the "Unit Tests" section.
 
+
+
+## No pluggable behavior in core signal functions
+- Core processing functions must be deterministic given data + numeric parameters.
+- Do not accept function parameters, callbacks, or strategy objects.
+- If different algorithms are needed, expose separate top-level functions:
+    - `append_peak_refinements_fast(...)`
+    - `append_peak_refinements_robust(...)`
+
 ```markdown
 ### Slope Asymmetry
 *   **`slope_asymmetry`**: The ratio of the closing slope to the opening slope.

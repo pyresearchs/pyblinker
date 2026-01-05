@@ -162,15 +162,18 @@ def _append_peak_refinements(
     blink_ends: Sequence[int],
     sfreq: float,
     key_prefix: str,
-    refine_func: Callable[[np.ndarray, int, int, int | None], Tuple[int, int, int]],
     n_samp_epoch: int,
 ) -> None:
     if segment.size == 0 or not blink_starts:
         return
     peaks: List[int] = []
     for start, end in zip(blink_starts, blink_ends):
-        refined_start, peak, refined_end = refine_func(segment, start, end, peak_rel_cvat=None)
+        refined_start, peak, refined_end = refine_local_maximum_stub(segment, start, end, peak_rel_cvat=None)
         peaks.append(int(peak))
+        something_like_this= dict(						# we should we naming convention as stated here.
+			onset_refined__eeg=refined_start / sfreq,
+			duration_refined__eeg=max(0.0, (refined_end - refined_start) / sfreq),
+			onset_refined_peak__eeg=peak / sfreq)
         md[f"blink_onset_{key_prefix}"][epoch_index] = append_to_slot(
             md[f"blink_onset_{key_prefix}"][epoch_index], refined_start / sfreq
         )
@@ -434,15 +437,12 @@ def _refine_epoch_modalities(
     if n_blinks == 0:
         return
 
+    # This the coarse onset/duration from the annotations, before refinement.
     for sr, er in zip(blink_starts, blink_ends):
         onset_sec_rel = sr / sfreq
         duration_sec_rel = max(0.0, (er - sr) / sfreq)
-        md["blink_onset"][epoch_index] = append_to_slot(
-            md["blink_onset"][epoch_index], onset_sec_rel
-        )
-        md["blink_duration"][epoch_index] = append_to_slot(
-            md["blink_duration"][epoch_index], duration_sec_rel
-        )
+        md["blink_onset"][epoch_index] = onset_sec_rel
+        md["blink_duration"][epoch_index] = duration_sec_rel
 
     if have_ear and data_ear is not None:
         seg_raw = data_ear[epoch_index]
@@ -451,6 +451,7 @@ def _refine_epoch_modalities(
                 f"EAR refinement expects a single channel, but epoch {epoch_index} contains shape {seg_raw.shape}."
             )
         seg = seg_raw.reshape(-1)
+        # Perform EAR-specific blink refinement. We will find at which sample points actual blink starts and ends are located.
         refinements = _refine_ear_blinks_for_epoch(
             seg,
             blink_starts,
@@ -475,7 +476,6 @@ def _refine_epoch_modalities(
             blink_ends,
             sfreq,
             "eeg",
-            refine_local_maximum_stub,
             n_samp_epoch,
         )
 
@@ -494,7 +494,6 @@ def _refine_epoch_modalities(
             blink_ends,
             sfreq,
             "eog",
-            refine_local_maximum_stub,
             n_samp_epoch,
         )
 
@@ -556,7 +555,8 @@ def refine_local_maximum_stub(
     end_rel: int,
     peak_rel_cvat: int | None = None,
 ) -> Tuple[int, int, int]:
-    """Return a crude refinement for local maxima in a signal segment."""
+    """Return a crude refinement for local maxima in a signal segment.
+    To move to EEG specific python scripts later."""
 
     n = len(signal_segment)
     if n == 0:
@@ -581,7 +581,7 @@ def refine_blinks_from_epochs(
     segments: Sequence[mne.io.BaseRaw],
     channel: str,
     *,
-    refine_func: Callable[[np.ndarray, int, int, int | None], Tuple[int, int, int]] = refine_local_maximum_stub,
+    # refine_func: Callable[[np.ndarray, int, int, int | None], Tuple[int, int, int]] = refine_local_maximum_stub,
     local_max_prominence: float = 0.01,
     search_expansion_frames: int | None = None,
     value_threshold: float | None = None,
@@ -611,7 +611,7 @@ def refine_blinks_from_epochs(
             end_rel = min(end_rel, len(signal) - 1)
             if end_rel < start_rel:
                 end_rel = start_rel
-            rs, peak, re = refine_func(signal, start_rel, end_rel, peak_rel_cvat=None)
+            rs, peak, re = refine_local_maximum_stub(signal, start_rel, end_rel, peak_rel_cvat=None)
             refined.append(
                 {
                     "epoch_index": epoch_index,

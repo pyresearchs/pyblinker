@@ -13,7 +13,7 @@ def _normalize_methods(modality: str, methods: Iterable[str] | None) -> tuple[st
     modality_key = modality.lower()
     allowed = METHODS_BY_MODALITY.get(modality_key, ("base",))
     if methods is None:
-        return (allowed[0],)
+        return allowed # If method is none, return all allowed methods
     ordered = []
     for method in methods:
         if method not in ordered:

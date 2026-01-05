@@ -126,7 +126,7 @@ def _select_crossing_pair(
     return None
 
 
-def _progressive_search(
+def _progressive_threshold_search(
     signal: np.ndarray,
     threshold: float,
     coarse_start: int,
@@ -134,7 +134,8 @@ def _progressive_search(
     sfreq: float,
     config: EARRefinementConfig,
 ) -> Dict[str, float | int | bool]:
-    """Search for threshold crossings, extending the window outward if needed.
+    """Use this
+    Search for threshold crossings, extending the window outward if needed.
 
     Parameters
     ----------
@@ -156,6 +157,7 @@ def _progressive_search(
     dict
         Refined onset/offset samples, search window bounds (samples and seconds),
         whether refinement succeeded, and search diagnostics (extensions, attempts).
+        By refined, we mean the first valid threshold crossing pair found within the search windows
     """
 
     n_samples = signal.shape[0]
@@ -198,8 +200,8 @@ def _progressive_search(
     return {
         "refined_start_sample": int(refined_start),
         "refined_end_sample": int(refined_end),
-        "refined_left_threshold": int(refined_start),
-        "refined_right_threshold": int(refined_end),
+        "refined_left_threshold": int(refined_start),	# For compatibility with older naming, and to be removed later
+        "refined_right_threshold": int(refined_end),	# For compatibility with older naming, and to be removed later
         "search_window_start_sample": int(window_start),
         "search_window_end_sample": int(window_end),
         "search_window_start_time": float(window_start / sfreq),
@@ -208,6 +210,8 @@ def _progressive_search(
         "search_exhausted": bool(search_exhausted),
         "extension_seconds_used": float(extension_seconds),
         "extension_attempts": int(attempts),
+		"onset__th_sample__ear":float(refined_start/sfreq),
+		"duration__th_sample__ear":float((refined_end - refined_start)/sfreq),
     }
 
 
@@ -268,7 +272,9 @@ class EARThresholdBlinkRefiner:
     def _compute_interpolated_threshold_crossings(
         self, refined_start_sample: int, refined_end_sample: int, lowest_point_sample: float
     ) -> Dict[str, float | int | bool]:
-        """Return linearly interpolated threshold crossings around a refined blink.
+        """
+        Check by rpb on 5/1/25
+        Return linearly interpolated threshold crossings around a refined blink.
 
         Interpolated crossings are searched within a padded window surrounding the refined
         start/end samples. Crossings must occur before and after the blink minimum,
@@ -349,13 +355,15 @@ class EARThresholdBlinkRefiner:
         right_sample_int = int(np.clip(round(right_cross), 0, n_samples - 1))
         result.update(
             {
-                "left_interpolated_threshold": float(left_time),
-                "right_interpolated_threshold": float(right_time),
+                "left_interpolated_threshold": float(left_time),# Keep for compatibility with older naming, and to be removed later
+                "right_interpolated_threshold": float(right_time),	# Keep for compatibility with older naming, and to be removed later
                 "left_interpolated_threshold_sample": int(left_sample_int),
                 "right_interpolated_threshold_sample": int(right_sample_int),
                 "left_interpolated_threshold_found": True,
                 "right_interpolated_threshold_found": True,
                 "interpolated_thresholds_found": True,
+				"onset__th_interpolation__ear":float(left_time),
+				"duration__th_interpolation__ear":float(right_time - left_time),
             }
         )
         return result
@@ -390,7 +398,7 @@ class EARThresholdBlinkRefiner:
         coarse_end_sample = min(coarse_end_sample, self.signal.shape[0] - 1)
         coarse_duration_seconds = self.config.duration_seconds(duration, self.sfreq)
 
-        search_result = _progressive_search(
+        search_result = _progressive_threshold_search(
             self.signal,
             self.config.threshold,
             coarse_start_sample,

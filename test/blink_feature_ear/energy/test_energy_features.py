@@ -58,8 +58,13 @@ class TestEnergyFeatures(unittest.TestCase):
         base_config = {
             "ear": {
                 "seg_type": "threshold_interpolation",
-                "threshold": 0.22,
+                "threshold": 0.26,
                 "annotation_time_unit": "seconds",
+				"max_extension":0.5,
+				"extension_step":0.05,
+				"padding":0.05,
+				"extend_before":True,
+				"extend_after":True,
             },
         }
         segmentation_config = build_segment_config(raw, base_config=base_config)

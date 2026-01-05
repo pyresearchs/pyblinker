@@ -13,7 +13,7 @@ from pyblinker.blink_features.blink_events.blink_dataframe import (
 from pyblinker.blink_features.ear_metrics.refinement import (
     EARRefinementConfig,
     EARThresholdBlinkRefiner,
-    _progressive_search,
+    _progressive_threshold_search,
 )
 from pyblinker.logging import get_logger
 
@@ -40,8 +40,8 @@ def _select_seg_type(seg_type_value: Any) -> Optional[str]:
 def _locate_trough(signal: np.ndarray, start: int, end: int) -> Optional[int]:
     """Return the index of the minimum value between ``start`` and ``end``."""
 
-    if signal.size == 0:
-        return None
+    # if signal.size == 0:
+    #     return None
     n = len(signal)
     start_idx = int(np.clip(start, 0, n - 1))
     end_idx = int(np.clip(end, 0, n - 1))
@@ -89,24 +89,10 @@ def _append_outer_bounds_from_peaks(
             md[f"blink_outer_end_{key_prefix}"][epoch_index], outer_end
         )
 
-
-def _refine_ear_blinks_for_epoch(
-    segment: np.ndarray,
-    blink_starts: Sequence[int],
-    blink_ends: Sequence[int],
-    sfreq: float,
-    segmentation_config: Optional[dict],
-) -> List[Dict[str, Any]]:
-    """Refine EAR blinks for a single epoch based on segmentation settings."""
-
-    if segment.size == 0 or not blink_starts:
-        return []
-
-    ear_config = (segmentation_config or {}).get("ear", {}) if segmentation_config is not None else {}
-    seg_type = _select_seg_type(ear_config.get("seg_type"))
-    use_threshold_interpolation = seg_type
-
-    def _fallback_refinement(coarse_start: int, coarse_end: int) -> Dict[str, Any]:
+def _fallback_refinement(coarse_start: int,
+                         coarse_end: int,
+                         segment:np.ndarray,
+                         sfreq: float) -> Dict[str, Any]:
         n = len(segment)
         if n == 0:
             start = end = 0
@@ -116,30 +102,52 @@ def _refine_ear_blinks_for_epoch(
             if end < start:
                 end = start
         return {
-            "refined_start_sample": int(start),
-            "refined_end_sample": int(end),
-            "refined_left_threshold": int(start),
-            "refined_right_threshold": int(end),
-            "search_window_start_sample": int(start),
-            "search_window_end_sample": int(end),
-            "search_window_start_time": float(start / sfreq),
-            "search_window_end_time": float(end / sfreq),
-            "refinement_succeeded": False,
-            "search_exhausted": True,
-            "extension_seconds_used": 0.0,
-            "extension_attempts": 0,
-        }
+                "refined_start_sample": int(start),
+                "refined_end_sample": int(end),
+                "refined_left_threshold": int(start),
+                "refined_right_threshold": int(end),
+                "search_window_start_sample": int(start),
+                "search_window_end_sample": int(end),
+                "search_window_start_time": float(start / sfreq),
+                "search_window_end_time": float(end / sfreq),
+                "refinement_succeeded": False,
+                "search_exhausted": True,
+                "extension_seconds_used": 0.0,
+                "extension_attempts": 0,
+                }
+def _refine_ear_blinks_for_epoch(
+    segment: np.ndarray,
+    blink_starts: Sequence[int],
+    blink_ends: Sequence[int],
+    sfreq: float,
+    segmentation_config: Optional[dict],
+) -> List[Dict[str, Any]]:
+    """Refine EAR blinks for a single epoch based on segmentation settings.
+    The function name should be change to ear_landmark_refinement_for_epoch
+    This function first find the timepoints that near the selected threshold,
+
+    Then, it proceed to find the interpolated threshold crossings
+    """
+
+    if segment.size == 0 or not blink_starts:
+        return []
+
+    ear_config = (segmentation_config or {}).get("ear", {}) if segmentation_config is not None else {}
+    seg_type = _select_seg_type(ear_config.get("seg_type"))
+    # use_threshold_interpolation = seg_type
+
+
 
     threshold = ear_config.get("threshold")
-    if use_threshold_interpolation and threshold is None:
-        logger.warning("EAR threshold missing for threshold_interpolation; falling back to coarse bounds.")
-        use_threshold_interpolation = False
+    # if use_threshold_interpolation and threshold is None:
+    #     logger.warning("EAR threshold missing for threshold_interpolation; falling back to coarse bounds.")
+    #     use_threshold_interpolation = False
 
     config: EARRefinementConfig | None = None
     refiner: EARThresholdBlinkRefiner | None = None
-    if use_threshold_interpolation:
-        config = EARRefinementConfig(threshold=threshold)
-        override_fields = {
+
+    config = EARRefinementConfig(threshold=threshold)
+    override_fields = {
             k: v
             for k, v in ear_config.items()
             if k
@@ -152,14 +160,15 @@ def _refine_ear_blinks_for_epoch(
                 "extend_after",
             }
         }
-        if override_fields:
-            config = replace(config, **override_fields)
-        refiner = EARThresholdBlinkRefiner(segment, sfreq, config)
+    if override_fields:
+        config = replace(config, **override_fields)
+    refiner = EARThresholdBlinkRefiner(segment, sfreq, config)
 
     refinements: List[Dict[str, Any]] = []
     for coarse_start, coarse_end in zip(blink_starts, blink_ends):
-        if use_threshold_interpolation and config is not None:
-            refinement = _progressive_search(
+        # if seg_type == "threshold_interpolation" and config is not None:
+            # Find blink boundries that around the threshold
+        refinement = _progressive_threshold_search(
                 segment,
                 threshold,
                 coarse_start,
@@ -167,8 +176,8 @@ def _refine_ear_blinks_for_epoch(
                 sfreq,
                 config,
             )
-        else:
-            refinement = _fallback_refinement(coarse_start, coarse_end)
+        # else:
+        #     refinement=_fallback_refinement(coarse_start,coarse_end,segment,sfreq)
 
         trough_sample = _locate_trough(
             segment,
@@ -176,9 +185,11 @@ def _refine_ear_blinks_for_epoch(
             refinement["refined_end_sample"],
         )
         refinement["refined_trough_sample"] = trough_sample
-        refinement["refined_lowest_point_sample"] = trough_sample
-        if use_threshold_interpolation and refiner is not None:
-            interp = refiner._compute_interpolated_threshold_crossings(  # noqa: SLF001
+        refinement["refined_lowest_point_sample"] = trough_sample	# Duplicate, we may consider to remove this later
+
+
+        if seg_type == "threshold_interpolation":
+            interp = refiner._compute_interpolated_threshold_crossings(
                 refined_start_sample=refinement["refined_start_sample"],
                 refined_end_sample=refinement["refined_end_sample"],
                 lowest_point_sample=trough_sample if trough_sample is not None else float("nan"),
