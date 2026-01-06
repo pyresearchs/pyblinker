@@ -35,13 +35,14 @@
 | pyblinker/utils/open_eye_baseline.py | no | _blinks_from_metadata | function | private | (meta, sfreq) | Convert blink onset/duration metadata to frame spans. | 2 |
 | pyblinker/utils/open_eye_baseline.py | no | _compute_features | function | private | (signal, blinks, sfreq) | Compute baseline features for a single-channel epoch. | 5 |
 | pyblinker/utils/open_eye_baseline.py | no | compute_open_eye_baseline_features | function | public | (epochs, picks, indices) | Compute averaged baseline features across selected epochs. | 3 |
-| pyblinker/segmentation/refinement.py | no | slice_raw_into_mne_epochs_refine_annot | function | public | (raw) | Convert a continuous recording into equally spaced epochs with refinement. | 47 |
-| pyblinker/segmentation/refinement.py | no | refine_local_maximum_stub | function | public | (signal_segment, start_rel, end_rel, peak_rel_cvat=None) | Return a crude refinement for local maxima in a signal segment. | 9 |
-| pyblinker/segmentation/refinement.py | no | refine_blinks_from_epochs | function | public | (segments, channel) | Refine blink annotations within pre-sliced raw segments. | 8 |
-| pyblinker/segmentation/ear.py | no | _empty_interpolated_thresholds | function | private | () | Return default interpolated threshold metadata with NaN/False values. | 2 |
-| pyblinker/segmentation/ear.py | no | _refine_ear_blinks_for_epoch | function | private | (segment, blink_starts, blink_ends, sfreq, segmentation_config) | Refine EAR blinks for a single epoch based on segmentation settings. | 3 |
-| pyblinker/segmentation/ear.py | no | _append_ear_refinements | function | private | (row_data, refinements, sfreq, n_samp_epoch) | Attach EAR refinement metadata to the epoch metadata frame. | 4 |
-| pyblinker/segmentation/ear.py | no | _append_outer_bounds_from_peaks | function | private | (row_data, peaks, key_prefix, n_samp_epoch) | Append blink outer bounds derived from peaks for the given modality. | 4 |
+| pyblinker/segmentation/refinement/__init__.py | no | slice_raw_into_mne_epochs_refine_annot | function | public | (raw) | Convert a continuous recording into equally spaced epochs with refinement. | 47 |
+| pyblinker/segmentation/refinement/eeg/refinement.py | no | refine_local_maximum_stub | function | public | (signal_segment, start_rel, end_rel, peak_rel_cvat=None) | Return a crude refinement for local maxima in a signal segment. | 9 |
+| pyblinker/segmentation/refinement/eeg/refinement.py | no | refine_blinks_from_epochs | function | public | (segments, channel) | Refine blink annotations within pre-sliced raw segments. | 8 |
+| pyblinker/segmentation/refinement/eeg/refinement.py | no | _append_peak_refinements | function | private | (row_data, segment, blink_starts, blink_ends, sfreq, key_prefix, n_samp_epoch) | Attach EEG/EOG refinement metadata to epoch rows. | 8 |
+| pyblinker/segmentation/refinement/ear/epoch.py | no | _empty_interpolated_thresholds | function | private | () | Return default interpolated threshold metadata with NaN/False values. | 2 |
+| pyblinker/segmentation/refinement/ear/epoch.py | no | _refine_ear_blinks_for_epoch | function | private | (segment, blink_starts, blink_ends, sfreq, segmentation_config) | Refine EAR blinks for a single epoch based on segmentation settings. | 3 |
+| pyblinker/segmentation/refinement/ear/epoch.py | no | _append_ear_refinements | function | private | (row_data, refinements, sfreq, n_samp_epoch) | Attach EAR refinement metadata to the epoch metadata frame. | 4 |
+| pyblinker/segmentation/refinement/ear/epoch.py | no | _append_outer_bounds_from_peaks | function | private | (row_data, peaks, key_prefix, n_samp_epoch) | Append blink outer bounds derived from peaks for the given modality. | 4 |
 | pyblinker/utils/report_utils.py | no | generate_epoch_report | function | public | (segments, times) | Create a simple report visualizing each segment. | 10 |
 | pyblinker/utils/report_utils.py | no | add_blink_plots_to_report | function | public | (epochs) | Add per-blink plots to an :class:`mne.Report` for manual validation. | 9 |
 | pyblinker/utils/statistics_utils.py | no | calculate_within_range | function | public | (all_values, best_median, best_robust_std) | Return the count of values within two robust standard deviations. | 7 |

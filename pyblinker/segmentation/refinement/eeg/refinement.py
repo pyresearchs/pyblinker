@@ -1,0 +1,132 @@
+"""EEG/EOG blink refinement helpers."""
+
+from __future__ import annotations
+
+from typing import Any, Dict, List, Sequence, Tuple
+
+import mne
+import numpy as np
+
+from .bounds import compute_outer_bounds
+
+
+def refine_local_maximum_stub(
+    signal_segment: np.ndarray,
+    start_rel: int,
+    end_rel: int,
+    peak_rel_cvat: int | None = None,
+) -> Tuple[int, int, int]:
+    """Return a crude refinement for local maxima in a signal segment."""
+
+    n = len(signal_segment)
+    if n == 0:
+        return 0, 0, 0
+
+    rs_stub = max(0, min(start_rel, n - 1))
+    re_stub = max(0, min(end_rel, n - 1))
+    if rs_stub > re_stub:
+        rs_stub = re_stub = min(rs_stub, re_stub)
+
+    if peak_rel_cvat is not None and rs_stub <= peak_rel_cvat <= re_stub:
+        valid_peak = peak_rel_cvat
+    else:
+        segment = signal_segment[rs_stub : re_stub + 1]
+        max_idx_local = int(np.argmax(segment))
+        valid_peak = rs_stub + max_idx_local
+
+    return rs_stub, valid_peak, re_stub
+
+
+def _append_peak_refinements(
+    row_data: Dict[str, Any],
+    segment: np.ndarray,
+    blink_starts: Sequence[int],
+    blink_ends: Sequence[int],
+    sfreq: float,
+    key_prefix: str,
+    n_samp_epoch: int,
+) -> None:
+    if segment.size == 0 or not blink_starts:
+        return
+
+    peaks: List[int] = []
+    blink_entries: List[Dict[str, Any]] = []
+    for start, end in zip(blink_starts, blink_ends):
+        refined_start, peak, refined_end = refine_local_maximum_stub(
+            segment, start, end, peak_rel_cvat=None
+        )
+        peaks.append(int(peak))
+        blink_entries.append(
+            {
+                f"blink_onset_{key_prefix}": refined_start / sfreq,  # backward compatibility; slated for removal
+                f"blink_duration_{key_prefix}": max(0.0, (refined_end - refined_start) / sfreq),
+                f"blink_onset_extremum_{key_prefix}": peak / sfreq,
+                "onset__refine__eeg": refined_start / sfreq,
+                f"duration__refine__{key_prefix}": max(0.0, (refined_end - refined_start) / sfreq),
+                f"onset__refine_extremum__{key_prefix}": peak / sfreq,
+            }
+        )
+
+    if not blink_entries:
+        return
+
+    bounds = compute_outer_bounds(peaks, n_samp_epoch)
+    blink_data: dict[str, Any]
+    for blink_data, (outer_start, outer_end) in zip(blink_entries, bounds):
+        blink_data[f"blink_outer_start_{key_prefix}"] = outer_start
+        blink_data[f"blink_outer_end_{key_prefix}"] = outer_end
+        blink_data[f"onset__outer__{key_prefix}"] = outer_start / sfreq
+        blink_data[f"duration__outer__{key_prefix}"] = (outer_end - outer_start) / sfreq
+
+    keys = blink_entries[0].keys()
+    transposed = {key: [entry[key] for entry in blink_entries] for key in keys}
+    row_data.update(transposed)
+
+
+def refine_blinks_from_epochs(
+    segments: Sequence[mne.io.BaseRaw],
+    channel: str,
+    *,
+    local_max_prominence: float = 0.01,
+    search_expansion_frames: int | None = None,
+    value_threshold: float | None = None,
+) -> List[Dict[str, Any]]:
+    """Refine blink annotations within pre-sliced raw segments."""
+
+    refined: List[Dict[str, Any]] = []
+    if not segments:
+        return refined
+
+    sfreq = float(segments[0].info["sfreq"])
+    if search_expansion_frames is None:
+        search_expansion_frames = int(0.1 * sfreq)
+
+    for epoch_index, segment in enumerate(segments):
+        data = segment.get_data(picks=[channel])
+        if data.size == 0:
+            continue
+        signal = data[0]
+        ann = segment.annotations
+        for ann_idx in range(len(ann)):
+            onset = ann.onset[ann_idx]
+            duration = ann.duration[ann_idx]
+            start_rel = int(max(0, round(onset * sfreq) - search_expansion_frames))
+            end_rel = int(round((onset + duration) * sfreq) + search_expansion_frames)
+            end_rel = min(end_rel, len(signal) - 1)
+            if end_rel < start_rel:
+                end_rel = start_rel
+            rs, peak, re = refine_local_maximum_stub(signal, start_rel, end_rel, peak_rel_cvat=None)
+            refined.append(
+                {
+                    "epoch_index": epoch_index,
+                    "refined_start_frame": rs,
+                    "refined_peak_frame": peak,
+                    "refined_end_frame": re,
+                    "epoch_signal": signal,
+                }
+            )
+
+    return refined
+
+
+__all__ = ["_append_peak_refinements", "refine_local_maximum_stub", "refine_blinks_from_epochs"]

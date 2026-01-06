@@ -200,8 +200,8 @@ def _progressive_threshold_search(
     return {
         "refined_start_sample": int(refined_start),
         "refined_end_sample": int(refined_end),
-        "refined_left_threshold": int(refined_start),	# For compatibility with older naming, and to be removed later
-        "refined_right_threshold": int(refined_end),	# For compatibility with older naming, and to be removed later
+        "refined_left_threshold": int(refined_start),
+        "refined_right_threshold": int(refined_end),
         "search_window_start_sample": int(window_start),
         "search_window_end_sample": int(window_end),
         "search_window_start_time": float(window_start / sfreq),
@@ -210,8 +210,8 @@ def _progressive_threshold_search(
         "search_exhausted": bool(search_exhausted),
         "extension_seconds_used": float(extension_seconds),
         "extension_attempts": int(attempts),
-		"onset__th_sample__ear":float(refined_start/sfreq),
-		"duration__th_sample__ear":float((refined_end - refined_start)/sfreq),
+        "onset__th_sample__ear": float(refined_start / sfreq),
+        "duration__th_sample__ear": float((refined_end - refined_start) / sfreq),
     }
 
 
@@ -355,15 +355,15 @@ class EARThresholdBlinkRefiner:
         right_sample_int = int(np.clip(round(right_cross), 0, n_samples - 1))
         result.update(
             {
-                "left_interpolated_threshold": float(left_time),# Keep for compatibility with older naming, and to be removed later
-                "right_interpolated_threshold": float(right_time),	# Keep for compatibility with older naming, and to be removed later
+                "left_interpolated_threshold": float(left_time),
+                "right_interpolated_threshold": float(right_time),
                 "left_interpolated_threshold_sample": int(left_sample_int),
                 "right_interpolated_threshold_sample": int(right_sample_int),
                 "left_interpolated_threshold_found": True,
                 "right_interpolated_threshold_found": True,
                 "interpolated_thresholds_found": True,
-				"onset__th_interpolation__ear":float(left_time),
-				"duration__th_interpolation__ear":float(right_time - left_time),
+                "onset__th_interpolation__ear": float(left_time),
+                "duration__th_interpolation__ear": float(right_time - left_time),
             }
         )
         return result
@@ -531,3 +531,11 @@ def refine_annotations_for_threshold(
         len(refined),
     )
     return refined
+
+
+__all__ = [
+    "EARRefinementConfig",
+    "EARThresholdBlinkRefiner",
+    "_progressive_threshold_search",
+    "refine_annotations_for_threshold",
+]

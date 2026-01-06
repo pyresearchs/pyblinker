@@ -26,8 +26,9 @@ New supporting modules introduced during the consolidation:
 - `pyblinker.utils.metadata_utils`
 - `pyblinker.utils.epoch_utils`
 - `pyblinker.utils.io_utils`
-- `pyblinker.segmentation.refinement`
-- `pyblinker.segmentation.ear`
+- `pyblinker.segmentation.refinement` (core orchestration)
+- `pyblinker.segmentation.refinement.eeg`
+- `pyblinker.segmentation.refinement.ear`
 - `pyblinker.utils.report_utils`
 - `pyblinker.utils.statistics_utils`
 - `pyblinker.utils.velocity_utils`

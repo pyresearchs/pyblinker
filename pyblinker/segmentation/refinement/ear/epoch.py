@@ -7,15 +7,10 @@ from typing import Any, Dict, List, Optional, Sequence
 
 import numpy as np
 
-from pyblinker.blink_features.blink_events.blink_dataframe import (
-    compute_outer_bounds,
-)
-from pyblinker.blink_features.ear_metrics.refinement import (
-    EARRefinementConfig,
-    EARThresholdBlinkRefiner,
-    _progressive_threshold_search,
-)
 from pyblinker.logging import get_logger
+
+from ..eeg import compute_outer_bounds
+from .threshold import EARRefinementConfig, EARThresholdBlinkRefiner, _progressive_threshold_search
 
 logger = get_logger(__name__)
 
@@ -80,6 +75,7 @@ def _append_outer_bounds_from_peaks(
     bounds = compute_outer_bounds(peaks, n_samp_epoch)
     row_data[f"blink_outer_start_{key_prefix}"] = [outer_start for outer_start, _ in bounds]
     row_data[f"blink_outer_end_{key_prefix}"] = [outer_end for _, outer_end in bounds]
+
 
 def _fallback_refinement(coarse_start: int, coarse_end: int, segment: np.ndarray, sfreq: float) -> Dict[str, Any]:
     n = len(segment)
@@ -174,7 +170,7 @@ def _refine_ear_blinks_for_epoch(
             refinement["refined_end_sample"],
         )
         refinement["refined_trough_sample"] = trough_sample
-        refinement["refined_lowest_point_sample"] = trough_sample	# Duplicate, we may consider to remove this later
+        refinement["refined_lowest_point_sample"] = trough_sample  # Duplicate, we may consider to remove this later
 
         # Step 2: compute interpolated threshold crossings if applicable
         if seg_type == "threshold_interpolation" and refiner is not None:
@@ -201,7 +197,7 @@ def _append_ear_refinements(
         return
 
     peaks: List[int] = []
-    blink_entries: List[Dict[str, Any]] = []
+    base_entries: List[Dict[str, Any]] = []
     for refinement in refinements:
         start = refinement["refined_start_sample"]
         end = refinement["refined_end_sample"]
@@ -223,44 +219,77 @@ def _append_ear_refinements(
         )
 
         peaks.append(int(trough) if trough is not None else int(start))
-        blink_data = {
-            "blink_onset_ear": onset_time,
-            "blink_duration_ear": duration_time,
-            "blink_onset_extremum_ear": (trough if trough is not None else start) / sfreq,
-            "refined_start_sample": int(start),
-            "refined_end_sample": int(end),
-            "refined_lowest_point_sample": int(lowest) if lowest is not None and np.isfinite(lowest) else np.nan,
-            "refined_left_threshold": int(refinement["refined_left_threshold"]),
-            "refined_right_threshold": int(refinement["refined_right_threshold"]),
-            "left_interpolated_threshold": float(left_time),
-            "right_interpolated_threshold": float(right_time),
-            "left_interpolated_threshold_sample": (
-                float(left_sample) if left_sample is not None else float("nan")
-            ),
-            "right_interpolated_threshold_sample": (
-                float(right_sample) if right_sample is not None else float("nan")
-            ),
-            "left_interpolated_threshold_found": bool(refinement.get("left_interpolated_threshold_found", False)),
-            "right_interpolated_threshold_found": bool(refinement.get("right_interpolated_threshold_found", False)),
-            "interpolated_thresholds_found": bool(refinement.get("interpolated_thresholds_found", False)),
-            "search_window_start_sample": int(refinement["search_window_start_sample"]),
-            "search_window_end_sample": int(refinement["search_window_end_sample"]),
-            "search_window_start_time": float(refinement["search_window_start_time"]),
-            "search_window_end_time": float(refinement["search_window_end_time"]),
-            "refinement_succeeded": bool(refinement["refinement_succeeded"]),
-            "search_exhausted": bool(refinement["search_exhausted"]),
-            "extension_seconds_used": float(refinement["extension_seconds_used"]),
-            "extension_attempts": int(refinement["extension_attempts"]),
-        }
-        blink_entries.append(blink_data)
+        base_entries.append(
+            {
+                "blink_onset_ear": onset_time,
+                "blink_duration_ear": duration_time,
+                "blink_onset_extremum_ear": (trough if trough is not None else start) / sfreq,
+                "refined_start_sample": int(start),
+                "refined_end_sample": int(end),
+                "refined_lowest_point_sample": int(lowest) if lowest is not None and np.isfinite(lowest) else np.nan,
+                "refined_left_threshold": int(refinement["refined_left_threshold"]),
+                "refined_right_threshold": int(refinement["refined_right_threshold"]),
+                "search_window_start_sample": int(refinement["search_window_start_sample"]),
+                "search_window_end_sample": int(refinement["search_window_end_sample"]),
+                "search_window_start_time": float(refinement["search_window_start_time"]),
+                "search_window_end_time": float(refinement["search_window_end_time"]),
+                "refinement_succeeded": bool(refinement["refinement_succeeded"]),
+                "search_exhausted": bool(refinement["search_exhausted"]),
+                "extension_seconds_used": float(refinement["extension_seconds_used"]),
+                "extension_attempts": int(refinement["extension_attempts"]),
+                "left_interpolated_threshold": float(left_time),
+                "right_interpolated_threshold": float(right_time),
+                "left_interpolated_threshold_sample": (
+                    float(left_sample) if left_sample is not None else float("nan")
+                ),
+                "right_interpolated_threshold_sample": (
+                    float(right_sample) if right_sample is not None else float("nan")
+                ),
+                "left_interpolated_threshold_found": bool(
+                    refinement.get("left_interpolated_threshold_found", False)
+                ),
+                "right_interpolated_threshold_found": bool(
+                    refinement.get("right_interpolated_threshold_found", False)
+                ),
+                "interpolated_thresholds_found": bool(refinement.get("interpolated_thresholds_found", False)),
+            }
+        )
 
-    if not blink_entries:
+    if not base_entries:
         return
 
     bounds = compute_outer_bounds(peaks, n_samp_epoch)
-    for blink_data, (outer_start, outer_end) in zip(blink_entries, bounds):
-        blink_data["blink_outer_start_ear"] = outer_start
-        blink_data["blink_outer_end_ear"] = outer_end
+    blink_entries: List[Dict[str, Any]] = []
+    for base_entry, (outer_start, outer_end) in zip(base_entries, bounds):
+        blink_entries.append(
+            {
+                "blink_onset_ear": base_entry["blink_onset_ear"],
+                "blink_duration_ear": base_entry["blink_duration_ear"],
+                "blink_onset_extremum_ear": base_entry["blink_onset_extremum_ear"],
+                "blink_outer_start_ear": outer_start,
+                "blink_outer_end_ear": outer_end,
+                "refined_start_sample": base_entry["refined_start_sample"],
+                "refined_end_sample": base_entry["refined_end_sample"],
+                "refined_lowest_point_sample": base_entry["refined_lowest_point_sample"],
+                "refined_left_threshold": base_entry["refined_left_threshold"],
+                "refined_right_threshold": base_entry["refined_right_threshold"],
+                "search_window_start_sample": base_entry["search_window_start_sample"],
+                "search_window_end_sample": base_entry["search_window_end_sample"],
+                "search_window_start_time": base_entry["search_window_start_time"],
+                "search_window_end_time": base_entry["search_window_end_time"],
+                "refinement_succeeded": base_entry["refinement_succeeded"],
+                "search_exhausted": base_entry["search_exhausted"],
+                "extension_seconds_used": base_entry["extension_seconds_used"],
+                "extension_attempts": base_entry["extension_attempts"],
+                "left_interpolated_threshold": base_entry["left_interpolated_threshold"],
+                "right_interpolated_threshold": base_entry["right_interpolated_threshold"],
+                "left_interpolated_threshold_sample": base_entry["left_interpolated_threshold_sample"],
+                "right_interpolated_threshold_sample": base_entry["right_interpolated_threshold_sample"],
+                "left_interpolated_threshold_found": base_entry["left_interpolated_threshold_found"],
+                "right_interpolated_threshold_found": base_entry["right_interpolated_threshold_found"],
+                "interpolated_thresholds_found": base_entry["interpolated_thresholds_found"],
+            }
+        )
 
     keys = blink_entries[0].keys()
     transposed = {key: [entry[key] for entry in blink_entries] for key in keys}

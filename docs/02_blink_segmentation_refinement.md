@@ -42,7 +42,7 @@ graph TD
 ### Metadata accumulation (row-wise -> column-wise)
 * Per-epoch metadata is now built as an **isolated `row_data` dict**, avoiding direct writes into the global metadata frame. Each blink produces a small dictionary (onset, duration, extremum, outer bounds, and EAR thresholds), and the list of those dictionaries is **transposed** into column lists before updating the epoch row. This makes it trivial to add new blink fields without pre-allocating columns or juggling indices.
 * No pre-allocation or `append_to_slot`: epoch metadata starts from an empty dict and is filled with lists only—no `[np.nan] * n` scaffolding or index-based writes.
-* Related code: `pyblinker/segmentation/refinement.py` (`_append_peak_refinements`), `pyblinker/segmentation/ear.py` (`_append_ear_refinements`).
+* Related code: `pyblinker/segmentation/refinement/__init__.py` (core epoch refinement flow), `pyblinker/segmentation/refinement/eeg/refinement.py` (`_append_peak_refinements`), `pyblinker/segmentation/refinement/ear/epoch.py` (`_append_ear_refinements`).
 * Tests: `test/segmentation/test_refine_annot_by_channel.py`.
 
 ## Single-channel modality configuration
@@ -69,10 +69,11 @@ graph TD
 
 ## Related Code
 
-*   **`pyblinker/segmentation/refinement.py`**: The core module for refinement. Contains `slice_raw_into_mne_epochs_refine_annot` and shared peak-refinement helpers.
-*   **`pyblinker/segmentation/ear.py`**: EAR-specific interpolation helpers used by the segmentation pipeline.
+*   **`pyblinker/segmentation/refinement/__init__.py`**: The core module for refinement. Contains `slice_raw_into_mne_epochs_refine_annot` and shared modality orchestration helpers.
+*   **`pyblinker/segmentation/refinement/eeg/refinement.py`**: EEG/EOG-specific peak refinement helpers, including `_append_peak_refinements` and `refine_local_maximum_stub`.
+*   **`pyblinker/segmentation/refinement/ear/epoch.py`**: EAR-specific interpolation helpers used by the segmentation pipeline.
 *   **`pyblinker/fitutils/`**: Contains utility functions for fitting shapes and finding crossings (e.g., `ear_crossing.py`).
-*   **`pyblinker/blink_features/ear_metrics/refinement.py`**: Implementation of EAR-specific refinement logic used by the segmentation helpers.
+*   **`pyblinker/segmentation/refinement/ear/threshold.py`**: Implementation of EAR-specific refinement logic used by the segmentation helpers.
 
 ## Tutorials
 
