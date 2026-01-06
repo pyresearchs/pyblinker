@@ -12,6 +12,67 @@ from .ear import _append_ear_refinements, _refine_ear_blinks_for_epoch
 from .eeg import _append_peak_refinements
 
 
+def _refine_epoch_ear(
+    row_data: Dict[str, Any],
+    *,
+    epoch_index: int,
+    data_ear: np.ndarray | None,
+    blink_starts: List[int],
+    blink_ends: List[int],
+    sfreq: float,
+    n_samp_epoch: int,
+    segment_config: dict,
+) -> None:
+    if data_ear is None:
+        return
+
+    seg_raw = data_ear[epoch_index]
+    if seg_raw.ndim != 2 or seg_raw.shape[0] != 1:
+        raise ValueError(
+            f"EAR refinement expects a single channel, but epoch {epoch_index} contains shape {seg_raw.shape}."
+        )
+    seg = seg_raw.reshape(-1)
+    refinements = _refine_ear_blinks_for_epoch(
+        seg,
+        blink_starts,
+        blink_ends,
+        sfreq,
+        segment_config,
+    )
+    _append_ear_refinements(row_data, refinements, sfreq, n_samp_epoch)
+
+
+def _refine_epoch_peak_modality(
+    row_data: Dict[str, Any],
+    *,
+    epoch_index: int,
+    data_modality: np.ndarray | None,
+    blink_starts: List[int],
+    blink_ends: List[int],
+    sfreq: float,
+    n_samp_epoch: int,
+    key_prefix: str,
+) -> None:
+    if data_modality is None:
+        return
+
+    seg_raw = data_modality[epoch_index]
+    if seg_raw.ndim != 2 or seg_raw.shape[0] != 1:
+        raise ValueError(
+            f"{key_prefix.upper()} refinement expects a single channel, but epoch {epoch_index} contains shape {seg_raw.shape}."
+        )
+    seg = seg_raw.reshape(-1)
+    _append_peak_refinements(
+        row_data,
+        seg,
+        blink_starts,
+        blink_ends,
+        sfreq,
+        key_prefix,
+        n_samp_epoch,
+    )
+
+
 def _refine_epoch_modalities(
     *,
     epoch_index: int,
@@ -63,53 +124,39 @@ def _refine_epoch_modalities(
         row_data["blink_duration"] = coarse_durations
 
     if have_ear and data_ear is not None:
-        seg_raw = data_ear[epoch_index]
-        if seg_raw.ndim != 2 or seg_raw.shape[0] != 1:
-            raise ValueError(
-                f"EAR refinement expects a single channel, but epoch {epoch_index} contains shape {seg_raw.shape}."
-            )
-        seg = seg_raw.reshape(-1)
-        refinements = _refine_ear_blinks_for_epoch(
-            seg,
-            blink_starts,
-            blink_ends,
-            sfreq,
-            segment_config,
+        _refine_epoch_ear(
+            row_data,
+            epoch_index=epoch_index,
+            data_ear=data_ear,
+            blink_starts=blink_starts,
+            blink_ends=blink_ends,
+            sfreq=sfreq,
+            n_samp_epoch=n_samp_epoch,
+            segment_config=segment_config,
         )
-        _append_ear_refinements(row_data, refinements, sfreq, n_samp_epoch)
 
     if have_eeg and data_eeg is not None:
-        seg_raw = data_eeg[epoch_index]
-        if seg_raw.ndim != 2 or seg_raw.shape[0] != 1:
-            raise ValueError(
-                f"EEG refinement expects a single channel, but epoch {epoch_index} contains shape {seg_raw.shape}."
-            )
-        seg = seg_raw.reshape(-1)
-        _append_peak_refinements(
+        _refine_epoch_peak_modality(
             row_data,
-            seg,
-            blink_starts,
-            blink_ends,
-            sfreq,
-            "eeg",
-            n_samp_epoch,
+            epoch_index=epoch_index,
+            data_modality=data_eeg,
+            blink_starts=blink_starts,
+            blink_ends=blink_ends,
+            sfreq=sfreq,
+            n_samp_epoch=n_samp_epoch,
+            key_prefix="eeg",
         )
 
     if have_eog and data_eog is not None:
-        seg_raw = data_eog[epoch_index]
-        if seg_raw.ndim != 2 or seg_raw.shape[0] != 1:
-            raise ValueError(
-                f"EOG refinement expects a single channel, but epoch {epoch_index} contains shape {seg_raw.shape}."
-            )
-        seg = seg_raw.reshape(-1)
-        _append_peak_refinements(
+        _refine_epoch_peak_modality(
             row_data,
-            seg,
-            blink_starts,
-            blink_ends,
-            sfreq,
-            "eog",
-            n_samp_epoch,
+            epoch_index=epoch_index,
+            data_modality=data_eog,
+            blink_starts=blink_starts,
+            blink_ends=blink_ends,
+            sfreq=sfreq,
+            n_samp_epoch=n_samp_epoch,
+            key_prefix="eog",
         )
 
     return row_data
