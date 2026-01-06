@@ -38,11 +38,10 @@ if str(PROJECT_ROOT) not in sys.path:
 from pyblinker.blink_features.ear_metrics import (  # noqa: E402
     EARBlinkFeatureExtractor,
     EARFeatureConfig,
-    EARRefinementConfig,
-    EARThresholdBlinkRefiner,
     load_coarse_blinks,
     load_ear_channel,
 )
+from pyblinker.segmentation.refinement.ear import EARRefinementConfig, EARThresholdBlinkRefiner  # noqa: E402
 from pyblinker.outside_annotation import build_refined_blink_report  # noqa: E402
 
 

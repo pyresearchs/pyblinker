@@ -18,11 +18,8 @@ from .io_utils import prepare_refined_segments, save_epoch_raws
 from .metadata_utils import onset_entry_to_blinks
 from .modality import infer_modality
 from .ear import select_auto_threshold
-from pyblinker.segmentation import (
-    refine_blinks_from_epochs,
-    refine_local_maximum_stub,
-    slice_raw_into_mne_epochs_refine_annot,
-)
+from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
+from pyblinker.segmentation.refinement.eeg import refine_blinks_from_epochs, refine_local_maximum_stub
 from .report_utils import add_blink_plots_to_report, generate_epoch_report
 from .statistics_utils import (
     calculate_good_ratio,

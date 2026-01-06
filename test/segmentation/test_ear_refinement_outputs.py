@@ -17,9 +17,11 @@ import pandas.testing as pdt
 from pyblinker.blink_features.ear_metrics import (
     EARBlinkFeatureExtractor,
     EARFeatureConfig,
-    EARRefinementConfig,
     load_coarse_blinks,
     load_ear_channel,
+)
+from pyblinker.segmentation.refinement.ear import (
+    EARRefinementConfig,
     refine_annotations_for_threshold,
 )
 from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot

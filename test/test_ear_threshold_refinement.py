@@ -9,11 +9,13 @@ import pytest
 from pyblinker.blink_features.ear_metrics import (
     EARBlinkFeatureExtractor,
     EARFeatureConfig,
+    load_coarse_blinks,
+    load_ear_channel,
+)
+from pyblinker.segmentation.refinement.ear import (
     EARRefinementConfig,
     EARThresholdBlinkRefiner,
     refine_annotations_for_threshold,
-    load_coarse_blinks,
-    load_ear_channel,
 )
 
 

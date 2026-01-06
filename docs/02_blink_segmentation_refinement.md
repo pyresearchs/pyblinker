@@ -42,12 +42,12 @@ graph TD
 ### Metadata accumulation (row-wise -> column-wise)
 * Per-epoch metadata is now built as an **isolated `row_data` dict**, avoiding direct writes into the global metadata frame. Each blink produces a small dictionary (onset, duration, extremum, outer bounds, and EAR thresholds), and the list of those dictionaries is **transposed** into column lists before updating the epoch row. This makes it trivial to add new blink fields without pre-allocating columns or juggling indices.
 * No pre-allocation or `append_to_slot`: epoch metadata starts from an empty dict and is filled with lists only—no `[np.nan] * n` scaffolding or index-based writes.
-* Related code: `pyblinker/segmentation/refinement.py` (`_append_peak_refinements`), `pyblinker/segmentation/ear.py` (`_append_ear_refinements`).
+* Related code: `pyblinker/segmentation/refinement/epochs.py` (core epoch refinement flow), `pyblinker/segmentation/refinement/eeg/refinement.py` (`_append_peak_refinements`), `pyblinker/segmentation/refinement/ear/epoch.py` (`_append_ear_refinements`).
 * Tests: `test/segmentation/test_refine_annot_by_channel.py`.
 
 ## Single-channel modality configuration
 
-`slice_raw_into_mne_epochs_refine_annot` now treats modality blocks as opt-in. The helper `_prepare_epochs_and_modalities` in `pyblinker/segmentation/refinement.py` enforces:
+`slice_raw_into_mne_epochs_refine_annot` now treats modality blocks as opt-in. The helper `_prepare_epochs_and_modalities` in `pyblinker/segmentation/refinement/prep.py` enforces:
 
 * Modalities missing from the segmentation config, marked as no-op (`seg_type=[]` or `""`), or carrying `channel=None` are skipped without attempting channel validation or data picking.
 * When enabled, each modality still requires an explicit, single-channel selection; missing/empty or non-unique channels raise `ValueError`.
@@ -59,20 +59,21 @@ graph TD
 
 ### EAR threshold configuration
 * `slice_raw_into_mne_epochs_refine_annot` no longer accepts an `ear_threshold` convenience argument; EAR thresholds must be defined inside the segmentation config under the `"ear"` key (including `seg_type="threshold_interpolation"` and extension/padding settings) before calling the helper. The configuration in `tutorial/5_ear_energy_feature_tutorial.py` shows the full set of recommended EAR parameters alongside optional EEG/EOG entries.
-* Code: `pyblinker/segmentation/refinement.py` (`_prepare_segmentation_config`, `slice_raw_into_mne_epochs_refine_annot`).
+* Code: `pyblinker/segmentation/refinement/prep.py` (`_prepare_segmentation_config`), `pyblinker/segmentation/refinement/epochs.py` (`slice_raw_into_mne_epochs_refine_annot`).
 * Unit tests: `test/blink_feature_ear/energy/test_energy_features.py` builds the explicit EAR segmentation config when refining epochs for energy metrics.
 
 ### Verification
-* Code: `pyblinker/segmentation/refinement.py` (`_prepare_epochs_and_modalities`, `_modality_enabled`, `_refine_epoch_modalities`, `slice_raw_into_mne_epochs_refine_annot`).
+* Code: `pyblinker/segmentation/refinement/prep.py` (`_prepare_epochs_and_modalities`, `_modality_enabled`), `pyblinker/segmentation/refinement/refine_epoch.py` (`_refine_epoch_modalities`), `pyblinker/segmentation/refinement/epochs.py` (`slice_raw_into_mne_epochs_refine_annot`).
 * Tutorials: `tutorial/05c_minimal_blink_feature_tutorial.py`, `tutorial/5_ear_energy_feature_tutorial.py`.
 * Tests: `test/segmentation/test_ear_refinement_outputs.py`, `test/segmentation/test_refine_annot_by_channel.py`, `test/segmentation/test_slice_raw_config_variants.py`.
 
 ## Related Code
 
-*   **`pyblinker/segmentation/refinement.py`**: The core module for refinement. Contains `slice_raw_into_mne_epochs_refine_annot` and shared peak-refinement helpers.
-*   **`pyblinker/segmentation/ear.py`**: EAR-specific interpolation helpers used by the segmentation pipeline.
+*   **`pyblinker/segmentation/refinement/epochs.py`**: The core module for refinement. Contains `slice_raw_into_mne_epochs_refine_annot` and shared modality orchestration helpers.
+*   **`pyblinker/segmentation/refinement/eeg/refinement.py`**: EEG/EOG-specific peak refinement helpers, including `_append_peak_refinements` and `refine_local_maximum_stub`.
+*   **`pyblinker/segmentation/refinement/ear/epoch.py`**: EAR-specific interpolation helpers used by the segmentation pipeline.
 *   **`pyblinker/fitutils/`**: Contains utility functions for fitting shapes and finding crossings (e.g., `ear_crossing.py`).
-*   **`pyblinker/blink_features/ear_metrics/refinement.py`**: Implementation of EAR-specific refinement logic used by the segmentation helpers.
+*   **`pyblinker/segmentation/refinement/ear/threshold.py`**: Implementation of EAR-specific refinement logic used by the segmentation helpers.
 
 ## Tutorials
 
