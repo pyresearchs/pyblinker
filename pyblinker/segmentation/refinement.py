@@ -21,67 +21,6 @@ from .ear import (
 logger = get_logger(__name__)
 
 
-def _empty_metadata_row(have_eeg: bool, have_eog: bool, have_ear: bool) -> Dict[str, Any]:
-    """Return an empty, row-oriented metadata mapping for a single epoch."""
-
-    row: Dict[str, Any] = {
-        "blink_onset": [],
-        "blink_duration": [],
-        "n_blinks": 0,
-    }
-    if have_eeg:
-        row.update(
-            {
-                "blink_onset_eeg": [],
-                "blink_duration_eeg": [],
-                "blink_onset_extremum_eeg": [],
-                "blink_outer_start_eeg": [],
-                "blink_outer_end_eeg": [],
-            }
-        )
-    if have_eog:
-        row.update(
-            {
-                "blink_onset_eog": [],
-                "blink_duration_eog": [],
-                "blink_onset_extremum_eog": [],
-                "blink_outer_start_eog": [],
-                "blink_outer_end_eog": [],
-            }
-        )
-    if have_ear:
-        row.update(
-            {
-                "blink_onset_ear": [],
-                "blink_duration_ear": [],
-                "blink_onset_extremum_ear": [],
-                "blink_outer_start_ear": [],
-                "blink_outer_end_ear": [],
-                "refined_start_sample": [],
-                "refined_end_sample": [],
-                "refined_lowest_point_sample": [],
-                "refined_left_threshold": [],
-                "refined_right_threshold": [],
-                "search_window_start_sample": [],
-                "search_window_end_sample": [],
-                "search_window_start_time": [],
-                "search_window_end_time": [],
-                "refinement_succeeded": [],
-                "search_exhausted": [],
-                "extension_seconds_used": [],
-                "extension_attempts": [],
-                "left_interpolated_threshold": [],
-                "right_interpolated_threshold": [],
-                "left_interpolated_threshold_sample": [],
-                "right_interpolated_threshold_sample": [],
-                "left_interpolated_threshold_found": [],
-                "right_interpolated_threshold_found": [],
-                "interpolated_thresholds_found": [],
-            }
-        )
-    return row
-
-
 def _prepare_segmentation_config(
     segmentation_type: Optional[dict],
 ) -> Dict[str, Any]:
@@ -392,7 +331,6 @@ def _refine_epoch_modalities(
     have_eeg: bool,
     have_eog: bool,
     segment_config: dict,
-    template_row: Dict[str, Any],
 ) -> Dict[str, Any]:
     """Refine blink metadata for a single epoch across modalities.
 
@@ -408,7 +346,6 @@ def _refine_epoch_modalities(
             when the modality is disabled.
         have_ear/eeg/eog: Flags indicating whether each modality is enabled.
         segment_config: Segmentation configuration passed to EAR refinement.
-        template_row: Empty metadata mapping seeded with expected keys for this epoch.
 
     Behavior
     --------
@@ -440,8 +377,7 @@ def _refine_epoch_modalities(
         n_samp_epoch,
     )
 
-    row_data = {key: (list(value) if isinstance(value, list) else value) for key, value in template_row.items()}
-
+    row_data: Dict[str, Any] = {"blink_onset": [], "blink_duration": [], "n_blinks": 0}
     n_blinks = len(blink_starts)
     row_data["n_blinks"] = n_blinks
     if n_blinks == 0:
@@ -532,7 +468,6 @@ def slice_raw_into_mne_epochs_refine_annot(
         blink_label=blink_label,
         segment_config=segment_config,
     )
-    template_row = _empty_metadata_row(prep.have_eeg, prep.have_eog, prep.have_ear)
     metadata_rows: List[Dict[str, Any]] = []
 
     iterator = range(prep.n_epochs)
@@ -556,7 +491,6 @@ def slice_raw_into_mne_epochs_refine_annot(
                 have_eeg=prep.have_eeg,
                 have_eog=prep.have_eog,
                 segment_config=segment_config,
-                template_row=template_row,
             )
         )
 

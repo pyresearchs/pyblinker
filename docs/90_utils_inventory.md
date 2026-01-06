@@ -35,7 +35,6 @@
 | pyblinker/utils/open_eye_baseline.py | no | _blinks_from_metadata | function | private | (meta, sfreq) | Convert blink onset/duration metadata to frame spans. | 2 |
 | pyblinker/utils/open_eye_baseline.py | no | _compute_features | function | private | (signal, blinks, sfreq) | Compute baseline features for a single-channel epoch. | 5 |
 | pyblinker/utils/open_eye_baseline.py | no | compute_open_eye_baseline_features | function | public | (epochs, picks, indices) | Compute averaged baseline features across selected epochs. | 3 |
-| pyblinker/segmentation/refinement.py | no | _empty_metadata_row | function | private | (have_eeg, have_eog, have_ear) | Build an empty row-oriented metadata mapping for a single epoch. | 2 |
 | pyblinker/segmentation/refinement.py | no | slice_raw_into_mne_epochs_refine_annot | function | public | (raw) | Convert a continuous recording into equally spaced epochs with refinement. | 47 |
 | pyblinker/segmentation/refinement.py | no | refine_local_maximum_stub | function | public | (signal_segment, start_rel, end_rel, peak_rel_cvat=None) | Return a crude refinement for local maxima in a signal segment. | 9 |
 | pyblinker/segmentation/refinement.py | no | refine_blinks_from_epochs | function | public | (segments, channel) | Refine blink annotations within pre-sliced raw segments. | 8 |
