@@ -43,6 +43,7 @@ def build_segment_config(
         if channel not in raw.ch_names:
             raise ValueError(f"Channel '{channel}' not found in raw data for modality '{modality}'.")
         section["channel"] = channel
+        section.setdefault("seg_type", "outer")
         return section
 
     if ear_channel is None:

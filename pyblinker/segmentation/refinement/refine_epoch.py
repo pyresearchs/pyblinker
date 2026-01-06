@@ -47,6 +47,7 @@ def _refine_epoch_peak_modality(
     *,
     epoch_index: int,
     data_modality: np.ndarray | None,
+    modality_config: dict | None,
     blink_starts: List[int],
     blink_ends: List[int],
     sfreq: float,
@@ -70,6 +71,7 @@ def _refine_epoch_peak_modality(
         sfreq,
         key_prefix,
         n_samp_epoch,
+        modality_config,
     )
 
 
@@ -140,6 +142,7 @@ def _refine_epoch_modalities(
             row_data,
             epoch_index=epoch_index,
             data_modality=data_eeg,
+            modality_config=segment_config.get("eeg"),
             blink_starts=blink_starts,
             blink_ends=blink_ends,
             sfreq=sfreq,
@@ -152,6 +155,7 @@ def _refine_epoch_modalities(
             row_data,
             epoch_index=epoch_index,
             data_modality=data_eog,
+            modality_config=segment_config.get("eog"),
             blink_starts=blink_starts,
             blink_ends=blink_ends,
             sfreq=sfreq,

@@ -45,6 +45,7 @@ def _append_peak_refinements(
     sfreq: float,
     key_prefix: str,
     n_samp_epoch: int,
+    modality_config: Dict[str, Any] | None = None,
 ) -> None:
     if segment.size == 0 or not blink_starts:
         return
@@ -70,13 +71,21 @@ def _append_peak_refinements(
     if not blink_entries:
         return
 
-    bounds = compute_outer_bounds(peaks, n_samp_epoch)
-    blink_data: dict[str, Any]
-    for blink_data, (outer_start, outer_end) in zip(blink_entries, bounds):
-        blink_data[f"blink_outer_start_{key_prefix}"] = outer_start
-        blink_data[f"blink_outer_end_{key_prefix}"] = outer_end
-        blink_data[f"onset__outer__{key_prefix}"] = outer_start / sfreq
-        blink_data[f"duration__outer__{key_prefix}"] = (outer_end - outer_start) / sfreq
+    seg_type = (modality_config or {}).get("seg_type")
+    compute_outer = False
+    if isinstance(seg_type, str):
+        compute_outer = seg_type == "outer"
+    elif isinstance(seg_type, Sequence) and not isinstance(seg_type, str):
+        compute_outer = "outer" in seg_type
+
+    if compute_outer:
+        bounds = compute_outer_bounds(peaks, n_samp_epoch)
+        blink_data: dict[str, Any]
+        for blink_data, (outer_start, outer_end) in zip(blink_entries, bounds):
+            blink_data[f"blink_outer_start_{key_prefix}"] = outer_start
+            blink_data[f"blink_outer_end_{key_prefix}"] = outer_end
+            blink_data[f"onset__outer__{key_prefix}"] = outer_start / sfreq
+            blink_data[f"duration__outer__{key_prefix}"] = (outer_end - outer_start) / sfreq
 
     keys = blink_entries[0].keys()
     transposed = {key: [entry[key] for entry in blink_entries] for key in keys}
