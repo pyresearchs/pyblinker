@@ -176,7 +176,7 @@ def _refine_ear_blinks_for_epoch(
         refinement["refined_trough_sample"] = trough_sample
         refinement["refined_lowest_point_sample"] = trough_sample	# Duplicate, we may consider to remove this later
 
-
+        # Step 2: compute interpolated threshold crossings if applicable
         if seg_type == "threshold_interpolation" and refiner is not None:
             interp = refiner._compute_interpolated_threshold_crossings(
                 refined_start_sample=refinement["refined_start_sample"],
