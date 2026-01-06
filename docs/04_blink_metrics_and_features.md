@@ -56,6 +56,18 @@ Unless noted otherwise:
     *   Implementation: `pyblinker/blink_features/frequency_domain/aggregate.py` computes wavelet energies per channel and then aggregates them by modality without averaging channels together.
     *   Unit tests: `test/blink_features/frequency_domain/test_frequency_domain_blink_features_ear_eeg_eog.py` verifies EAR/EEG/EOG outputs contain modality-specific wavelet energy columns.
 
+*Frequency-domain aggregation change*: Channel selection, missing-channel validation, and sampling-frequency warnings for wavelet aggregation now live in a shared helper to keep the computation path consistent across callers.
+
+*Related Code*:
+*   `pyblinker/blink_features/frequency_domain/aggregate.py` (wavelet aggregation entry point)
+*   `pyblinker/blink_features/utils/aggregation.py` (channel preparation and validation helper)
+
+*Unit Tests*:
+*   `test/blink_features/frequency_domain/test_frequency_domain_blink_features_ear_only.py`
+*   `test/blink_features/frequency_domain/test_frequency_domain_blink_features_eeg_only.py`
+*   `test/blink_features/frequency_domain/test_frequency_domain_blink_features_eog_only.py`
+*   `test/blink_features/frequency_domain/test_frequency_domain_blink_features_ear_eeg_eog.py`
+
 ### Flowchart
 
 ```mermaid
