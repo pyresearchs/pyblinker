@@ -52,7 +52,7 @@ class TestEarOnlyKinematicPipeline(unittest.TestCase):
         df = compute_kinematic_features(epochs, picks=EAR_CHANNEL)
 
         self.assertNotIn("blink_onset_eeg", epochs.metadata.columns)
-        self.assertTrue(all(col.endswith(f"_{EAR_CHANNEL}") for col in df.columns))
+        self.assertTrue(all(col.endswith(f"__{EAR_CHANNEL}") for col in df.columns))
         self.assertGreater(df.notna().sum().sum(), 0)
 
 

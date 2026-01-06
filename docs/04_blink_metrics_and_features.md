@@ -133,6 +133,19 @@ Automatic modality inference per channel prevents EEG defaults when processing E
 *Unit Tests*:
 *   `test/blink_features/kinematics/test_kinematic_features.py`: Validates the per-blink kinematic metrics after refactoring the epoch/channel preparation.
 
+## Kinematic style-aware metadata and naming
+
+*Feature/change*: Kinematic aggregation now prepares per-channel waveform, first-derivative, and second-derivative data for each epoch and reads modality/style-specific onset and duration keys (e.g., `onset__th_interpolation__ear`, `duration__outer__eeg`). Columns are emitted using the pattern `<modality>__<style>__kinematic__<metric>__<channel>` (with statistics appended), aligning the kinematic schema with other feature families.
+
+*Related Code*:
+*   `pyblinker/blink_features/utils/aggregation.py` (per-channel `raw`, `dx1`, `dx2` arrays in `prepare_epoch_channel_data`)
+*   `pyblinker/blink_features/kinematics/kinematic_features.py` (style-aware window selection and feature naming)
+*   `pyblinker/segmentation/refinement/ear/epoch.py` (propagating EAR threshold-interpolation onset/duration metadata for style-specific windows)
+
+*Unit Tests*:
+*   `test/blink_features/kinematics/test_kinematic_features.py`: Verifies style-aware kinematic outputs and statistics.
+*   `test/blink_features/kinematics/test_optional_channels_and_configs.py`: Confirms channel-specific column naming across modality combinations.
+
 ## Unit Tests
 
 *   **`test/run_all_features_test.py`**:

@@ -237,6 +237,12 @@ def _append_ear_refinements(
                 "search_exhausted": bool(refinement["search_exhausted"]),
                 "extension_seconds_used": float(refinement["extension_seconds_used"]),
                 "extension_attempts": int(refinement["extension_attempts"]),
+                "onset__th_interpolation__ear": float(
+                    refinement.get("onset__th_interpolation__ear", float("nan"))
+                ),
+                "duration__th_interpolation__ear": float(
+                    refinement.get("duration__th_interpolation__ear", float("nan"))
+                ),
                 "left_interpolated_threshold": float(left_time),
                 "right_interpolated_threshold": float(right_time),
                 "left_interpolated_threshold_sample": (
@@ -252,6 +258,10 @@ def _append_ear_refinements(
                     refinement.get("right_interpolated_threshold_found", False)
                 ),
                 "interpolated_thresholds_found": bool(refinement.get("interpolated_thresholds_found", False)),
+                "onset__th_sample__ear": float(refinement.get("onset__th_sample__ear", float("nan"))),
+                "duration__th_sample__ear": float(
+                    refinement.get("duration__th_sample__ear", float("nan"))
+                ),
             }
         )
 
@@ -281,6 +291,8 @@ def _append_ear_refinements(
                 "search_exhausted": base_entry["search_exhausted"],
                 "extension_seconds_used": base_entry["extension_seconds_used"],
                 "extension_attempts": base_entry["extension_attempts"],
+                "onset__th_interpolation__ear": base_entry["onset__th_interpolation__ear"],
+                "duration__th_interpolation__ear": base_entry["duration__th_interpolation__ear"],
                 "left_interpolated_threshold": base_entry["left_interpolated_threshold"],
                 "right_interpolated_threshold": base_entry["right_interpolated_threshold"],
                 "left_interpolated_threshold_sample": base_entry["left_interpolated_threshold_sample"],
@@ -288,6 +300,8 @@ def _append_ear_refinements(
                 "left_interpolated_threshold_found": base_entry["left_interpolated_threshold_found"],
                 "right_interpolated_threshold_found": base_entry["right_interpolated_threshold_found"],
                 "interpolated_thresholds_found": base_entry["interpolated_thresholds_found"],
+                "onset__th_sample__ear": base_entry["onset__th_sample__ear"],
+                "duration__th_sample__ear": base_entry["duration__th_sample__ear"],
             }
         )
 

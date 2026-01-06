@@ -8,14 +8,12 @@ from pathlib import Path
 import mne
 import numpy as np
 
+from pyblinker.blink_features._core_blink import CANONICAL_METRIC_STEMS, METHODS_BY_MODALITY
 from pyblinker.blink_features.kinematics import compute_kinematic_features
 from pyblinker.blink_features.kinematics.per_blink import compute_segment_kinematics
-from pyblinker.blink_features.energy.helpers import (
-    extract_blink_windows,
-    segment_to_samples,
-    _safe_stats,
-)
+from pyblinker.blink_features.energy.helpers import segment_to_samples, _safe_stats
 from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
+from pyblinker.utils.iter_utils import ensure_list
 from test.segment_config import build_segment_config
 
 from ..utils.helpers import assert_df_has_columns, assert_numeric_or_nan
@@ -44,11 +42,13 @@ class TestKinematicFeatures(unittest.TestCase):
         ch = "EEG-E8"
         df = compute_kinematic_features(self.epochs, picks=ch)
 
-        metric_keys = tuple(
-            compute_segment_kinematics(np.zeros(3), 1.0, methods=("base",)).keys()
-        )
+        metric_keys = [
+            f"{stem}_{method}"
+            for stem in CANONICAL_METRIC_STEMS
+            for method in METHODS_BY_MODALITY["eeg"]
+        ]
         expected_cols = [
-            f"{m}_{s}_{ch}" for m in metric_keys for s in ("mean", "std", "cv")
+            f"eeg__blink__kinematic__{m}_{s}__{ch}" for m in metric_keys for s in ("mean", "std", "cv")
         ]
         assert_df_has_columns(self, df, expected_cols)
         assert_numeric_or_nan(self, df.iloc[0])
@@ -56,7 +56,7 @@ class TestKinematicFeatures(unittest.TestCase):
         zero_idx = self.epochs.metadata.index[
             self.epochs.metadata["n_blinks"] == 0
         ][0]
-        self.assertTrue(df.loc[zero_idx].isna().all())
+        self.assertTrue(df.loc[zero_idx, expected_cols].isna().all())
 
     def test_manual_first_epoch(self) -> None:
         """Manual computation for the first epoch matches library output."""
@@ -65,16 +65,18 @@ class TestKinematicFeatures(unittest.TestCase):
         sfreq = float(self.epochs.info["sfreq"])
         data = self.epochs.get_data(picks=[ch])
         meta = self.epochs.metadata.iloc[0]
-        windows = extract_blink_windows(meta, ch, 0)
-        metric_keys = tuple(
-            compute_segment_kinematics(np.zeros(3), 1.0, methods=("base",)).keys()
-        )
+        windows = list(zip(ensure_list(meta["blink_onset_eeg"]), ensure_list(meta["blink_duration_eeg"])))
+        metric_keys = [
+            f"{stem}_{method}"
+            for stem in CANONICAL_METRIC_STEMS
+            for method in METHODS_BY_MODALITY["eeg"]
+        ]
         per_metric = {m: [] for m in metric_keys}
         n_times = data.shape[-1]
         for onset, dur in windows:
             sl = segment_to_samples(onset, dur, sfreq, n_times)
             seg = data[0, 0, sl]
-            metrics = compute_segment_kinematics(seg, sfreq, methods=("base",))
+            metrics = compute_segment_kinematics(seg, sfreq, methods=METHODS_BY_MODALITY["eeg"])
             for m in metric_keys:
                 per_metric[m].append(metrics[m])
 
@@ -82,7 +84,7 @@ class TestKinematicFeatures(unittest.TestCase):
         for metric, values in per_metric.items():
             stats = _safe_stats(values)
             for stat_name, value in stats.items():
-                manual[f"{metric}_{stat_name}_{ch}"] = value
+                manual[f"eeg__blink__kinematic__{metric}_{stat_name}__{ch}"] = value
 
         for key, val in manual.items():
             self.assertAlmostEqual(df.iloc[0][key], val, places=7)

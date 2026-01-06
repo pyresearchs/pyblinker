@@ -56,11 +56,11 @@ class TestIncompleteKinematicConfig(unittest.TestCase):
 
         self.assertNotIn("blink_onset_eeg", epochs.metadata.columns)
         self.assertIn("blink_onset_ear", epochs.metadata.columns)
-        self.assertTrue(any(col.endswith(f"_{EAR_CHANNEL}") for col in df.columns))
-        self.assertTrue(any(col.endswith(f"_{EEG_CHANNEL}") for col in df.columns))
+        self.assertTrue(any(col.endswith(f"__{EAR_CHANNEL}") for col in df.columns))
+        self.assertTrue(any(col.endswith(f"__{EEG_CHANNEL}") for col in df.columns))
         self.assertTrue(
             all(
-                col.endswith(f"_{EAR_CHANNEL}") or col.endswith(f"_{EEG_CHANNEL}")
+                col.endswith(f"__{EAR_CHANNEL}") or col.endswith(f"__{EEG_CHANNEL}")
                 for col in df.columns
             )
         )

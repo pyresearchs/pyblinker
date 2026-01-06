@@ -51,7 +51,7 @@ class TestEegOnlyKinematicPipeline(unittest.TestCase):
 
         self.assertNotIn("blink_onset_ear", epochs.metadata.columns)
         self.assertIn("blink_onset_eeg", epochs.metadata.columns)
-        self.assertTrue(all(col.endswith(f"_{EEG_CHANNEL}") for col in df.columns))
+        self.assertTrue(all(col.endswith(f"__{EEG_CHANNEL}") for col in df.columns))
         self.assertGreater(df.notna().sum().sum(), 0)
 
 
