@@ -3,79 +3,22 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import mne
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
+from pyblinker.blink_features.blink_events.blink_dataframe import compute_outer_bounds
 from pyblinker.logging import get_logger
-from pyblinker.utils.dict_utils import append_to_slot
 
 from .ear import (
     _append_ear_refinements,
-    _append_outer_bounds_from_peaks,
     _refine_ear_blinks_for_epoch,
 )
 
 logger = get_logger(__name__)
-
-
-def _init_metadata(
-    n_epochs: int,
-    have_eeg: bool,
-    have_eog: bool,
-    have_ear: bool,
-) -> Dict[str, List[Any]]:
-    """Create metadata dict with required (manual) and conditional fields."""
-
-    md: Dict[str, List[Any]] = {
-        "blink_onset": [np.nan] * n_epochs,
-        "blink_duration": [np.nan] * n_epochs,
-        "n_blinks": [0] * n_epochs,
-    }
-    # Since we may have different ways to define the blink onset per modality, and per crossing like zero crossing, tent crossing, half base crossing.
-    # So here, we just create all the possible fields.
-    if have_eeg:
-        md["blink_onset_eeg"] = [np.nan] * n_epochs
-        md["blink_duration_eeg"] = [np.nan] * n_epochs
-        md["blink_onset_extremum_eeg"] = [np.nan] * n_epochs
-        md["blink_outer_start_eeg"] = [np.nan] * n_epochs
-        md["blink_outer_end_eeg"] = [np.nan] * n_epochs
-    if have_eog:
-        md["blink_onset_eog"] = [np.nan] * n_epochs
-        md["blink_duration_eog"] = [np.nan] * n_epochs
-        md["blink_onset_extremum_eog"] = [np.nan] * n_epochs
-        md["blink_outer_start_eog"] = [np.nan] * n_epochs
-        md["blink_outer_end_eog"] = [np.nan] * n_epochs
-    if have_ear:
-        md["blink_onset_ear"] = [np.nan] * n_epochs
-        md["blink_duration_ear"] = [np.nan] * n_epochs
-        md["blink_onset_extremum_ear"] = [np.nan] * n_epochs
-        md["blink_outer_start_ear"] = [np.nan] * n_epochs
-        md["blink_outer_end_ear"] = [np.nan] * n_epochs
-        md["refined_start_sample"] = [np.nan] * n_epochs
-        md["refined_end_sample"] = [np.nan] * n_epochs
-        md["refined_lowest_point_sample"] = [np.nan] * n_epochs
-        md["refined_left_threshold"] = [np.nan] * n_epochs
-        md["refined_right_threshold"] = [np.nan] * n_epochs
-        md["search_window_start_sample"] = [np.nan] * n_epochs
-        md["search_window_end_sample"] = [np.nan] * n_epochs
-        md["search_window_start_time"] = [np.nan] * n_epochs
-        md["search_window_end_time"] = [np.nan] * n_epochs
-        md["refinement_succeeded"] = [None] * n_epochs
-        md["search_exhausted"] = [None] * n_epochs
-        md["extension_seconds_used"] = [np.nan] * n_epochs
-        md["extension_attempts"] = [np.nan] * n_epochs
-        md["left_interpolated_threshold"] = [np.nan] * n_epochs
-        md["right_interpolated_threshold"] = [np.nan] * n_epochs
-        md["left_interpolated_threshold_sample"] = [np.nan] * n_epochs
-        md["right_interpolated_threshold_sample"] = [np.nan] * n_epochs
-        md["left_interpolated_threshold_found"] = [None] * n_epochs
-        md["right_interpolated_threshold_found"] = [None] * n_epochs
-        md["interpolated_thresholds_found"] = [None] * n_epochs
-    return md
 
 
 def _prepare_segmentation_config(
@@ -155,8 +98,7 @@ def _compute_epoch_blink_bounds(
 
 
 def _append_peak_refinements(
-    md: Dict[str, List[Any]],
-    epoch_index: int,
+    row_data: Dict[str, Any],
     segment: np.ndarray,
     blink_starts: Sequence[int],
     blink_ends: Sequence[int],
@@ -166,26 +108,31 @@ def _append_peak_refinements(
 ) -> None:
     if segment.size == 0 or not blink_starts:
         return
+
     peaks: List[int] = []
+    blink_entries: List[Dict[str, Any]] = []
     for start, end in zip(blink_starts, blink_ends):
         refined_start, peak, refined_end = refine_local_maximum_stub(segment, start, end, peak_rel_cvat=None)
         peaks.append(int(peak))
-        something_like_this= dict(						# we should we naming convention as stated here.
-			onset_refined__eeg=refined_start / sfreq,
-			duration_refined__eeg=max(0.0, (refined_end - refined_start) / sfreq),
-			onset_refined_peak__eeg=peak / sfreq)
-        md[f"blink_onset_{key_prefix}"][epoch_index] = append_to_slot(
-            md[f"blink_onset_{key_prefix}"][epoch_index], refined_start / sfreq
-        )
-        md[f"blink_duration_{key_prefix}"][epoch_index] = append_to_slot(
-            md[f"blink_duration_{key_prefix}"][epoch_index],
-            max(0.0, (refined_end - refined_start) / sfreq),
-        )
-        md[f"blink_onset_extremum_{key_prefix}"][epoch_index] = append_to_slot(
-            md[f"blink_onset_extremum_{key_prefix}"][epoch_index], peak / sfreq
+        blink_entries.append(
+            {
+                f"blink_onset_{key_prefix}": refined_start / sfreq,
+                f"blink_duration_{key_prefix}": max(0.0, (refined_end - refined_start) / sfreq),
+                f"blink_onset_extremum_{key_prefix}": peak / sfreq,
+            }
         )
 
-    _append_outer_bounds_from_peaks(md, epoch_index, peaks, key_prefix, n_samp_epoch)
+    if not blink_entries:
+        return
+
+    bounds = compute_outer_bounds(peaks, n_samp_epoch)
+    for blink_data, (outer_start, outer_end) in zip(blink_entries, bounds):
+        blink_data[f"blink_outer_start_{key_prefix}"] = outer_start
+        blink_data[f"blink_outer_end_{key_prefix}"] = outer_end
+
+    keys = blink_entries[0].keys()
+    transposed = {key: [entry[key] for entry in blink_entries] for key in keys}
+    row_data.update(transposed)
 
 
 @dataclass
@@ -384,8 +331,7 @@ def _refine_epoch_modalities(
     have_eeg: bool,
     have_eog: bool,
     segment_config: dict,
-    md: Dict[str, List[Any]],
-) -> None:
+) -> Dict[str, Any]:
     """Refine blink metadata for a single epoch across modalities.
 
     Args:
@@ -400,15 +346,14 @@ def _refine_epoch_modalities(
             when the modality is disabled.
         have_ear/eeg/eog: Flags indicating whether each modality is enabled.
         segment_config: Segmentation configuration passed to EAR refinement.
-        md: Metadata dictionary to mutate in-place.
 
     Behavior
     --------
     * Epoch-relative blink bounds are derived with
       :func:`_compute_epoch_blink_bounds`.
-    * ``md["n_blinks"]`` is updated regardless of enabled modalities.
+    * ``n_blinks`` is updated regardless of enabled modalities.
     * When no blinks fall inside the epoch, the function returns early without
-      populating modality-specific metadata.
+      populating modality-specific metadata beyond the initialized row defaults.
     * EAR refinement validates that exactly one channel sample is available,
       flattens to ``(n_times,)``, and appends detailed thresholds/search fields.
     * EEG and EOG refinements operate on single-channel 1D vectors without
@@ -432,17 +377,24 @@ def _refine_epoch_modalities(
         n_samp_epoch,
     )
 
+    row_data: Dict[str, Any] = {"blink_onset": [], "blink_duration": [], "n_blinks": 0}
     n_blinks = len(blink_starts)
-    md["n_blinks"][epoch_index] = n_blinks
+    row_data["n_blinks"] = n_blinks
     if n_blinks == 0:
-        return
+        return row_data
 
+    coarse_onsets: List[float] = []
+    coarse_durations: List[float] = []
     # This the coarse onset/duration from the annotations, before refinement.
     for sr, er in zip(blink_starts, blink_ends):
         onset_sec_rel = sr / sfreq
         duration_sec_rel = max(0.0, (er - sr) / sfreq)
-        md["blink_onset"][epoch_index] = onset_sec_rel
-        md["blink_duration"][epoch_index] = duration_sec_rel
+        coarse_onsets.append(onset_sec_rel)
+        coarse_durations.append(duration_sec_rel)
+
+    if coarse_onsets:
+        row_data["blink_onset"] = coarse_onsets
+        row_data["blink_duration"] = coarse_durations
 
     if have_ear and data_ear is not None:
         seg_raw = data_ear[epoch_index]
@@ -459,7 +411,7 @@ def _refine_epoch_modalities(
             sfreq,
             segment_config,
         )
-        _append_ear_refinements(md, epoch_index, refinements, sfreq, n_samp_epoch)
+        _append_ear_refinements(row_data, refinements, sfreq, n_samp_epoch)
 
     if have_eeg and data_eeg is not None:
         seg_raw = data_eeg[epoch_index]
@@ -469,8 +421,7 @@ def _refine_epoch_modalities(
             )
         seg = seg_raw.reshape(-1)
         _append_peak_refinements(
-            md,
-            epoch_index,
+            row_data,
             seg,
             blink_starts,
             blink_ends,
@@ -487,8 +438,7 @@ def _refine_epoch_modalities(
             )
         seg = seg_raw.reshape(-1)
         _append_peak_refinements(
-            md,
-            epoch_index,
+            row_data,
             seg,
             blink_starts,
             blink_ends,
@@ -496,6 +446,8 @@ def _refine_epoch_modalities(
             "eog",
             n_samp_epoch,
         )
+
+    return row_data
 
 
 def slice_raw_into_mne_epochs_refine_annot(
@@ -516,32 +468,33 @@ def slice_raw_into_mne_epochs_refine_annot(
         blink_label=blink_label,
         segment_config=segment_config,
     )
-    md = _init_metadata(prep.n_epochs, prep.have_eeg, prep.have_eog, prep.have_ear)
+    metadata_rows: List[Dict[str, Any]] = []
 
     iterator = range(prep.n_epochs)
     if progress_bar:
         iterator = tqdm(iterator, desc="Refining blink metadata", unit="epoch")
 
     for ei in iterator:
-        _refine_epoch_modalities(
-            epoch_index=ei,
-            epoch_len=epoch_len,
-            epochs=prep.epochs,
-            sfreq=prep.sfreq,
-            n_samp_epoch=prep.n_samp_epoch,
-            blink_onsets_sec=prep.blink_onsets_sec,
-            blink_durs_sec=prep.blink_durs_sec,
-            data_ear=prep.data_ear,
-            data_eeg=prep.data_eeg,
-            data_eog=prep.data_eog,
-            have_ear=prep.have_ear,
-            have_eeg=prep.have_eeg,
-            have_eog=prep.have_eog,
-            segment_config=segment_config,
-            md=md,
+        metadata_rows.append(
+            _refine_epoch_modalities(
+                epoch_index=ei,
+                epoch_len=epoch_len,
+                epochs=prep.epochs,
+                sfreq=prep.sfreq,
+                n_samp_epoch=prep.n_samp_epoch,
+                blink_onsets_sec=prep.blink_onsets_sec,
+                blink_durs_sec=prep.blink_durs_sec,
+                data_ear=prep.data_ear,
+                data_eeg=prep.data_eeg,
+                data_eog=prep.data_eog,
+                have_ear=prep.have_ear,
+                have_eeg=prep.have_eeg,
+                have_eog=prep.have_eog,
+                segment_config=segment_config,
+            )
         )
 
-    metadata = pd.DataFrame(md)
+    metadata = pd.DataFrame(metadata_rows)
     prep.epochs.metadata = metadata
 
     logger.debug("Epoch metadata head: %s", metadata.head())
