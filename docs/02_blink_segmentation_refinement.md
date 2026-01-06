@@ -39,6 +39,11 @@ graph TD
     G --> H[Update Epoch Metadata]
 ```
 
+### Metadata accumulation (row-wise -> column-wise)
+* Per-epoch metadata is now built as an **isolated `row_data` dict**, avoiding direct writes into the global metadata frame. Each blink produces a small dictionary (onset, duration, extremum, outer bounds, and EAR thresholds), and the list of those dictionaries is **transposed** into column lists before updating the epoch row. This makes it trivial to add new blink fields without pre-allocating columns or juggling indices.
+* Related code: `pyblinker/segmentation/refinement.py` (`_append_peak_refinements`), `pyblinker/segmentation/ear.py` (`_append_ear_refinements`).
+* Tests: `test/segmentation/test_refine_annot_by_channel.py`.
+
 ## Single-channel modality configuration
 
 `slice_raw_into_mne_epochs_refine_annot` now treats modality blocks as opt-in. The helper `_prepare_epochs_and_modalities` in `pyblinker/segmentation/refinement.py` enforces:

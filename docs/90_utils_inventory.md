@@ -41,8 +41,8 @@
 | pyblinker/segmentation/refinement.py | no | refine_blinks_from_epochs | function | public | (segments, channel) | Refine blink annotations within pre-sliced raw segments. | 8 |
 | pyblinker/segmentation/ear.py | no | _empty_interpolated_thresholds | function | private | () | Return default interpolated threshold metadata with NaN/False values. | 2 |
 | pyblinker/segmentation/ear.py | no | _refine_ear_blinks_for_epoch | function | private | (segment, blink_starts, blink_ends, sfreq, segmentation_config) | Refine EAR blinks for a single epoch based on segmentation settings. | 3 |
-| pyblinker/segmentation/ear.py | no | _append_ear_refinements | function | private | (md, epoch_index, refinements, sfreq, n_samp_epoch) | Attach EAR refinement metadata to the epoch metadata frame. | 4 |
-| pyblinker/segmentation/ear.py | no | _append_outer_bounds_from_peaks | function | private | (md, epoch_index, peaks, key_prefix, n_samp_epoch) | Append blink outer bounds derived from peaks for the given modality. | 4 |
+| pyblinker/segmentation/ear.py | no | _append_ear_refinements | function | private | (row_data, refinements, sfreq, n_samp_epoch) | Attach EAR refinement metadata to the epoch metadata frame. | 4 |
+| pyblinker/segmentation/ear.py | no | _append_outer_bounds_from_peaks | function | private | (row_data, peaks, key_prefix, n_samp_epoch) | Append blink outer bounds derived from peaks for the given modality. | 4 |
 | pyblinker/utils/report_utils.py | no | generate_epoch_report | function | public | (segments, times) | Create a simple report visualizing each segment. | 10 |
 | pyblinker/utils/report_utils.py | no | add_blink_plots_to_report | function | public | (epochs) | Add per-blink plots to an :class:`mne.Report` for manual validation. | 9 |
 | pyblinker/utils/statistics_utils.py | no | calculate_within_range | function | public | (all_values, best_median, best_robust_std) | Return the count of values within two robust standard deviations. | 7 |

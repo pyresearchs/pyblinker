@@ -3,19 +3,18 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import mne
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
+from pyblinker.blink_features.blink_events.blink_dataframe import compute_outer_bounds
 from pyblinker.logging import get_logger
-from pyblinker.utils.dict_utils import append_to_slot
 
 from .ear import (
     _append_ear_refinements,
-    _append_outer_bounds_from_peaks,
     _refine_ear_blinks_for_epoch,
 )
 
@@ -155,8 +154,7 @@ def _compute_epoch_blink_bounds(
 
 
 def _append_peak_refinements(
-    md: Dict[str, List[Any]],
-    epoch_index: int,
+    row_data: Dict[str, Any],
     segment: np.ndarray,
     blink_starts: Sequence[int],
     blink_ends: Sequence[int],
@@ -166,26 +164,31 @@ def _append_peak_refinements(
 ) -> None:
     if segment.size == 0 or not blink_starts:
         return
+
     peaks: List[int] = []
+    blink_entries: List[Dict[str, Any]] = []
     for start, end in zip(blink_starts, blink_ends):
         refined_start, peak, refined_end = refine_local_maximum_stub(segment, start, end, peak_rel_cvat=None)
         peaks.append(int(peak))
-        something_like_this= dict(						# we should we naming convention as stated here.
-			onset_refined__eeg=refined_start / sfreq,
-			duration_refined__eeg=max(0.0, (refined_end - refined_start) / sfreq),
-			onset_refined_peak__eeg=peak / sfreq)
-        md[f"blink_onset_{key_prefix}"][epoch_index] = append_to_slot(
-            md[f"blink_onset_{key_prefix}"][epoch_index], refined_start / sfreq
-        )
-        md[f"blink_duration_{key_prefix}"][epoch_index] = append_to_slot(
-            md[f"blink_duration_{key_prefix}"][epoch_index],
-            max(0.0, (refined_end - refined_start) / sfreq),
-        )
-        md[f"blink_onset_extremum_{key_prefix}"][epoch_index] = append_to_slot(
-            md[f"blink_onset_extremum_{key_prefix}"][epoch_index], peak / sfreq
+        blink_entries.append(
+            {
+                f"blink_onset_{key_prefix}": refined_start / sfreq,
+                f"blink_duration_{key_prefix}": max(0.0, (refined_end - refined_start) / sfreq),
+                f"blink_onset_extremum_{key_prefix}": peak / sfreq,
+            }
         )
 
-    _append_outer_bounds_from_peaks(md, epoch_index, peaks, key_prefix, n_samp_epoch)
+    if not blink_entries:
+        return
+
+    bounds = compute_outer_bounds(peaks, n_samp_epoch)
+    for blink_data, (outer_start, outer_end) in zip(blink_entries, bounds):
+        blink_data[f"blink_outer_start_{key_prefix}"] = outer_start
+        blink_data[f"blink_outer_end_{key_prefix}"] = outer_end
+
+    keys = blink_entries[0].keys()
+    transposed = {key: [entry[key] for entry in blink_entries] for key in keys}
+    row_data.update(transposed)
 
 
 @dataclass
@@ -432,17 +435,27 @@ def _refine_epoch_modalities(
         n_samp_epoch,
     )
 
+    row_data = {key: md[key][epoch_index] for key in md}
+
     n_blinks = len(blink_starts)
-    md["n_blinks"][epoch_index] = n_blinks
+    row_data["n_blinks"] = n_blinks
     if n_blinks == 0:
+        for key, value in row_data.items():
+            md[key][epoch_index] = value
         return
 
+    coarse_onsets: List[float] = []
+    coarse_durations: List[float] = []
     # This the coarse onset/duration from the annotations, before refinement.
     for sr, er in zip(blink_starts, blink_ends):
         onset_sec_rel = sr / sfreq
         duration_sec_rel = max(0.0, (er - sr) / sfreq)
-        md["blink_onset"][epoch_index] = onset_sec_rel
-        md["blink_duration"][epoch_index] = duration_sec_rel
+        coarse_onsets.append(onset_sec_rel)
+        coarse_durations.append(duration_sec_rel)
+
+    if coarse_onsets:
+        row_data["blink_onset"] = coarse_onsets
+        row_data["blink_duration"] = coarse_durations
 
     if have_ear and data_ear is not None:
         seg_raw = data_ear[epoch_index]
@@ -459,7 +472,7 @@ def _refine_epoch_modalities(
             sfreq,
             segment_config,
         )
-        _append_ear_refinements(md, epoch_index, refinements, sfreq, n_samp_epoch)
+        _append_ear_refinements(row_data, refinements, sfreq, n_samp_epoch)
 
     if have_eeg and data_eeg is not None:
         seg_raw = data_eeg[epoch_index]
@@ -469,8 +482,7 @@ def _refine_epoch_modalities(
             )
         seg = seg_raw.reshape(-1)
         _append_peak_refinements(
-            md,
-            epoch_index,
+            row_data,
             seg,
             blink_starts,
             blink_ends,
@@ -487,8 +499,7 @@ def _refine_epoch_modalities(
             )
         seg = seg_raw.reshape(-1)
         _append_peak_refinements(
-            md,
-            epoch_index,
+            row_data,
             seg,
             blink_starts,
             blink_ends,
@@ -496,6 +507,9 @@ def _refine_epoch_modalities(
             "eog",
             n_samp_epoch,
         )
+
+    for key, value in row_data.items():
+        md[key][epoch_index] = value
 
 
 def slice_raw_into_mne_epochs_refine_annot(

@@ -80,7 +80,7 @@ def compare_fif_files():
             diff = np.abs(data - ref_data)
             max_diff = np.max(diff)
             mean_diff = np.mean(diff)
-            print(f"  Data Identical: NO")
+            print("  Data Identical: NO")
             print(f"  Max difference: {max_diff:.6e}")
             print(f"  Mean difference: {mean_diff:.6e}")
             # If correlation is high, it might be the same subject but processed differently
