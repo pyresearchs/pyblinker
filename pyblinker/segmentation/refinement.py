@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import mne
@@ -116,10 +117,12 @@ def _append_peak_refinements(
 		peaks.append(int(peak))
 		blink_entries.append(
 			{
-				f"blink_onset_{key_prefix}": refined_start / sfreq,
-				f"blink_duration_{key_prefix}": max(0.0, (refined_end - refined_start) / sfreq),
-				f"blink_onset_extremum_{key_prefix}": peak / sfreq,
-				"this_is_rpb": 12345,
+				f"blink_onset_{key_prefix}": refined_start / sfreq,	# we keep these fields for backward compatibility,but will be removed later.
+				f"blink_duration_{key_prefix}": max(0.0, (refined_end - refined_start) / sfreq),	# we keep these fields for backward compatibility,but will be removed later.
+				f"blink_onset_extremum_{key_prefix}": peak / sfreq,			# we keep these fields for backward compatibility,but will be removed later.
+				f"onset__refine__eeg":refined_start / sfreq,
+				f"duration__refine__{key_prefix}":max(0.0, (refined_end - refined_start) / sfreq),
+				f"onset__refine_extremum__{key_prefix}":peak / sfreq,
 			}
 		)
 
@@ -128,13 +131,18 @@ def _append_peak_refinements(
 	# next , compute outer bounds for each blink
 	bounds = compute_outer_bounds(peaks, n_samp_epoch)
 	# After found the bound, we append to each blink entry which is a dict.
+	blink_data: dict[str, Any]
 	for blink_data, (outer_start, outer_end) in zip(blink_entries, bounds):
 		blink_data[f"blink_outer_start_{key_prefix}"] = outer_start
 		blink_data[f"blink_outer_end_{key_prefix}"] = outer_end
+		blink_data[f"onset__outer__{key_prefix}"] = outer_start / sfreq
+		blink_data[f"duration__outer__{key_prefix}"] = (outer_end - outer_start) / sfreq
 
 	keys = blink_entries[0].keys()
 	transposed = {key: [entry[key] for entry in blink_entries] for key in keys}
 	# Then we update the row_data with the transposed data, merge with other modality data.
+
+	# TODO, later we can add more landmark finding, includig, base,zero-crossing, etc.
 	row_data.update(transposed)
 
 
