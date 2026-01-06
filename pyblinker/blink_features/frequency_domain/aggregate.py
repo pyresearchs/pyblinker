@@ -1,8 +1,6 @@
 """Aggregate wavelet blink features across epochs."""
 
 from __future__ import annotations
-from pyblinker.logging import get_logger
-
 from typing import Dict, List, Mapping, Sequence
 
 import mne
@@ -10,8 +8,11 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
+from pyblinker.logging import get_logger
+
 from .features import _compute_wavelet_energies
 from ..energy.helpers import extract_blink_windows, segment_to_samples
+from ..utils.aggregation import prepare_epoch_channel_data
 
 logger = get_logger(__name__)
 
@@ -115,35 +116,11 @@ class FrequencyDomainBlinkFeatureExtractor:
         because wavelet features become unreliable at low rates.
         """
 
-        if self.epochs is None:
-            raise ValueError("self.epochs is required for feature computation")
-
         sfreq = self._sampling_frequency()
-        if sfreq < 30:
-            logger.warning(
-                "Frequency-domain features may be unreliable below 30 Hz",
-                extra={"sfreq": sfreq},
-            )
-
-        if picks is None:
-            ch_names = self.epochs.ch_names
-        elif isinstance(picks, str):
-            ch_names = [picks]
-        else:
-            ch_names = list(picks)
-
-        missing = [ch for ch in ch_names if ch not in self.epochs.ch_names]
-        if missing:
-            raise ValueError(f"Channels not found: {missing}")
-
-        channel_data: Dict[str, np.ndarray] = {
-            ch: self.epochs.get_data(picks=[ch])[:, 0, :] for ch in ch_names
-        }
-        n_epochs, n_times = next(iter(channel_data.values())).shape
-        index = (
-            self.epochs.metadata.index
-            if isinstance(self.epochs.metadata, pd.DataFrame)
-            else pd.RangeIndex(n_epochs)
+        ch_names, channel_data, index, n_epochs, n_times = prepare_epoch_channel_data(
+            epochs=self.epochs,
+            picks=picks,
+            sfreq=sfreq,
         )
 
         modality_channels: Dict[str, List[str]] = {}
