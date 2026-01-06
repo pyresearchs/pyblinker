@@ -122,6 +122,17 @@ Automatic modality inference per channel prevents EEG defaults when processing E
 *Unit Tests*:
 *   `test/blink_features/kinematics/test_optional_channels_and_configs.py`: Exercises EAR-only, EEG-only, combined, and incomplete `SEGMENT_CONFIG` shapes to ensure channel picking and refinement do not crash when modalities are missing.
 
+## Kinematic epoch data preparation
+
+*Feature/change*: Kinematic feature computation now prepares epoch-level channel data via the shared aggregation helper, using the extractor sampling frequency to mirror the frequency-domain data preparation workflow. This keeps kinematic outputs compatible with the downstream aggregation framework.
+
+*Related Code*:
+*   `pyblinker/blink_features/kinematics/kinematic_features.py` (shared epoch/channel data preparation within `KinematicBlinkFeatureExtractor`)
+*   `pyblinker/blink_features/utils/aggregation.py` (common `prepare_epoch_channel_data` helper)
+
+*Unit Tests*:
+*   `test/blink_features/kinematics/test_kinematic_features.py`: Validates the per-blink kinematic metrics after refactoring the epoch/channel preparation.
+
 ## Unit Tests
 
 *   **`test/run_all_features_test.py`**:
