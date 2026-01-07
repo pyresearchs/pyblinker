@@ -369,7 +369,8 @@ class EARThresholdBlinkRefiner:
         return result
 
     def refine_annotation_row(
-        self, row: Dict[str, float | str], candidate_id: int
+        self, row: Dict[str, float | str],
+            candidate_id: int
     ) -> Dict[str, float | int | str | bool]:
         """Refine a single blink annotation row.
 
@@ -406,16 +407,18 @@ class EARThresholdBlinkRefiner:
             self.sfreq,
             self.config,
         )
+        # Here, we focus based on the threshold search result to get the lowest point within the threshold refined window
+        refined_start_sample = int(np.round(search_result["onset__th_sample__ear"] * self.sfreq))
+        refined_end_sample  = int(np.round((search_result["onset__th_sample__ear"] +
+                                                              search_result["duration__th_sample__ear"]) * self.sfreq))
 
-        refined_start_sample = int(search_result["refined_start_sample"])
-        refined_end_sample = int(search_result["refined_end_sample"])
-
+        # The output is the lowest point within the refined window define with threshold crossings
         refined_lowest_point_sample = self._compute_lowest_point_sample(
             refined_start_sample, refined_end_sample
         )
 
-        refined_onset_time = refined_start_sample / self.sfreq
-        refined_offset_time = refined_end_sample / self.sfreq
+        # refined_onset_time = refined_start_sample / self.sfreq
+        # refined_offset_time = refined_end_sample / self.sfreq
 
         coarse_offset_time = coarse_onset + coarse_duration_seconds
 
@@ -458,6 +461,13 @@ class EARThresholdBlinkRefiner:
             raise ValueError(
                 f"Annotation file is missing required columns: {sorted(missing_cols)}"
             )
+		# why not use refinements = _refine_ear_blinks_for_epoch(
+		#         seg,
+		#         blink_starts,
+		#         blink_ends,
+		#         sfreq,
+		#         segment_config,
+		#     )
 
         records: List[Dict[str, float | int | str | bool]] = []
         for idx, row in enumerate(annotations.itertuples(index=False)):
