@@ -11,6 +11,18 @@ A typical `pyblinker` report (MNE-based) includes:
 *   **Epoch Summaries**: Views grouped by epoch, allowing users to quickly scan for missed blinks or false positives.
 *   **Feature Distributions**: (Optional) Histograms or scatter plots of computed features.
 
+### EAR refined report field alignment
+* **Feature/Change**: The refined blink report now derives threshold crossings and trough markers from the updated EAR timing fields (`onset__refine__ear`, `duration__refine__ear`, `onset__th_interpolation__ear`, `duration__th_interpolation__ear`, `trough__th_point__ear`) instead of legacy sample columns. If those fields are missing, the report helper derives them from refined sample indices when possible.
+* **Related Code**: `pyblinker/outside_annotation/reporting_flow.py` now also derives interpolated threshold timing from `left_interpolated_threshold_sample`/`right_interpolated_threshold_sample` when needed.
+* **Related Code**: `pyblinker/outside_annotation/reporting_flow.py`, `pyblinker/viz/ear_report.py`.
+* **Verification (Tutorials & Tests)**: `tutorial/03c_ear_threshold_multi_candidate_refinement.py`, `tutorial/06_refined_blink_report_tutorial.py`, `test/epoch_blink_finder/test_blink_report.py`.
+* **Feature/Change**: Reports can now accept an `mne.Epochs` object directly and will use epoch metadata plus per-epoch signals to place landmarks.
+* **Related Code**: `pyblinker/outside_annotation/reporting_flow.py`.
+* **Verification (Tutorials & Tests)**: `tutorial/03c_ear_threshold_multi_candidate_refinement.py`, `test/epoch_blink_finder/test_blink_report.py`.
+* **Feature/Change**: Refined blink reports now consistently use `mne.Epochs` metadata/signals, require `onset__refine__ear` and `duration__refine__ear`, and gate interpolated threshold markers behind the `mark_threshold_crossings` flag to avoid unexpected overlays. Missing interpolated sample columns are called out in figure captions.
+* **Related Code**: `pyblinker/outside_annotation/reporting_flow.py`.
+* **Verification (Tutorials & Tests)**: `tutorial/03a_ear_threshold_blink_refinement.py`, `tutorial/03c_ear_threshold_multi_candidate_refinement.py`, `tutorial/06_refined_blink_report_tutorial.py`.
+
 ## When to Generate Reports
 Reports can be generated at multiple stages:
 
