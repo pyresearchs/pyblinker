@@ -164,6 +164,21 @@ Automatic modality inference per channel prevents EEG defaults when processing E
 *   `test/blink_features/kinematics/test_kinematic_features.py`: Verifies style-aware kinematic outputs and statistics.
 *   `test/blink_features/kinematics/test_optional_channels_and_configs.py`: Confirms channel-specific column naming across modality combinations.
 
+## Morphology epoch extractor refactor
+
+*Feature/change*: Morphology epoch aggregation now mirrors the kinematic extractor lifecycle, using class-based computation, modality-aware column naming, and deterministic column ordering. Output columns follow `<modality>__<style>__morphology__<metric>_<stat>__<channel>` with a base-only style.
+
+*Related Code*:
+*   `pyblinker/blink_features/morphology/epoch_features.py` (class-based morphology aggregation and wrapper)
+*   `pyblinker/blink_features/utils/aggregation.py` (shared epoch/channel preparation helper)
+
+*Tutorials*:
+*   None (refactor only; no new tutorial added).
+
+*Unit Tests*:
+*   `test/blink_features/morphology/test_epoch_morphology_features.py`
+*   `test/blink_features/morphology/test_epoch_morphology_features_aggregation.py`
+
 ## Unit Tests
 
 *   **`test/run_all_features_test.py`**:
