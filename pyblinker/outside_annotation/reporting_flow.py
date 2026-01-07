@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import warnings
 from pathlib import Path
 from typing import Iterable, Sequence
 
@@ -238,6 +239,73 @@ def _format_metrics(row: pd.Series, keys: Sequence[str]) -> str:
     return "\n".join(lines)
 
 
+def _listify(value: object) -> list:
+    if isinstance(value, list):
+        return value
+    if value is None:
+        return []
+    if isinstance(value, float) and np.isnan(value):
+        return []
+    return [value]
+
+
+def _explode_epoch_metadata(metadata: pd.DataFrame) -> pd.DataFrame:
+    rows: list[dict[str, object]] = []
+    for epoch_index, row in metadata.iterrows():
+        n_blinks = int(row.get("n_blinks", 0))
+        if n_blinks <= 0:
+            continue
+        per_col = {
+            col: _listify(row[col]) for col in metadata.columns if col != "n_blinks"
+        }
+        for idx in range(n_blinks):
+            entry = {
+                col: (values[idx] if idx < len(values) else np.nan)
+                for col, values in per_col.items()
+            }
+            entry["epoch_index"] = epoch_index
+            rows.append(entry)
+    return pd.DataFrame.from_records(rows)
+
+
+def _safe_time(value: float | None) -> float | None:
+    if value is None:
+        return None
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError):
+        return None
+    return numeric if np.isfinite(numeric) else None
+
+
+def _time_to_sample(time_value: float | None, *, sfreq: float, n_samples: int) -> int | None:
+    safe_time = _safe_time(time_value)
+    if safe_time is None:
+        return None
+    return int(np.clip(round(safe_time * sfreq), 0, n_samples - 1))
+
+
+def _sample_value(
+    sample: float | int | None,
+    *,
+    signal: np.ndarray,
+    sfreq: float,
+) -> tuple[float, float] | None:
+    if sample is None:
+        return None
+    try:
+        idx = int(sample)
+    except (TypeError, ValueError):
+        return None
+    if idx < 0 or idx >= signal.shape[0]:
+        return None
+    time = idx / sfreq
+    value = float(signal[idx])
+    if not np.isfinite(value):
+        return None
+    return time, value
+
+
 def _compute_overlay_indices(
     start: int,
     end: int,
@@ -349,16 +417,6 @@ def build_refined_blink_report(
 
     Parameters
     ----------
-    results : pd.DataFrame | None
-        Blink metrics including refined start/end samples and threshold metadata.
-        Time-related columns are seconds; sample indices are integer sample counts.
-        Required EAR columns: ``onset__refine__ear``, ``duration__refine__ear``,
-        ``onset__th_interpolation__ear``, ``duration__th_interpolation__ear``,
-        and ``trough__th_point__ear``.
-    signal : np.ndarray | None
-        Base signal to plot (e.g., EEG or EAR), sampled at ``sfreq``.
-    sfreq : float | None
-        Sampling frequency of ``signal`` in Hertz.
     channel_name : str
         Name used in plot labels/legends.
     epochs : mne.Epochs | None, optional
@@ -382,97 +440,54 @@ def build_refined_blink_report(
         from the results.
     output_path : Path | None, optional
         Destination for the generated HTML report; directories are created as needed.
-    pad_seconds : float, optional
-        Padding (seconds) around each blink window for plotting.
     max_plots : int | None, optional
         Maximum number of blinks to include; useful for large datasets.
-    metrics_keys : Iterable[str], optional
-        Column names to include in the inset metrics text on each plot.
 
     Returns
     -------
     mne.Report
         Generated report object with figures and summary HTML added.
     """
-    pad_seconds=0.05
     report = mne.Report(title="Refined Blink Validation")
-    # if epochs is None and (signal is None or sfreq is None):
-    #     raise ValueError("Provide either epochs or both signal and sfreq.")
-
-    # base_results = results
+    if epochs is None:
+        raise ValueError("Epochs are required to build the refined blink report.")
     epoch_signals = None
-    if epochs is not None:
-        # if epochs.metadata is None and base_results is None:
-        #     raise ValueError("Epochs metadata is required to build the report.")
-        base_results = epochs.metadata
-        sfreq = float(epochs.info["sfreq"])
-        epoch_signals = epochs.get_data(picks=channel_name)
-        if epoch_signals.ndim == 3 and epoch_signals.shape[1] == 1:
-            epoch_signals = epoch_signals[:, 0, :]
-        if epoch_signals.ndim != 2:
-            raise ValueError(
-                "Epoch data must be shaped as (n_epochs, n_samples) for reporting."
-            )
+    base_results = epochs.metadata
+    sfreq = float(epochs.info["sfreq"])
+    epoch_signals = epochs.get_data(picks=channel_name)
+    if epoch_signals.ndim == 3 and epoch_signals.shape[1] == 1:
+        epoch_signals = epoch_signals[:, 0, :]
+    if epoch_signals.ndim != 2:
+        raise ValueError(
+            "Epoch data must be shaped as (n_epochs, n_samples) for reporting."
+        )
+    metrics_keys: Iterable[str] = []
+    pad_seconds = 0.05
 
     pad_samples = int(round(pad_seconds * float(sfreq)))
-
-    def _listify(value: object) -> list:
-        if isinstance(value, list):
-            return value
-        if value is None:
-            return []
-        if isinstance(value, float) and np.isnan(value):
-            return []
-        return [value]
-
-    def _explode_epoch_metadata(metadata: pd.DataFrame) -> pd.DataFrame:
-        rows: list[dict[str, object]] = []
-        for epoch_index, row in metadata.iterrows():
-            n_blinks = int(row.get("n_blinks", 0))
-            if n_blinks <= 0:
-                continue
-            per_col = {
-                col: _listify(row[col]) for col in metadata.columns if col != "n_blinks"
-            }
-            for idx in range(n_blinks):
-                entry = {
-                    col: (values[idx] if idx < len(values) else np.nan)
-                    for col, values in per_col.items()
-                }
-                entry["epoch_index"] = epoch_index
-                rows.append(entry)
-        return pd.DataFrame.from_records(rows)
 
     results = base_results.copy() if base_results is not None else pd.DataFrame()
     if epochs is not None:
         results = _explode_epoch_metadata(results)
         if results.empty:
             return report
-    if "onset__refine__ear" not in results.columns:
-        left_samples = pd.to_numeric(
-            results.get("refined_left_threshold", results.get("refined_start_sample")),
-            errors="coerce",
-        )
-        results["onset__refine__ear"] = left_samples / sfreq
-    else:
-        results["onset__refine__ear"] = pd.to_numeric(
-            results["onset__refine__ear"], errors="coerce"
+    missing_required = [
+        col
+        for col in ("onset__refine__ear", "duration__refine__ear")
+        if col not in results.columns
+    ]
+    if missing_required:
+        raise ValueError(
+            "Refined blink report requires onset__refine__ear and duration__refine__ear; "
+            f"missing: {', '.join(missing_required)}."
         )
 
-    if "duration__refine__ear" not in results.columns:
-        right_samples = pd.to_numeric(
-            results.get("refined_right_threshold", results.get("refined_end_sample")),
-            errors="coerce",
-        )
-        left_samples = pd.to_numeric(
-            results.get("refined_left_threshold", results.get("refined_start_sample")),
-            errors="coerce",
-        )
-        results["duration__refine__ear"] = (right_samples - left_samples) / sfreq
-    else:
-        results["duration__refine__ear"] = pd.to_numeric(
-            results["duration__refine__ear"], errors="coerce"
-        )
+    results["onset__refine__ear"] = pd.to_numeric(
+        results["onset__refine__ear"], errors="coerce"
+    )
+    results["duration__refine__ear"] = pd.to_numeric(
+        results["duration__refine__ear"], errors="coerce"
+    )
 
     if "trough__th_point__ear" not in results.columns:
         results["trough__th_point__ear"] = pd.to_numeric(
@@ -483,49 +498,48 @@ def build_refined_blink_report(
             results["trough__th_point__ear"], errors="coerce"
         )
 
+    missing_interp_samples = False
+    if "left_interpolated_threshold_sample" not in results.columns:
+        warnings.warn(
+            "Missing left_interpolated_threshold_sample; interpolated markers will be "
+            "suppressed for these rows.",
+            stacklevel=2,
+        )
+        results["left_interpolated_threshold_sample"] = np.nan
+        missing_interp_samples = True
+    if "right_interpolated_threshold_sample" not in results.columns:
+        warnings.warn(
+            "Missing right_interpolated_threshold_sample; interpolated markers will be "
+            "suppressed for these rows.",
+            stacklevel=2,
+        )
+        results["right_interpolated_threshold_sample"] = np.nan
+        missing_interp_samples = True
+
     if "onset__th_interpolation__ear" not in results.columns:
-        left_time = results.get(
-            "left_interpolated_threshold", pd.Series(np.nan, index=results.index)
+        left_samples = pd.to_numeric(
+            results["left_interpolated_threshold_sample"], errors="coerce"
         )
-        results["onset__th_interpolation__ear"] = pd.to_numeric(
-            left_time, errors="coerce"
-        )
+        results["onset__th_interpolation__ear"] = left_samples / sfreq
     else:
         results["onset__th_interpolation__ear"] = pd.to_numeric(
             results["onset__th_interpolation__ear"], errors="coerce"
         )
 
     if "duration__th_interpolation__ear" not in results.columns:
-        right_time = results.get(
-            "right_interpolated_threshold", pd.Series(np.nan, index=results.index)
+        right_samples = pd.to_numeric(
+            results["right_interpolated_threshold_sample"], errors="coerce"
+        )
+        left_samples = pd.to_numeric(
+            results["left_interpolated_threshold_sample"], errors="coerce"
         )
         results["duration__th_interpolation__ear"] = (
-            pd.to_numeric(right_time, errors="coerce")
-            - results["onset__th_interpolation__ear"]
-        )
+            right_samples - left_samples
+        ) / sfreq
     else:
         results["duration__th_interpolation__ear"] = pd.to_numeric(
             results["duration__th_interpolation__ear"], errors="coerce"
         )
-
-    missing_interp = results["onset__th_interpolation__ear"].isna()
-    if missing_interp.any():
-        left_samples = results.get(
-            "left_interpolated_threshold_sample",
-            pd.Series(np.nan, index=results.index),
-        )
-        right_samples = results.get(
-            "right_interpolated_threshold_sample",
-            pd.Series(np.nan, index=results.index),
-        )
-        left_samples = pd.to_numeric(left_samples, errors="coerce")
-        right_samples = pd.to_numeric(right_samples, errors="coerce")
-        results.loc[missing_interp, "onset__th_interpolation__ear"] = (
-            left_samples.loc[missing_interp] / sfreq
-        )
-        results.loc[missing_interp, "duration__th_interpolation__ear"] = (
-            right_samples.loc[missing_interp] - left_samples.loc[missing_interp]
-        ) / sfreq
 
     annotation_rows = len(results)
     total_candidates = len(results)
@@ -546,29 +560,11 @@ def build_refined_blink_report(
         results, threshold_value
     )
 
-    def _safe_time(value: float | None) -> float | None:
-        if value is None:
-            return None
-        try:
-            numeric = float(value)
-        except (TypeError, ValueError):
-            return None
-        return numeric if np.isfinite(numeric) else None
-
-    def _time_to_sample(time_value: float | None) -> int | None:
-        safe_time = _safe_time(time_value)
-        if safe_time is None:
-            return None
-        return int(np.clip(round(safe_time * sfreq), 0, n_samples - 1))
-
     for idx, row in enumerate(rows):
-        if epoch_signals is not None:
-            epoch_index = getattr(row, "epoch_index", None)
-            if epoch_index is None:
-                raise ValueError("Epoch-based reporting requires epoch_index in rows.")
-            current_signal = np.asarray(epoch_signals[int(epoch_index)], dtype=float)
-        else:
-            pass
+        epoch_index = getattr(row, "epoch_index", None)
+        if epoch_index is None:
+            raise ValueError("Epoch-based reporting requires epoch_index in rows.")
+        current_signal = np.asarray(epoch_signals[int(epoch_index)], dtype=float)
         n_samples = current_signal.shape[0]
         refined_onset_time = _safe_time(getattr(row, "onset__refine__ear"))
         refined_duration = _safe_time(getattr(row, "duration__refine__ear"))
@@ -576,8 +572,12 @@ def build_refined_blink_report(
             raise ValueError(
                 f"Row {idx} is missing finite onset__refine__ear/duration__refine__ear values."
             )
-        refined_left_sample = _time_to_sample(refined_onset_time)
-        refined_right_sample = _time_to_sample(refined_onset_time + refined_duration)
+        refined_left_sample = _time_to_sample(
+            refined_onset_time, sfreq=sfreq, n_samples=n_samples
+        )
+        refined_right_sample = _time_to_sample(
+            refined_onset_time + refined_duration, sfreq=sfreq, n_samples=n_samples
+        )
         if refined_left_sample is None or refined_right_sample is None:
             raise ValueError(
                 f"Row {idx} is missing finite onset__refine__ear/duration__refine__ear values."
@@ -593,8 +593,12 @@ def build_refined_blink_report(
             and interpolated_duration_time is not None
             else None
         )
-        interpolated_left_sample = _time_to_sample(interpolated_left_time)
-        interpolated_right_sample = _time_to_sample(interpolated_right_time)
+        interpolated_left_sample = _time_to_sample(
+            interpolated_left_time, sfreq=sfreq, n_samples=n_samples
+        )
+        interpolated_right_sample = _time_to_sample(
+            interpolated_right_time, sfreq=sfreq, n_samples=n_samples
+        )
 
         left = (
             interpolated_left_sample
@@ -694,28 +698,13 @@ def build_refined_blink_report(
             and interpolated_right_time_value is not None
         )
 
-        def _sample_value(sample: float | int | None) -> tuple[float, float] | None:
-            if sample is None:
-                return None
-            try:
-                idx = int(sample)
-            except (TypeError, ValueError):
-                return None
-            if idx < 0 or idx >= n_samples:
-                return None
-            time = idx / sfreq
-            value = float(current_signal[idx])
-            if not np.isfinite(value):
-                return None
-            return time, value
-
         refined_landmarks: list[tuple[str, tuple[float, float]]] = []
         for label, sample in (
             ("Refined start", refined_left_sample),
             ("Refined end", refined_right_sample),
             ("Refined lowest point", trough_sample),
         ):
-            pair = _sample_value(sample)
+            pair = _sample_value(sample, signal=current_signal, sfreq=sfreq)
             if pair is not None:
                 refined_landmarks.append((label, pair))
 
@@ -735,13 +724,13 @@ def build_refined_blink_report(
             time_point = _safe_time(time_value)
             value_at_time: float | None = None
             if time_point is None:
-                sample_point = _sample_value(sample)
+                sample_point = _sample_value(sample, signal=current_signal, sfreq=sfreq)
                 if sample_point is None:
                     continue
                 time_point, sample_value = sample_point
                 value_at_time = sample_value
             else:
-                sample_point = _sample_value(sample)
+                sample_point = _sample_value(sample, signal=current_signal, sfreq=sfreq)
                 if sample_point is not None:
                     _, sample_value = sample_point
                     value_at_time = sample_value
@@ -770,7 +759,7 @@ def build_refined_blink_report(
                     label=label,
                 )
 
-        if interpolated_markers:
+        if interpolated_markers and mark_threshold_crossings:
             marker_styles = {
                 "Left interpolated threshold": ("^", "C1"),
                 "Right interpolated threshold": ("v", "C2"),
@@ -876,14 +865,11 @@ def build_refined_blink_report(
             if interpolated_times_available
             else "Threshold crossings"
         )
-        epoch_idx_hint = None
-        if epoch_duration and trough_time is not None:
-            try:
-                epoch_idx_hint = int(float(trough_time) // float(epoch_duration))
-            except (TypeError, ValueError):
-                epoch_idx_hint = None
-        if epoch_idx_hint is None and epoch_label is not None:
-            epoch_idx_hint = epoch_label
+        epoch_idx_hint = getattr(row, "epoch_index", None)
+        if epoch_idx_hint is None:
+            epoch_label = getattr(row, "epoch_label", None)
+            if epoch_label is not None:
+                epoch_idx_hint = epoch_label
         caption_epoch = (
             f"Epoch {epoch_idx_hint}" if epoch_idx_hint is not None else "Epoch"
         )
@@ -891,6 +877,8 @@ def build_refined_blink_report(
             f"{caption_epoch}. {caption_prefix} at {left_time:.3f}s and {right_time:.3f}s. "
             f"Segment {start}–{end} ({(end - start) / sfreq:.3f}s)."
         )
+        if missing_interp_samples:
+            caption += " Interpolated sample columns were missing; markers may be absent."
         if chosen_threshold is not None:
             suffix = f" ({plot_threshold_origin})" if plot_threshold_origin else ""
             caption += f" Threshold value: {float(chosen_threshold):.3f}{suffix}."
