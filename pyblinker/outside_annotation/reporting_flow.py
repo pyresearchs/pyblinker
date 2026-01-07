@@ -407,17 +407,79 @@ def build_refined_blink_report(
     report = mne.Report(title="Refined Blink Validation")
     n_samples = signal.shape[0]
     pad_samples = int(round(pad_seconds * sfreq))
-    required_columns = {
-        "onset__refine__ear",
-        "duration__refine__ear",
-        "onset__th_interpolation__ear",
-        "duration__th_interpolation__ear",
-        "trough__th_point__ear",
-    }
-    missing_columns = required_columns - set(results.columns)
-    if missing_columns:
-        missing = ", ".join(sorted(missing_columns))
-        raise ValueError(f"missing required columns: {missing}")
+
+    results = results.copy()
+    if "onset__refine__ear" not in results.columns:
+        left_samples = pd.to_numeric(
+            results.get("refined_left_threshold", results.get("refined_start_sample")),
+            errors="coerce",
+        )
+        results["onset__refine__ear"] = left_samples / sfreq
+    else:
+        results["onset__refine__ear"] = pd.to_numeric(
+            results["onset__refine__ear"], errors="coerce"
+        )
+
+    if "duration__refine__ear" not in results.columns:
+        right_samples = pd.to_numeric(
+            results.get("refined_right_threshold", results.get("refined_end_sample")),
+            errors="coerce",
+        )
+        left_samples = pd.to_numeric(
+            results.get("refined_left_threshold", results.get("refined_start_sample")),
+            errors="coerce",
+        )
+        results["duration__refine__ear"] = (right_samples - left_samples) / sfreq
+    else:
+        results["duration__refine__ear"] = pd.to_numeric(
+            results["duration__refine__ear"], errors="coerce"
+        )
+
+    if "trough__th_point__ear" not in results.columns:
+        results["trough__th_point__ear"] = pd.to_numeric(
+            results.get("refined_lowest_point_sample"), errors="coerce"
+        )
+    else:
+        results["trough__th_point__ear"] = pd.to_numeric(
+            results["trough__th_point__ear"], errors="coerce"
+        )
+
+    if "onset__th_interpolation__ear" not in results.columns:
+        left_time = pd.to_numeric(
+            results.get("left_interpolated_threshold", float("nan")), errors="coerce"
+        )
+        results["onset__th_interpolation__ear"] = left_time
+    else:
+        results["onset__th_interpolation__ear"] = pd.to_numeric(
+            results["onset__th_interpolation__ear"], errors="coerce"
+        )
+
+    if "duration__th_interpolation__ear" not in results.columns:
+        right_time = pd.to_numeric(
+            results.get("right_interpolated_threshold", float("nan")), errors="coerce"
+        )
+        results["duration__th_interpolation__ear"] = (
+            right_time - results["onset__th_interpolation__ear"]
+        )
+    else:
+        results["duration__th_interpolation__ear"] = pd.to_numeric(
+            results["duration__th_interpolation__ear"], errors="coerce"
+        )
+
+    missing_interp = results["onset__th_interpolation__ear"].isna()
+    if missing_interp.any():
+        left_samples = pd.to_numeric(
+            results.get("left_interpolated_threshold_sample"), errors="coerce"
+        )
+        right_samples = pd.to_numeric(
+            results.get("right_interpolated_threshold_sample"), errors="coerce"
+        )
+        results.loc[missing_interp, "onset__th_interpolation__ear"] = (
+            left_samples.loc[missing_interp] / sfreq
+        )
+        results.loc[missing_interp, "duration__th_interpolation__ear"] = (
+            right_samples.loc[missing_interp] - left_samples.loc[missing_interp]
+        ) / sfreq
 
     annotation_rows = len(results)
     total_candidates = len(results)
