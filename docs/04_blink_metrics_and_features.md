@@ -139,8 +139,8 @@ Automatic modality inference per channel prevents EEG defaults when processing E
 
 *Related Code*:
 *   `pyblinker/blink_features/utils/aggregation.py` (per-channel `raw`, `dx1`, `dx2` arrays in `prepare_epoch_channel_data`)
-*   `pyblinker/blink_features/kinematics/kinematic_features.py` (style-aware window selection and feature naming)
-*   `pyblinker/segmentation/refinement/ear/epoch.py` (propagating EAR threshold-interpolation onset/duration metadata for style-specific windows)
+*   `pyblinker/blink_features/kinematics/kinematic_features.py` (style-aware window selection and feature naming with derivative reuse)
+*   `pyblinker/segmentation/refinement/ear/epoch.py` (propagating EAR threshold-interpolation and refined onset/duration metadata for style-specific windows)
 
 *Unit Tests*:
 *   `test/blink_features/kinematics/test_kinematic_features.py`: Verifies style-aware kinematic outputs and statistics.

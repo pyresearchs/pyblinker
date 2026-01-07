@@ -14,7 +14,7 @@ from typing import Dict, List, Mapping, Sequence, Set
 import mne
 import pandas as pd
 
-from .._core_blink import CANONICAL_METRIC_STEMS, METHODS_BY_MODALITY
+from .._core_blink import CANONICAL_METRIC_STEMS
 from .per_blink import compute_segment_kinematics
 from ..energy.helpers import segment_to_samples, _safe_stats
 from ...utils.iter_utils import ensure_list
@@ -49,18 +49,14 @@ def _available_styles(metadata_columns: Sequence[str] | None, modality: str) -> 
     styles: Set[str] = set()
     suffix = f"__{modality}"
     for col in metadata_columns:
-        if col.startswith("onset__") and col.endswith(suffix):
-            style = col[len("onset__") : -len(suffix)]
-            if f"duration__{style}__{modality}" in metadata_columns:
-                styles.add(style)
-
-    mod_onset = f"blink_onset_{modality}"
-    mod_duration = f"blink_duration_{modality}"
-    if mod_onset in metadata_columns and mod_duration in metadata_columns:
-        styles.add("blink")
-
-    if "blink_onset" in metadata_columns and "blink_duration" in metadata_columns:
-        styles.add("generic")
+        if not col.startswith("onset__") or not col.endswith(suffix):
+            continue
+        style = col[len("onset__") : -len(suffix)]
+        if "sample" in style.lower():
+            continue
+        duration_key = f"duration__{style}__{modality}"
+        if duration_key in metadata_columns:
+            styles.add(style)
 
     return styles
 
@@ -72,31 +68,20 @@ def _style_windows(
 ) -> List[tuple[float, float]]:
     """Extract blink windows for a modality/style pair."""
 
-    def _to_windows(onset_val: object, duration_val: object) -> List[tuple[float, float]]:
-        onsets = ensure_list(onset_val) if onset_val is not None else []
-        durations = ensure_list(duration_val) if duration_val is not None else []
-        windows: List[tuple[float, float]] = []
-        for onset, duration in zip(onsets, durations):
-            if onset is None or duration is None:
-                continue
-            if pd.isna(onset) or pd.isna(duration):
-                continue
-            windows.append((float(onset), float(duration)))
-        return windows
-
-    if style == "generic":
-        return _to_windows(metadata_row.get("blink_onset"), metadata_row.get("blink_duration"))
-
-    mod_onset = f"blink_onset_{modality}"
-    mod_duration = f"blink_duration_{modality}"
-    if style == "blink":
-        onset_val = metadata_row.get(mod_onset, metadata_row.get("blink_onset"))
-        duration_val = metadata_row.get(mod_duration, metadata_row.get("blink_duration"))
-        return _to_windows(onset_val, duration_val)
-
     onset_key = f"onset__{style}__{modality}"
     duration_key = f"duration__{style}__{modality}"
-    return _to_windows(metadata_row.get(onset_key), metadata_row.get(duration_key))
+    onsets = ensure_list(metadata_row.get(onset_key)) if metadata_row.get(onset_key) is not None else []
+    durations = (
+        ensure_list(metadata_row.get(duration_key)) if metadata_row.get(duration_key) is not None else []
+    )
+    windows: List[tuple[float, float]] = []
+    for onset, duration in zip(onsets, durations):
+        if onset is None or duration is None:
+            continue
+        if pd.isna(onset) or pd.isna(duration):
+            continue
+        windows.append((float(onset), float(duration)))
+    return windows
 
 
 class KinematicBlinkFeatureExtractor:
@@ -146,28 +131,21 @@ class KinematicBlinkFeatureExtractor:
         modality_channels: Dict[str, List[str]] = {}
         for ch, mod in modality_map.items():
             modality_channels.setdefault(mod, []).append(ch)
-        methods_by_modality: Dict[str, Sequence[str]] = {
-            mod: METHODS_BY_MODALITY.get(mod, ("base",)) for mod in modality_map.values()
-        }
-        metrics_by_modality: Dict[str, List[str]] = {
-            mod: [f"{stem}_{method}" for stem in CANONICAL_METRIC_STEMS for method in methods]
-            for mod, methods in methods_by_modality.items()
-        }
-
         metadata_cols: Sequence[str] | None = (
             tuple(self.epochs.metadata.columns) if isinstance(self.epochs.metadata, pd.DataFrame) else None
         )
-        styles_by_modality: Dict[str, Set[str]] = {
-            mod: _available_styles(metadata_cols, mod) for mod in set(modality_map.values())
-        }
-        for mod, styles in styles_by_modality.items():
-            if not styles:
-                styles_by_modality[mod] = {"blink"}
+        styles_by_modality: Dict[str, Set[str]] = {}
+        fallback_styles: Dict[str, bool] = {}
+        for mod in set(modality_map.values()):
+            styles = _available_styles(metadata_cols, mod)
+            fallback_styles[mod] = not styles
+            styles_by_modality[mod] = styles or {"base"}
 
         column_set: Set[str] = set()
         for mod, channels in modality_channels.items():
-            for style in sorted(styles_by_modality.get(mod, {"blink"})):
-                for metric in metrics_by_modality[mod]:
+            for style in sorted(styles_by_modality.get(mod, {"base"})):
+                metrics_for_style = [f"{stem}_{style}" for stem in CANONICAL_METRIC_STEMS]
+                for metric in metrics_for_style:
                     for stat in _STATS:
                         for ch in channels:
                             column_set.add(f"{mod}__{style}__kinematic__{metric}_{stat}__{ch}")
@@ -186,25 +164,43 @@ class KinematicBlinkFeatureExtractor:
             )
             record: Dict[str, float] = {}
             for modality, channels in modality_channels.items():
-                styles = styles_by_modality.get(modality, {"blink"})
-                metrics_for_modality = metrics_by_modality[modality]
-                methods = methods_by_modality[modality]
+                styles = styles_by_modality.get(modality, {"base"})
+                use_fallback = fallback_styles.get(modality, False)
                 for style in sorted(styles):
+                    metrics_for_style = [f"{stem}_{style}" for stem in CANONICAL_METRIC_STEMS]
                     windows = _style_windows(metadata_row, modality, style)
+                    if use_fallback and not windows:
+                        onset_key = f"blink_onset_{modality}"
+                        duration_key = f"blink_duration_{modality}"
+                        onsets = ensure_list(metadata_row.get(onset_key)) if metadata_row.get(onset_key) is not None else []
+                        durations = (
+                            ensure_list(metadata_row.get(duration_key))
+                            if metadata_row.get(duration_key) is not None
+                            else []
+                        )
+                        windows = [
+                            (float(o), float(d))
+                            for o, d in zip(onsets, durations)
+                            if o is not None and d is not None and not (pd.isna(o) or pd.isna(d))
+                        ]
                     for ch in channels:
-                        per_metric: Dict[str, List[float]] = {m: [] for m in metrics_for_modality}
+                        per_metric: Dict[str, List[float]] = {m: [] for m in metrics_for_style}
                         for onset_s, duration_s in windows:
                             sl = segment_to_samples(onset_s, duration_s, sfreq, n_times)
-                            segment = channel_data[ch]["raw"][ei, sl]
-                            if segment.size == 0:
+                            segment = {
+                                "raw": channel_data[ch]["raw"][ei, sl],
+                                "dx1": channel_data[ch]["dx1"][ei, sl],
+                                "dx2": channel_data[ch]["dx2"][ei, sl],
+                            }
+                            if segment["raw"].size == 0:
                                 continue
                             metrics = compute_segment_kinematics(
                                 segment,
                                 sfreq,
-                                methods=methods,
+                                method=style,
                                 modality=modality,
                             )
-                            for m in metrics_for_modality:
+                            for m in metrics_for_style:
                                 per_metric[m].append(metrics[m])
                         for metric, values in per_metric.items():
                             stats = _safe_stats(values)
