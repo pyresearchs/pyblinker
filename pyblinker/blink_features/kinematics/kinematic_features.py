@@ -135,11 +135,11 @@ class KinematicBlinkFeatureExtractor:
             tuple(self.epochs.metadata.columns) if isinstance(self.epochs.metadata, pd.DataFrame) else None
         )
         styles_by_modality: Dict[str, Set[str]] = {}
-        fallback_styles: Dict[str, bool] = {}
+        # fallback_styles: Dict[str, bool] = {}
         for mod in set(modality_map.values()):
             styles = _available_styles(metadata_cols, mod)
-            fallback_styles[mod] = not styles
-            styles_by_modality[mod] = styles or {"base"}
+            # fallback_styles[mod] = not styles
+            styles_by_modality[mod] = styles
 
         column_set: Set[str] = set()
         for mod, channels in modality_channels.items():
@@ -165,24 +165,24 @@ class KinematicBlinkFeatureExtractor:
             record: Dict[str, float] = {}
             for modality, channels in modality_channels.items():
                 styles = styles_by_modality.get(modality, {"base"})
-                use_fallback = fallback_styles.get(modality, False)
+                # use_fallback = fallback_styles.get(modality, False)
                 for style in sorted(styles):
                     metrics_for_style = [f"{stem}_{style}" for stem in KINEMATIC_METRIC_STEMS]
                     windows = _style_windows(metadata_row, modality, style)
-                    if use_fallback and not windows:
-                        onset_key = f"blink_onset_{modality}"
-                        duration_key = f"blink_duration_{modality}"
-                        onsets = ensure_list(metadata_row.get(onset_key)) if metadata_row.get(onset_key) is not None else []
-                        durations = (
-                            ensure_list(metadata_row.get(duration_key))
-                            if metadata_row.get(duration_key) is not None
-                            else []
-                        )
-                        windows = [
-                            (float(o), float(d))
-                            for o, d in zip(onsets, durations)
-                            if o is not None and d is not None and not (pd.isna(o) or pd.isna(d))
-                        ]
+                    # if use_fallback and not windows:
+                    #     onset_key = f"blink_onset_{modality}"
+                    #     duration_key = f"blink_duration_{modality}"
+                    #     onsets = ensure_list(metadata_row.get(onset_key)) if metadata_row.get(onset_key) is not None else []
+                    #     durations = (
+                    #         ensure_list(metadata_row.get(duration_key))
+                    #         if metadata_row.get(duration_key) is not None
+                    #         else []
+                    #     )
+                    #     windows = [
+                    #         (float(o), float(d))
+                    #         for o, d in zip(onsets, durations)
+                    #         if o is not None and d is not None and not (pd.isna(o) or pd.isna(d))
+                    #     ]
                     for ch in channels:
                         per_metric: Dict[str, List[float]] = {m: [] for m in metrics_for_style}
                         for onset_s, duration_s in windows:
@@ -192,8 +192,8 @@ class KinematicBlinkFeatureExtractor:
                                 "dx1": channel_data[ch]["dx1"][ei, sl],
                                 "dx2": channel_data[ch]["dx2"][ei, sl],
                             }
-                            if segment["raw"].size == 0:
-                                continue
+                            # if segment["raw"].size == 0:
+                            #     continue
                             metrics = compute_segment_kinematics(
                                 segment,
                                 sfreq,

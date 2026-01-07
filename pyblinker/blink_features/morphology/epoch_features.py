@@ -2,7 +2,7 @@
 from __future__ import annotations
 from pyblinker.logging import get_logger
 
-from typing import Dict, List, Sequence, Set
+from typing import Dict, List, Sequence, Set,Mapping
 
 import mne
 import pandas as pd
@@ -12,7 +12,7 @@ from .per_blink import compute_blink_waveform_metrics
 from ..energy.helpers import extract_blink_windows, segment_to_samples, _safe_stats
 from ..utils.aggregation import prepare_epoch_channel_data
 from ...utils.epoch_utils import resolve_channels
-
+from ...utils.iter_utils import ensure_list
 logger = get_logger(__name__)
 
 _STATS = ("mean", "std", "cv")
@@ -41,6 +41,48 @@ def _default_morphology_channels(epochs: mne.Epochs) -> List[str]:
     if not ch_names:
         raise ValueError("No default EAR/EOG channels found")
     return ch_names
+
+def _available_styles(metadata_columns: Sequence[str] | None, modality: str) -> Set[str]:
+    """Return segmentation styles present in metadata for a modality."""
+
+    if metadata_columns is None:
+        return set()
+
+    styles: Set[str] = set()
+    suffix = f"__{modality}"
+    for col in metadata_columns:
+        if not col.startswith("onset__") or not col.endswith(suffix):
+            continue
+        style = col[len("onset__") : -len(suffix)]
+        if "sample" in style.lower():
+            continue
+        duration_key = f"duration__{style}__{modality}"
+        if duration_key in metadata_columns:
+            styles.add(style)
+
+    return styles
+
+def _style_windows(
+        metadata_row: Mapping[str, object],
+        modality: str,
+        style: str,
+        ) -> List[tuple[float, float]]:
+    """Extract blink windows for a modality/style pair."""
+
+    onset_key = f"onset__{style}__{modality}"
+    duration_key = f"duration__{style}__{modality}"
+    onsets = ensure_list(metadata_row.get(onset_key)) if metadata_row.get(onset_key) is not None else []
+    durations = (
+            ensure_list(metadata_row.get(duration_key)) if metadata_row.get(duration_key) is not None else []
+    )
+    windows: List[tuple[float, float]] = []
+    for onset, duration in zip(onsets, durations):
+        if onset is None or duration is None:
+            continue
+        if pd.isna(onset) or pd.isna(duration):
+            continue
+        windows.append((float(onset), float(duration)))
+    return windows
 
 
 class MorphologyBlinkFeatureExtractor:
@@ -108,17 +150,34 @@ class MorphologyBlinkFeatureExtractor:
             modality: {"base"} for modality in modality_channels
         }
 
+        metadata_cols: Sequence[str] | None = (
+                tuple(self.epochs.metadata.columns) if isinstance(self.epochs.metadata, pd.DataFrame) else None
+        )
+
+        for mod in set(modality_map.values()):
+            styles = _available_styles(metadata_cols, mod)
+            # fallback_styles[mod] = not styles
+            styles_by_modality[mod] = styles
+
         column_set: Set[str] = set()
+        # for mod, channels in modality_channels.items():
+        #     for style in sorted(styles_by_modality.get(mod, {"base"})):
+        #         metrics_for_style = [f"{stem}_{style}" for stem in MORPHOLOGY_METRIC_STEMS]
+        #         metrics_for_style.append("duration")
+        #         for metric in metrics_for_style:
+        #             for stat in _STATS:
+        #                 for ch in channels:
+        #                     column_set.add(
+        #                         f"{mod}__{style}__morphology__{metric}_{stat}__{ch}"
+        #                     )
         for mod, channels in modality_channels.items():
             for style in sorted(styles_by_modality.get(mod, {"base"})):
                 metrics_for_style = [f"{stem}_{style}" for stem in MORPHOLOGY_METRIC_STEMS]
-                metrics_for_style.append("duration")
                 for metric in metrics_for_style:
                     for stat in _STATS:
                         for ch in channels:
-                            column_set.add(
-                                f"{mod}__{style}__morphology__{metric}_{stat}__{ch}"
-                            )
+                            column_set.add(f"{mod}__{style}__morphology__{metric}_{stat}__{ch}")
+
         columns = sorted(column_set)
         if n_epochs == 0:
             return pd.DataFrame(index=index, columns=columns, dtype=float)
@@ -137,28 +196,30 @@ class MorphologyBlinkFeatureExtractor:
                 styles = styles_by_modality.get(modality, {"base"})
                 for style in sorted(styles):
                     metrics_for_style = [f"{stem}_{style}" for stem in MORPHOLOGY_METRIC_STEMS]
-                    metrics_for_style_with_duration = metrics_for_style + ["duration"]
+                    windows = _style_windows(metadata_row, modality, style)
+                    # metrics_for_style_with_duration = metrics_for_style + ["duration"]
                     for ch in channels:
-                        per_metric: Dict[str, List[float]] = {
-                            metric: [] for metric in metrics_for_style_with_duration
-                        }
-                        windows = extract_blink_windows(metadata_row, ch, ei)
+                        # per_metric: Dict[str, List[float]] = {
+                        #     metric: [] for metric in metrics_for_style_with_duration
+                        # }
+                        # windows = extract_blink_windows(metadata_row, ch, ei)
+                        per_metric: Dict[str, List[float]] = {m: [] for m in metrics_for_style}
                         for onset_s, duration_s in windows:
                             sl = segment_to_samples(onset_s, duration_s, sfreq, n_times)
                             segment = channel_data[ch]["raw"][ei, sl]
-                            if segment.size == 0:
-                                continue
+                            # if segment.size == 0:
+                            #     continue
                             metrics = compute_blink_waveform_metrics(
                                 segment,
                                 sfreq,
-                                methods=("base",),
+                                method=style,
                                 modality=modality,
                             )
                             for metric_name in metrics_for_style:
                                 per_metric[metric_name].append(
                                     metrics.get(metric_name, float("nan"))
                                 )
-                            per_metric["duration"].append(duration_s)
+                            # per_metric["duration"].append(duration_s)
                         for metric, values in per_metric.items():
                             stats = _safe_stats(values)
                             for stat_name, value in stats.items():
