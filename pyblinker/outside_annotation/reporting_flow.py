@@ -79,8 +79,12 @@ def _compute_threshold_statistics(results: pd.DataFrame) -> list[dict[str, objec
     stats: list[dict[str, object]] = []
     for theta, group in results.groupby("threshold_value"):
         total = len(group)
-        crossing_series = _coerce_boolean(group.get("threshold_crossing_found", pd.Series()))
-        interp_series = _coerce_boolean(group.get("interpolated_thresholds_found", pd.Series()))
+        crossing_series = _coerce_boolean(
+            group.get("threshold_crossing_found", pd.Series())
+        )
+        interp_series = _coerce_boolean(
+            group.get("interpolated_thresholds_found", pd.Series())
+        )
         left_interp_series = _coerce_boolean(
             group.get("left_interpolated_threshold_found", pd.Series())
         )
@@ -88,19 +92,35 @@ def _compute_threshold_statistics(results: pd.DataFrame) -> list[dict[str, objec
             group.get("right_interpolated_threshold_found", pd.Series())
         )
 
-        crossing_success = int(crossing_series.dropna().sum()) if not crossing_series.empty else 0
-        crossing_valid = int(crossing_series.notna().sum()) if not crossing_series.empty else 0
+        crossing_success = (
+            int(crossing_series.dropna().sum()) if not crossing_series.empty else 0
+        )
+        crossing_valid = (
+            int(crossing_series.notna().sum()) if not crossing_series.empty else 0
+        )
         crossing_rate = crossing_success / total if total else 0.0
-        crossing_valid_rate = crossing_success / crossing_valid if crossing_valid else 0.0
+        crossing_valid_rate = (
+            crossing_success / crossing_valid if crossing_valid else 0.0
+        )
 
-        interp_success = int(interp_series.dropna().sum()) if not interp_series.empty else 0
-        interp_valid = int(interp_series.notna().sum()) if not interp_series.empty else 0
+        interp_success = (
+            int(interp_series.dropna().sum()) if not interp_series.empty else 0
+        )
+        interp_valid = (
+            int(interp_series.notna().sum()) if not interp_series.empty else 0
+        )
         interp_rate = interp_success / total if total else 0.0
         interp_valid_rate = interp_success / interp_valid if interp_valid else 0.0
 
-        left_found = int(left_interp_series.dropna().sum()) if not left_interp_series.empty else 0
+        left_found = (
+            int(left_interp_series.dropna().sum())
+            if not left_interp_series.empty
+            else 0
+        )
         right_found = (
-            int(right_interp_series.dropna().sum()) if not right_interp_series.empty else 0
+            int(right_interp_series.dropna().sum())
+            if not right_interp_series.empty
+            else 0
         )
         left_missing = max(total - left_found, 0)
         right_missing = max(total - right_found, 0)
@@ -121,18 +141,26 @@ def _compute_threshold_statistics(results: pd.DataFrame) -> list[dict[str, objec
                 "right_missing": right_missing,
                 "left_missing_fraction": left_missing / total if total else 0.0,
                 "right_missing_fraction": right_missing / total if total else 0.0,
-                "median_refined_duration": _safe_median(group.get("refined_duration", pd.Series())),
-                "median_blink_depth": _safe_median(group.get("ear_blink_depth", pd.Series())),
+                "median_refined_duration": _safe_median(
+                    group.get("refined_duration", pd.Series())
+                ),
+                "median_blink_depth": _safe_median(
+                    group.get("ear_blink_depth", pd.Series())
+                ),
                 "median_closed_duration": _safe_median(
                     group.get("closed_duration_seconds", pd.Series())
                 ),
-                "median_closed_fraction": _safe_median(group.get("closed_fraction", pd.Series())),
+                "median_closed_fraction": _safe_median(
+                    group.get("closed_fraction", pd.Series())
+                ),
                 "classification_counts": group.get("blink_classification", pd.Series())
                 .dropna()
                 .astype(str)
                 .value_counts()
                 .to_dict(),
-                "computed_classification_counts": group.get("blink_classification_computed", pd.Series())
+                "computed_classification_counts": group.get(
+                    "blink_classification_computed", pd.Series()
+                )
                 .dropna()
                 .astype(str)
                 .value_counts()
@@ -245,11 +273,15 @@ def _compute_overlay_indices(
     end_time = end / base_sfreq
 
     overlay_start = int(np.clip(round(start_time * derived_sfreq), 0, overlay_len - 1))
-    overlay_end = int(np.clip(round(end_time * derived_sfreq), overlay_start, overlay_len - 1))
+    overlay_end = int(
+        np.clip(round(end_time * derived_sfreq), overlay_start, overlay_len - 1)
+    )
     return overlay_start, overlay_end
 
 
-def _determine_report_threshold(results: pd.DataFrame, threshold_value: float | None) -> tuple[float | None, str | None]:
+def _determine_report_threshold(
+    results: pd.DataFrame, threshold_value: float | None
+) -> tuple[float | None, str | None]:
     """Return a single representative threshold for the entire report."""
 
     if threshold_value is not None:
@@ -282,13 +314,17 @@ def _determine_report_threshold(results: pd.DataFrame, threshold_value: float | 
         return float(best[0]), "auto_flat"
 
     if "selected_threshold_value" in results.columns:
-        selected_values = pd.to_numeric(results["selected_threshold_value"], errors="coerce").dropna()
+        selected_values = pd.to_numeric(
+            results["selected_threshold_value"], errors="coerce"
+        ).dropna()
         if not selected_values.empty:
             mode_value = float(selected_values.mode().iat[0])
             return mode_value, "auto"
 
     if "threshold_value" in results.columns:
-        threshold_values = pd.to_numeric(results["threshold_value"], errors="coerce").dropna()
+        threshold_values = pd.to_numeric(
+            results["threshold_value"], errors="coerce"
+        ).dropna()
         if not threshold_values.empty:
             return float(threshold_values.mode().iat[0]), "auto"
 
@@ -329,6 +365,9 @@ def build_refined_blink_report(
     results : pd.DataFrame
         Blink metrics including refined start/end samples and threshold metadata.
         Time-related columns are seconds; sample indices are integer sample counts.
+        Required EAR columns: ``onset__refine__ear``, ``duration__refine__ear``,
+        ``onset__th_interpolation__ear``, ``duration__th_interpolation__ear``,
+        and ``trough__th_point__ear``.
     signal : np.ndarray
         Base signal to plot (e.g., EEG or EAR), sampled at ``sfreq``.
     sfreq : float
@@ -368,6 +407,17 @@ def build_refined_blink_report(
     report = mne.Report(title="Refined Blink Validation")
     n_samples = signal.shape[0]
     pad_samples = int(round(pad_seconds * sfreq))
+    required_columns = {
+        "onset__refine__ear",
+        "duration__refine__ear",
+        "onset__th_interpolation__ear",
+        "duration__th_interpolation__ear",
+        "trough__th_point__ear",
+    }
+    missing_columns = required_columns - set(results.columns)
+    if missing_columns:
+        missing = ", ".join(sorted(missing_columns))
+        raise ValueError(f"missing required columns: {missing}")
 
     annotation_rows = len(results)
     total_candidates = len(results)
@@ -379,80 +429,88 @@ def build_refined_blink_report(
     skipped_count = max(total_candidates - plotted_count, 0)
     threshold_crossing_failures = None
     if "threshold_crossing_found" in results.columns:
-        threshold_crossing_failures = int((~results["threshold_crossing_found"].astype(bool)).sum())
+        threshold_crossing_failures = int(
+            (~results["threshold_crossing_found"].astype(bool)).sum()
+        )
     sampling_rate = float(sfreq)
 
     representative_threshold, threshold_origin = _determine_report_threshold(
         results, threshold_value
     )
 
+    def _safe_time(value: float | None) -> float | None:
+        if value is None:
+            return None
+        try:
+            numeric = float(value)
+        except (TypeError, ValueError):
+            return None
+        return numeric if np.isfinite(numeric) else None
+
+    def _time_to_sample(time_value: float | None) -> int | None:
+        safe_time = _safe_time(time_value)
+        if safe_time is None:
+            return None
+        return int(np.clip(round(safe_time * sfreq), 0, n_samples - 1))
+
     for idx, row in enumerate(rows):
-        interpolated_left_sample_attr = getattr(row, "ear_interpolated_left_sample", None)
-        interpolated_right_sample_attr = getattr(row, "ear_interpolated_right_sample", None)
-        left = int(
-            getattr(
-                row,
-                "ear_threshold_left_sample",
-                getattr(
-                    row,
-                    "refined_left_threshold",
-                    getattr(row, "left_threshold", getattr(row, "refined_start_sample", 0)),
-                ),
+        refined_onset_time = _safe_time(getattr(row, "onset__refine__ear"))
+        refined_duration = _safe_time(getattr(row, "duration__refine__ear"))
+        if refined_onset_time is None or refined_duration is None:
+            raise ValueError(
+                f"Row {idx} is missing finite onset__refine__ear/duration__refine__ear values."
             )
-        )
-        right = int(
-            getattr(
-                row,
-                "ear_threshold_right_sample",
-                getattr(
-                    row,
-                    "refined_right_threshold",
-                    getattr(row, "right_threshold", getattr(row, "refined_end_sample", 0)),
-                ),
+        refined_left_sample = _time_to_sample(refined_onset_time)
+        refined_right_sample = _time_to_sample(refined_onset_time + refined_duration)
+        if refined_left_sample is None or refined_right_sample is None:
+            raise ValueError(
+                f"Row {idx} is missing finite onset__refine__ear/duration__refine__ear values."
             )
+
+        interpolated_onset = getattr(row, "onset__th_interpolation__ear")
+        interpolated_duration = getattr(row, "duration__th_interpolation__ear")
+        interpolated_left_time = _safe_time(interpolated_onset)
+        interpolated_duration_time = _safe_time(interpolated_duration)
+        interpolated_right_time = (
+            float(interpolated_left_time + interpolated_duration_time)
+            if interpolated_left_time is not None
+            and interpolated_duration_time is not None
+            else None
         )
-        if interpolated_left_sample_attr is not None and not pd.isna(interpolated_left_sample_attr):
-            left = int(interpolated_left_sample_attr)
-        if (
-            interpolated_right_sample_attr is not None
-            and not pd.isna(interpolated_right_sample_attr)
-        ):
-            right = int(interpolated_right_sample_attr)
+        interpolated_left_sample = _time_to_sample(interpolated_left_time)
+        interpolated_right_sample = _time_to_sample(interpolated_right_time)
+
+        left = (
+            interpolated_left_sample
+            if interpolated_left_sample is not None
+            else refined_left_sample
+        )
+        right = (
+            interpolated_right_sample
+            if interpolated_right_sample is not None
+            else refined_right_sample
+        )
         start = max(0, left - pad_samples)
         end = min(n_samples - 1, right + pad_samples)
 
-        raw_interp_left_time = getattr(row, "ear_interpolated_left_time", None)
-        raw_interp_right_time = getattr(row, "ear_interpolated_right_time", None)
-        left_time_attr = raw_interp_left_time
-        if left_time_attr is None:
-            left_time_attr = getattr(row, "ear_threshold_left_time", None)
-        left_time = float(left_time_attr) if left_time_attr is not None else left / sfreq
-        if not np.isfinite(left_time):
-            left_time = left / sfreq
-
-        right_time_attr = raw_interp_right_time
-        if right_time_attr is None:
-            right_time_attr = getattr(row, "ear_threshold_right_time", None)
-        right_time = float(right_time_attr) if right_time_attr is not None else right / sfreq
-        if not np.isfinite(right_time):
-            right_time = right / sfreq
-
-        min_time_attr = getattr(row, "ear_threshold_min_time", None)
-        min_time = float(min_time_attr) if min_time_attr is not None else None
-        if min_time is not None and (pd.isna(min_time) or np.isinf(min_time)):
-            min_time = None
-        min_sample = getattr(
-            row,
-            "ear_threshold_min_sample",
-            getattr(row, "refined_lowest_point_sample", None),
+        left_time = (
+            interpolated_left_time
+            if interpolated_left_time is not None
+            else refined_onset_time
         )
-        if min_sample is None and min_time is not None:
-            min_sample = int(np.clip(round(min_time * sfreq), 0, n_samples - 1))
-        elif min_sample is not None:
-            min_sample = int(min_sample)
-            min_sample = int(np.clip(min_sample, 0, n_samples - 1))
-            if min_time is None:
-                min_time = min_sample / sfreq
+        right_time = (
+            interpolated_right_time
+            if interpolated_right_time is not None
+            else refined_onset_time + refined_duration
+        )
+
+        trough_sample_attr = getattr(row, "trough__th_point__ear")
+        trough_sample = (
+            int(np.clip(round(trough_sample_attr), 0, n_samples - 1))
+            if trough_sample_attr is not None and np.isfinite(trough_sample_attr)
+            else None
+        )
+        trough_time = trough_sample / sfreq if trough_sample is not None else None
 
         window_times = np.arange(start, end + 1, dtype=float) / sfreq
         window_signal = signal[start : end + 1]
@@ -513,23 +571,11 @@ def build_refined_blink_report(
         y_span = max(y_max - y_min, 1e-6)
         y_offset = 0.1 * y_span
 
-        min_value = None
-        if min_sample is not None and 0 <= min_sample < n_samples:
-            min_value = float(signal[min_sample])
-
-        def _safe_time(value: float | None) -> float | None:
-            if value is None:
-                return None
-            try:
-                numeric = float(value)
-            except (TypeError, ValueError):
-                return None
-            return numeric if np.isfinite(numeric) else None
-
-        interpolated_left_time_value = _safe_time(raw_interp_left_time)
-        interpolated_right_time_value = _safe_time(raw_interp_right_time)
+        interpolated_left_time_value = _safe_time(interpolated_left_time)
+        interpolated_right_time_value = _safe_time(interpolated_right_time)
         interpolated_times_available = (
-            interpolated_left_time_value is not None and interpolated_right_time_value is not None
+            interpolated_left_time_value is not None
+            and interpolated_right_time_value is not None
         )
 
         def _sample_value(sample: float | int | None) -> tuple[float, float] | None:
@@ -549,9 +595,9 @@ def build_refined_blink_report(
 
         refined_landmarks: list[tuple[str, tuple[float, float]]] = []
         for label, sample in (
-            ("Refined start", getattr(row, "refined_start_sample", None)),
-            ("Refined end", getattr(row, "refined_end_sample", None)),
-            ("Refined lowest point", getattr(row, "refined_lowest_point_sample", None)),
+            ("Refined start", refined_left_sample),
+            ("Refined end", refined_right_sample),
+            ("Refined lowest point", trough_sample),
         ):
             pair = _sample_value(sample)
             if pair is not None:
@@ -561,12 +607,12 @@ def build_refined_blink_report(
         for label, sample, time_value in (
             (
                 "Left interpolated threshold",
-                getattr(row, "ear_interpolated_left_sample", None),
+                interpolated_left_sample,
                 interpolated_left_time_value,
             ),
             (
                 "Right interpolated threshold",
-                getattr(row, "ear_interpolated_right_sample", None),
+                interpolated_right_sample,
                 interpolated_right_time_value,
             ),
         ):
@@ -590,19 +636,6 @@ def build_refined_blink_report(
             if value_at_time is None:
                 continue
             interpolated_markers.append((label, (time_point, float(value_at_time))))
-
-        crossing_times = [left_time, right_time]
-        if chosen_threshold is not None:
-            crossing_values = [float(chosen_threshold), float(chosen_threshold)]
-        else:
-            crossing_values = [
-                float(signal[int(np.clip(left, 0, n_samples - 1))]),
-                float(signal[int(np.clip(right, 0, n_samples - 1))]),
-            ]
-
-        if min_time is not None and min_value is not None:
-            crossing_times.insert(1, float(min_time))
-            crossing_values.insert(1, min_value)
 
         if refined_landmarks:
             colors = {
@@ -638,29 +671,16 @@ def build_refined_blink_report(
                     label=label,
                 )
 
-        if min_time is not None and min_value is not None:
+        if trough_time is not None and trough_sample is not None:
+            trough_value = float(signal[trough_sample])
             ax.annotate(
-                "Minimum EAR",
-                xy=(min_time, min_value),
-                xytext=(min_time, min_value - y_offset),
+                "Trough (metadata)",
+                xy=(trough_time, trough_value),
+                xytext=(trough_time, trough_value - y_offset),
                 arrowprops=dict(arrowstyle="->", color="C7"),
                 fontsize=8,
                 ha="center",
             )
-
-        # Maximum absolute amplitude within the window.
-        max_idx = int(np.argmax(np.abs(window_signal)))
-        max_time = window_times[max_idx]
-        max_amp = window_signal[max_idx]
-        ax.scatter([max_time], [max_amp], color="C3", zorder=5, label="Max |amplitude|")
-        ax.annotate(
-            f"Max |amp| = {max_amp:.3f}",
-            xy=(max_time, max_amp),
-            xytext=(max_time, max_amp * 1.1 if max_amp != 0 else 0.1),
-            arrowprops=dict(arrowstyle="->", color="C3"),
-            fontsize=8,
-            ha="center",
-        )
 
         overlay_ax = None
         if plot_overlay and overlay_signal is not None:
@@ -702,7 +722,9 @@ def build_refined_blink_report(
                 ha="right",
                 va="top",
                 fontsize=9,
-                bbox=dict(boxstyle="round", facecolor="white", alpha=0.8, edgecolor="0.7"),
+                bbox=dict(
+                    boxstyle="round", facecolor="white", alpha=0.8, edgecolor="0.7"
+                ),
             )
 
         handles, labels = ax.get_legend_handles_labels()
@@ -730,16 +752,22 @@ def build_refined_blink_report(
                 labelspacing=0.3,
             )
 
-        caption_prefix = "Interpolated threshold crossings" if interpolated_times_available else "Threshold crossings"
+        caption_prefix = (
+            "Interpolated threshold crossings"
+            if interpolated_times_available
+            else "Threshold crossings"
+        )
         epoch_idx_hint = None
-        if epoch_duration and min_time is not None:
+        if epoch_duration and trough_time is not None:
             try:
-                epoch_idx_hint = int(float(min_time) // float(epoch_duration))
+                epoch_idx_hint = int(float(trough_time) // float(epoch_duration))
             except (TypeError, ValueError):
                 epoch_idx_hint = None
         if epoch_idx_hint is None and epoch_label is not None:
             epoch_idx_hint = epoch_label
-        caption_epoch = f"Epoch {epoch_idx_hint}" if epoch_idx_hint is not None else "Epoch"
+        caption_epoch = (
+            f"Epoch {epoch_idx_hint}" if epoch_idx_hint is not None else "Epoch"
+        )
         caption = (
             f"{caption_epoch}. {caption_prefix} at {left_time:.3f}s and {right_time:.3f}s. "
             f"Segment {start}–{end} ({(end - start) / sfreq:.3f}s)."
@@ -747,8 +775,8 @@ def build_refined_blink_report(
         if chosen_threshold is not None:
             suffix = f" ({plot_threshold_origin})" if plot_threshold_origin else ""
             caption += f" Threshold value: {float(chosen_threshold):.3f}{suffix}."
-        if min_time is not None:
-            caption += f" Minimum EAR at {float(min_time):.3f}s."
+        if trough_time is not None:
+            caption += f" Trough at {float(trough_time):.3f}s."
         refined_time_lookup = {label: time for label, (time, _) in refined_landmarks}
         start_time_caption = refined_time_lookup.get("Refined start")
         end_time_caption = refined_time_lookup.get("Refined end")
@@ -784,10 +812,14 @@ def build_refined_blink_report(
     best_threshold = _select_best_threshold(threshold_stats)
 
     if threshold_crossing_failures is not None:
-        summary_rows.append(("Threshold crossing failures", threshold_crossing_failures))
+        summary_rows.append(
+            ("Threshold crossing failures", threshold_crossing_failures)
+        )
     if representative_threshold is not None:
         label = (
-            "Plot threshold (user-provided)" if threshold_origin == "user" else "Plot threshold (auto mode)"
+            "Plot threshold (user-provided)"
+            if threshold_origin == "user"
+            else "Plot threshold (auto mode)"
         )
         summary_rows.append((label, f"{float(representative_threshold):.3f}"))
     if best_threshold is not None:
@@ -801,7 +833,10 @@ def build_refined_blink_report(
         mode_counts = results["threshold_selection_mode"].astype(str).value_counts()
         if not mode_counts.empty:
             summary_rows.append(
-                ("Threshold selection modes", "; ".join(f"{k}: {v}" for k, v in mode_counts.items()))
+                (
+                    "Threshold selection modes",
+                    "; ".join(f"{k}: {v}" for k, v in mode_counts.items()),
+                )
             )
     if "threshold_selection_reason" in results.columns:
         reasons = results["threshold_selection_reason"].dropna().astype(str)
@@ -809,7 +844,10 @@ def build_refined_blink_report(
             reason_counts = reasons.value_counts()
             top_reason = reason_counts.index[0]
             summary_rows.append(
-                ("Threshold selection rationale", f"{top_reason} ({int(reason_counts.iloc[0])}x)")
+                (
+                    "Threshold selection rationale",
+                    f"{top_reason} ({int(reason_counts.iloc[0])}x)",
+                )
             )
 
     summary_html = """<table style='border-collapse: collapse;'>
@@ -870,7 +908,9 @@ def build_refined_blink_report(
             f"Left/right missing fractions: {best_threshold['left_missing_fraction']:.2%}, {best_threshold['right_missing_fraction']:.2%}",
         ]
         if best_threshold.get("median_blink_depth") is not None:
-            rationale_parts.append(f"Median blink depth: {best_threshold['median_blink_depth']:.4f}")
+            rationale_parts.append(
+                f"Median blink depth: {best_threshold['median_blink_depth']:.4f}"
+            )
         if best_threshold.get("median_refined_duration") is not None:
             rationale_parts.append(
                 f"Median refined duration: {best_threshold['median_refined_duration']:.4f}s"

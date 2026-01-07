@@ -11,6 +11,11 @@ A typical `pyblinker` report (MNE-based) includes:
 *   **Epoch Summaries**: Views grouped by epoch, allowing users to quickly scan for missed blinks or false positives.
 *   **Feature Distributions**: (Optional) Histograms or scatter plots of computed features.
 
+### EAR refined report field alignment
+* **Feature/Change**: The refined blink report now derives threshold crossings and trough markers from the updated EAR timing fields (`onset__refine__ear`, `duration__refine__ear`, `onset__th_interpolation__ear`, `duration__th_interpolation__ear`, `trough__th_point__ear`) instead of legacy sample columns.
+* **Related Code**: `pyblinker/outside_annotation/reporting_flow.py`, `pyblinker/viz/ear_report.py`.
+* **Verification (Tutorials & Tests)**: `tutorial/03c_ear_threshold_multi_candidate_refinement.py`, `tutorial/06_refined_blink_report_tutorial.py`, `test/epoch_blink_finder/test_blink_report.py`.
+
 ## When to Generate Reports
 Reports can be generated at multiple stages:
 

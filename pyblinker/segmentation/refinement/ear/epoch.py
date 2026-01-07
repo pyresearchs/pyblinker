@@ -10,7 +10,11 @@ import numpy as np
 from pyblinker.logging import get_logger
 
 from ..eeg import compute_outer_bounds
-from .threshold import EARRefinementConfig, EARThresholdBlinkRefiner, _progressive_threshold_search
+from .threshold import (
+    EARRefinementConfig,
+    EARThresholdBlinkRefiner,
+    _progressive_threshold_search,
+)
 
 logger = get_logger(__name__)
 
@@ -73,11 +77,15 @@ def _append_outer_bounds_from_peaks(
     if not peaks:
         return
     bounds = compute_outer_bounds(peaks, n_samp_epoch)
-    row_data[f"blink_outer_start_{key_prefix}"] = [outer_start for outer_start, _ in bounds]
+    row_data[f"blink_outer_start_{key_prefix}"] = [
+        outer_start for outer_start, _ in bounds
+    ]
     row_data[f"blink_outer_end_{key_prefix}"] = [outer_end for _, outer_end in bounds]
 
 
-def _fallback_refinement(coarse_start: int, coarse_end: int, segment: np.ndarray, sfreq: float) -> Dict[str, Any]:
+def _fallback_refinement(
+    coarse_start: int, coarse_end: int, segment: np.ndarray, sfreq: float
+) -> Dict[str, Any]:
     n = len(segment)
     if n == 0:
         start = end = 0
@@ -100,6 +108,8 @@ def _fallback_refinement(coarse_start: int, coarse_end: int, segment: np.ndarray
         "extension_seconds_used": 0.0,
         "extension_attempts": 0,
     }
+
+
 def _refine_ear_blinks_for_epoch(
     segment: np.ndarray,
     blink_starts: Sequence[int],
@@ -117,11 +127,13 @@ def _refine_ear_blinks_for_epoch(
     if segment.size == 0 or not blink_starts:
         return []
 
-    ear_config = (segmentation_config or {}).get("ear", {}) if segmentation_config is not None else {}
+    ear_config = (
+        (segmentation_config or {}).get("ear", {})
+        if segmentation_config is not None
+        else {}
+    )
     seg_type = _select_seg_type(ear_config.get("seg_type"))
     # use_threshold_interpolation = seg_type
-
-
 
     threshold = ear_config.get("threshold")
     # if use_threshold_interpolation and threshold is None:
@@ -166,18 +178,19 @@ def _refine_ear_blinks_for_epoch(
 
         trough_sample = _locate_trough(
             segment,
-            refinement['start__th_point__ear'],
-            refinement['end__th_point__ear'],
+            refinement["start__th_point__ear"],
+            refinement["end__th_point__ear"],
         )
         refinement["trough__th_point__ear"] = trough_sample
-
 
         # Step 2: compute interpolated threshold crossings if applicable
         if seg_type == "threshold_interpolation" and refiner is not None:
             interp = refiner._compute_interpolated_threshold_crossings(
-                refined_start_sample=refinement['start__th_point__ear'],
-                refined_end_sample=refinement['end__th_point__ear'],
-                lowest_point_sample=refinement["trough__th_point__ear"] if trough_sample is not None else float("nan"),
+                refined_start_sample=refinement["start__th_point__ear"],
+                refined_end_sample=refinement["end__th_point__ear"],
+                lowest_point_sample=refinement["trough__th_point__ear"]
+                if trough_sample is not None
+                else float("nan"),
             )
         else:
             interp = _empty_interpolated_thresholds()
@@ -206,46 +219,75 @@ def _append_ear_refinements(
         start_th = refinement["start__th_point__ear"]
         end_th = refinement["end__th_point__ear"]
         trough_th = refinement["trough__th_point__ear"]
-		onset__th__ear=refinement["start__th_point__ear"]
-		duration__th__ear=(refinement["end__th_point__ear"] - refinement["start__th_point__ear"])/sfreq
-        onset__th_interpolation__ear= refinement.get("onset__th_interpolation__ear", float("nan"))
-        duration__th_interpolation__ear= refinement.get("duration__th_interpolation__ear", float("nan"))
+        onset__th__ear = refinement["start__th_point__ear"]
+        duration__th__ear = (
+            refinement["end__th_point__ear"] - refinement["start__th_point__ear"]
+        ) / sfreq
+        onset__th_interpolation__ear = refinement.get(
+            "onset__th_interpolation__ear", float("nan")
+        )
+        duration__th_interpolation__ear = refinement.get(
+            "duration__th_interpolation__ear", float("nan")
+        )
 
+        start = refinement.get("refined_start_sample", start_th)
+        end = refinement.get("refined_end_sample", end_th)
+        trough = trough_th
 
-        # start = refinement.get("refined_start_sample", start_th)
-        # trough = refinement.get("trough__th_point__ear")
-        # lowest = refinement.get("refined_lowest_point_sample", trough)
-        # left_time_raw = refinement.get("left_interpolated_threshold")
-        # right_time_raw = refinement.get("right_interpolated_threshold")
-        # left_time = float(left_time_raw) if left_time_raw is not None else float("nan")
-        # right_time = float(right_time_raw) if right_time_raw is not None else float("nan")
-        # left_sample = refinement.get("left_interpolated_threshold_sample")
-        # right_sample = refinement.get("right_interpolated_threshold_sample")
-        #
-        # has_interp = np.isfinite(left_time) and np.isfinite(right_time)
-        # onset_time = float(left_time) if np.isfinite(left_time) else start / sfreq
-        # duration_time = (
-        #     max(0.0, float(right_time) - float(left_time))
-        #     if has_interp
-        #     else max(0.0, (end - start) / sfreq)
-        # )
+        onset_time = float(start_th) / sfreq
+        duration_time = max(0.0, float(end_th - start_th) / sfreq)
 
-        # peaks.append(int(trough) if trough is not None else int(start))
+        has_interp = np.isfinite(onset__th_interpolation__ear) and np.isfinite(
+            duration__th_interpolation__ear
+        )
+        left_time = float(onset__th_interpolation__ear) if has_interp else float("nan")
+        right_time = (
+            float(onset__th_interpolation__ear + duration__th_interpolation__ear)
+            if has_interp
+            else float("nan")
+        )
+        left_sample = (
+            int(np.clip(round(left_time * sfreq), 0, n_samp_epoch - 1))
+            if np.isfinite(left_time)
+            else None
+        )
+        right_sample = (
+            int(np.clip(round(right_time * sfreq), 0, n_samp_epoch - 1))
+            if np.isfinite(right_time)
+            else None
+        )
+
+        if trough is not None and np.isfinite(trough):
+            peaks.append(int(trough))
+        else:
+            peaks.append(int(start_th))
         base_entries.append(
             {
                 "blink_onset_ear": onset_time,
                 "blink_duration_ear": duration_time,
-                "blink_onset_extremum_ear": (trough if trough is not None else start) / sfreq,
+                "blink_onset_extremum_ear": (
+                    float(trough) / sfreq
+                    if trough is not None and np.isfinite(trough)
+                    else float(onset_time)
+                ),
                 "onset__refine__ear": onset_time,
                 "duration__refine__ear": duration_time,
                 "refined_start_sample": int(start),
                 "refined_end_sample": int(end),
-                "refined_lowest_point_sample": int(lowest) if lowest is not None and np.isfinite(lowest) else np.nan,
+                "refined_lowest_point_sample": (
+                    int(trough)
+                    if trough is not None and np.isfinite(trough)
+                    else np.nan
+                ),
                 "refined_left_threshold": int(refinement["refined_left_threshold"]),
                 "refined_right_threshold": int(refinement["refined_right_threshold"]),
-                "search_window_start_sample": int(refinement["search_window_start_sample"]),
+                "search_window_start_sample": int(
+                    refinement["search_window_start_sample"]
+                ),
                 "search_window_end_sample": int(refinement["search_window_end_sample"]),
-                "search_window_start_time": float(refinement["search_window_start_time"]),
+                "search_window_start_time": float(
+                    refinement["search_window_start_time"]
+                ),
                 "search_window_end_time": float(refinement["search_window_end_time"]),
                 "refinement_succeeded": bool(refinement["refinement_succeeded"]),
                 "search_exhausted": bool(refinement["search_exhausted"]),
@@ -271,11 +313,22 @@ def _append_ear_refinements(
                 "right_interpolated_threshold_found": bool(
                     refinement.get("right_interpolated_threshold_found", False)
                 ),
-                "interpolated_thresholds_found": bool(refinement.get("interpolated_thresholds_found", False)),
-                "onset__th_sample__ear": float(refinement.get("onset__th_sample__ear", float("nan"))),
+                "interpolated_thresholds_found": bool(
+                    refinement.get("interpolated_thresholds_found", False)
+                ),
+                "onset__th_sample__ear": float(
+                    refinement.get("onset__th_sample__ear", float("nan"))
+                ),
                 "duration__th_sample__ear": float(
                     refinement.get("duration__th_sample__ear", float("nan"))
                 ),
+                "start__th_point__ear": float(start_th),
+                "end__th_point__ear": float(end_th),
+                "trough__th_point__ear": float(trough_th)
+                if trough_th is not None and np.isfinite(trough_th)
+                else float("nan"),
+                "onset__th__ear": onset__th__ear,
+                "duration__th__ear": duration__th__ear,
             }
         )
 
@@ -296,7 +349,9 @@ def _append_ear_refinements(
                 "duration__refine__ear": base_entry["duration__refine__ear"],
                 "refined_start_sample": base_entry["refined_start_sample"],
                 "refined_end_sample": base_entry["refined_end_sample"],
-                "refined_lowest_point_sample": base_entry["refined_lowest_point_sample"],
+                "refined_lowest_point_sample": base_entry[
+                    "refined_lowest_point_sample"
+                ],
                 "refined_left_threshold": base_entry["refined_left_threshold"],
                 "refined_right_threshold": base_entry["refined_right_threshold"],
                 "search_window_start_sample": base_entry["search_window_start_sample"],
@@ -307,23 +362,41 @@ def _append_ear_refinements(
                 "search_exhausted": base_entry["search_exhausted"],
                 "extension_seconds_used": base_entry["extension_seconds_used"],
                 "extension_attempts": base_entry["extension_attempts"],
-                "onset__th_interpolation__ear": base_entry["onset__th_interpolation__ear"],
-                "duration__th_interpolation__ear": base_entry["duration__th_interpolation__ear"],
-                "left_interpolated_threshold": base_entry["left_interpolated_threshold"],
-                "right_interpolated_threshold": base_entry["right_interpolated_threshold"],
-                "left_interpolated_threshold_sample": base_entry["left_interpolated_threshold_sample"],
-                "right_interpolated_threshold_sample": base_entry["right_interpolated_threshold_sample"],
-                "left_interpolated_threshold_found": base_entry["left_interpolated_threshold_found"],
-                "right_interpolated_threshold_found": base_entry["right_interpolated_threshold_found"],
-                "interpolated_thresholds_found": base_entry["interpolated_thresholds_found"],
+                "onset__th_interpolation__ear": base_entry[
+                    "onset__th_interpolation__ear"
+                ],
+                "duration__th_interpolation__ear": base_entry[
+                    "duration__th_interpolation__ear"
+                ],
+                "left_interpolated_threshold": base_entry[
+                    "left_interpolated_threshold"
+                ],
+                "right_interpolated_threshold": base_entry[
+                    "right_interpolated_threshold"
+                ],
+                "left_interpolated_threshold_sample": base_entry[
+                    "left_interpolated_threshold_sample"
+                ],
+                "right_interpolated_threshold_sample": base_entry[
+                    "right_interpolated_threshold_sample"
+                ],
+                "left_interpolated_threshold_found": base_entry[
+                    "left_interpolated_threshold_found"
+                ],
+                "right_interpolated_threshold_found": base_entry[
+                    "right_interpolated_threshold_found"
+                ],
+                "interpolated_thresholds_found": base_entry[
+                    "interpolated_thresholds_found"
+                ],
                 "onset__th_sample__ear": base_entry["onset__th_sample__ear"],
                 "duration__th_sample__ear": base_entry["duration__th_sample__ear"],
-				"onset__th__ear":base_entry["start__th_point__ear"]
-				"duration__th__ear":(base_entry["end__th_point__ear"] - base_entry["start__th_point__ear"])/sfreq
-				"onset__th_interpolation__ear": base_entry["onset__th_interpolation__ear"]
-				"duration__th_interpolation__ear": base_entry["duration__th_interpolation__ear"]
-
-		}
+                "start__th_point__ear": base_entry["start__th_point__ear"],
+                "end__th_point__ear": base_entry["end__th_point__ear"],
+                "trough__th_point__ear": base_entry["trough__th_point__ear"],
+                "onset__th__ear": base_entry["onset__th__ear"],
+                "duration__th__ear": base_entry["duration__th__ear"],
+            }
         )
 
     keys = blink_entries[0].keys()
