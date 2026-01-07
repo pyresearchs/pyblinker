@@ -67,9 +67,9 @@ class TestOptionalChannelsAndConfigs(unittest.TestCase):
 
     def _assert_columns_use_channels(self, df, expected_channels) -> None:
         expected_set = set(expected_channels)
-        observed = {ch for ch in expected_set if any(col.endswith(ch) for col in df.columns)}
+        observed = {ch for ch in expected_set if any(col.endswith(f"__{ch}") for col in df.columns)}
         self.assertEqual(observed, expected_set)
-        self.assertTrue(all(any(col.endswith(ch) for ch in expected_set) for col in df.columns))
+        self.assertTrue(all(any(col.endswith(f"__{ch}") for ch in expected_set) for col in df.columns))
 
     def test_ear_only_pipeline(self) -> None:
         """Runs with only EAR configured and omits EEG entirely."""
@@ -79,7 +79,7 @@ class TestOptionalChannelsAndConfigs(unittest.TestCase):
         df = compute_kinematic_features(epochs, picks=EAR_CHANNEL)
 
         self.assertNotIn("blink_onset_eeg", epochs.metadata.columns)
-        self.assertTrue(all(col.endswith(f"_{EAR_CHANNEL}") for col in df.columns))
+        self.assertTrue(all(col.endswith(f"__{EAR_CHANNEL}") for col in df.columns))
         self.assertGreater(df.notna().sum().sum(), 0)
 
     def test_eeg_only_pipeline(self) -> None:
@@ -91,7 +91,7 @@ class TestOptionalChannelsAndConfigs(unittest.TestCase):
 
         self.assertIn("blink_onset_eeg", epochs.metadata.columns)
         self.assertNotIn("blink_onset_ear", epochs.metadata.columns)
-        self.assertTrue(all(col.endswith(f"_{EEG_CHANNEL}") for col in df.columns))
+        self.assertTrue(all(col.endswith(f"__{EEG_CHANNEL}") for col in df.columns))
         self.assertGreater(df.notna().sum().sum(), 0)
 
     def test_dual_modality_pipeline(self) -> None:

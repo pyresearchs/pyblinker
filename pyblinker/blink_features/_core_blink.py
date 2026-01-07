@@ -85,6 +85,8 @@ def compute_blink_core(
     modality: str,
     include_second_derivative: bool = True,
     use_abs_for_thresholds_and_areas: bool = True,
+    dx1: np.ndarray | None = None,
+    dx2: np.ndarray | None = None,
 ) -> Dict[str, float]:
     """Compute canonical per-blink metrics for a segmented waveform.
 
@@ -120,15 +122,13 @@ def compute_blink_core(
     """
 
     method = start_end_method
-    if method not in _ALL_METHODS:
-        raise ValueError(f"Unknown start/end method: {method}")
 
     modality_key = modality.lower()
     if modality_key not in METHODS_BY_MODALITY:
         raise ValueError(f"Unsupported modality '{modality}'")
 
     keys = _method_keys(method)
-    if method not in METHODS_BY_MODALITY[modality_key]:
+    if method in _ALL_METHODS and method not in METHODS_BY_MODALITY[modality_key]:
         return core_nan_dict(keys)
 
     if sfreq <= 0:
@@ -214,7 +214,7 @@ def compute_blink_core(
         right_half_idx = mag_peak_idx + 1 + int(right_half_candidates[0])
         half_width = (right_half_idx - left_half_idx) / sfreq
 
-    velocity = np.diff(seg) * sfreq
+    velocity = np.diff(seg) * sfreq if dx1 is None else np.asarray(dx1, dtype=float).reshape(-1)
     if velocity.size == 0:
         vel_peak_abs = float("nan")
         vel_mean_abs = float("nan")
@@ -227,11 +227,21 @@ def compute_blink_core(
         slope_rise_pos = float(np.max(velocity))
         slope_fall_neg = float(np.min(velocity))
 
-    if include_second_derivative and velocity.size > 1:
-        acceleration = np.diff(velocity) * sfreq
-        abs_acc = np.abs(acceleration)
-        acc_peak_abs = float(np.max(abs_acc))
-        acc_mean_abs = float(np.mean(abs_acc))
+    if include_second_derivative:
+        if dx2 is not None:
+            acceleration = np.asarray(dx2, dtype=float).reshape(-1)
+        elif velocity.size > 1:
+            acceleration = np.diff(velocity) * sfreq
+        else:
+            acceleration = np.asarray([], dtype=float)
+
+        if acceleration.size > 0:
+            abs_acc = np.abs(acceleration)
+            acc_peak_abs = float(np.max(abs_acc))
+            acc_mean_abs = float(np.mean(abs_acc))
+        else:
+            acc_peak_abs = float("nan")
+            acc_mean_abs = float("nan")
     else:
         acc_peak_abs = float("nan")
         acc_mean_abs = float("nan")

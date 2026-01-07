@@ -51,7 +51,7 @@ def _compute_epoch_wavelet_record(
             level_vals: Dict[int, List[float]] = {i: [] for i in range(1, 5)}
             for onset_s, duration_s in windows:
                 sl = segment_to_samples(onset_s, duration_s, sfreq, n_times)
-                segment = channel_data[ch][epoch_index, sl]
+                segment = channel_data[ch]["raw"][epoch_index, sl]
                 energies = _compute_wavelet_energies(segment, sfreq)
                 for lvl, val in enumerate(energies, start=1):
                     level_vals[lvl].append(val)

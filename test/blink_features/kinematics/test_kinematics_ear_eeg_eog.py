@@ -62,7 +62,7 @@ class TestFullModalityKinematicPipeline(unittest.TestCase):
         self.assertIn("blink_onset_eeg", epochs.metadata.columns)
         self.assertIn("blink_onset_eog", epochs.metadata.columns)
         for ch in (EAR_CHANNEL, EEG_CHANNEL, EOG_CHANNEL):
-            self.assertTrue(any(col.endswith(f"_{ch}") for col in df.columns))
+            self.assertTrue(any(col.endswith(f"__{ch}") for col in df.columns))
         self.assertGreater(df.notna().sum().sum(), 0)
 
 

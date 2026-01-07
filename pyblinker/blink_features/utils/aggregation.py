@@ -18,7 +18,7 @@ def prepare_epoch_channel_data(
     epochs: mne.Epochs | None,
     picks: str | Sequence[str] | None,
     sfreq: float,
-) -> Tuple[List[str], Dict[str, np.ndarray], pd.Index, int, int]:
+) -> Tuple[List[str], Dict[str, Dict[str, np.ndarray]], pd.Index, int, int]:
     """Validate epochs and return channel data for aggregation."""
 
     if epochs is None:
@@ -33,10 +33,15 @@ def prepare_epoch_channel_data(
     ch_names = _normalize_picks(picks, epochs.ch_names)
     _raise_for_missing_channels(ch_names, epochs.ch_names)
 
-    channel_data: Dict[str, np.ndarray] = {
+    raw_channel_data: Dict[str, np.ndarray] = {
         ch: epochs.get_data(picks=[ch])[:, 0, :] for ch in ch_names
     }
-    n_epochs, n_times = next(iter(channel_data.values())).shape
+    n_epochs, n_times = next(iter(raw_channel_data.values())).shape
+    channel_data: Dict[str, Dict[str, np.ndarray]] = {}
+    for ch, raw in raw_channel_data.items():
+        dx1 = np.gradient(raw, axis=1) * sfreq
+        dx2 = np.gradient(dx1, axis=1) * sfreq
+        channel_data[ch] = {"raw": raw, "dx1": dx1, "dx2": dx2}
     index = (
         epochs.metadata.index
         if isinstance(epochs.metadata, pd.DataFrame)
