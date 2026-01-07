@@ -33,7 +33,7 @@ def compute_blink_waveform_metrics(
     segment: np.ndarray | Mapping[str, np.ndarray],
     sfreq: float,
     *,
-    methods: Iterable[str] | None = None,
+    method: Iterable[str] | None = None,
     modality: str = "eeg",
     include_second_derivative: bool = True,
     use_abs_for_thresholds_and_areas: bool = True,
@@ -50,35 +50,26 @@ def compute_blink_waveform_metrics(
 
     _ = include_second_derivative
 
-    if isinstance(segment, Mapping):
-        segments_by_method = {
-            method: np.asarray(data, dtype=float).reshape(-1)
-            for method, data in segment.items()
-        }
-        method_order = tuple(segments_by_method.keys())
+    if isinstance(segment, Mapping) and set(segment.keys()) >= {"raw"}:
+        raw_seg = np.asarray(segment["raw"], dtype=float).reshape(-1)
+        dx1 = np.asarray(segment.get("dx1"), dtype=float).reshape(-1) if "dx1" in segment else None
+        dx2 = np.asarray(segment.get("dx2"), dtype=float).reshape(-1) if "dx2" in segment else None
     else:
-        seg_array = np.asarray(segment, dtype=float).reshape(-1)
-        method_order = _normalize_methods(modality, methods)
-        segments_by_method = {method: seg_array for method in method_order}
+        raw_seg = np.asarray(segment, dtype=float).reshape(-1)
+        dx1 = None
+        dx2 = None
 
-    if not segments_by_method:
-        method_order = _normalize_methods(modality, None)
-        if isinstance(segment, Mapping):
-            seg_array = np.asarray([], dtype=float)
-        else:
-            seg_array = np.asarray(segment, dtype=float).reshape(-1)
-        segments_by_method = {method_order[0]: seg_array}
 
-    metrics: Dict[str, float] = {}
     modality_key = modality.lower()
-    for method in method_order:
-        metrics.update(
-            compute_blink_morphology_metrics(
-                segments_by_method[method],
-                sfreq,
-                start_end_method=method,
-                modality=modality_key,
-                use_abs_for_thresholds_and_areas=use_abs_for_thresholds_and_areas,
-            )
+    if method is None:
+        method = METHODS_BY_MODALITY.get(modality_key, ("base",))[0]
+
+
+    metrics=compute_blink_morphology_metrics(
+		raw_seg,
+        sfreq,
+        start_end_method=method,
+        modality=modality_key,
+        use_abs_for_thresholds_and_areas=use_abs_for_thresholds_and_areas,
         )
     return metrics
