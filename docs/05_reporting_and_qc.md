@@ -19,6 +19,9 @@ A typical `pyblinker` report (MNE-based) includes:
 * **Feature/Change**: Reports can now accept an `mne.Epochs` object directly and will use epoch metadata plus per-epoch signals to place landmarks.
 * **Related Code**: `pyblinker/outside_annotation/reporting_flow.py`.
 * **Verification (Tutorials & Tests)**: `tutorial/03c_ear_threshold_multi_candidate_refinement.py`, `test/epoch_blink_finder/test_blink_report.py`.
+* **Feature/Change**: Refined blink reports now consistently use `mne.Epochs` metadata/signals and gate interpolated threshold markers behind the `mark_threshold_crossings` flag to avoid unexpected overlays.
+* **Related Code**: `pyblinker/outside_annotation/reporting_flow.py`.
+* **Verification (Tutorials & Tests)**: `tutorial/03a_ear_threshold_blink_refinement.py`, `tutorial/03c_ear_threshold_multi_candidate_refinement.py`, `tutorial/06_refined_blink_report_tutorial.py`.
 
 ## When to Generate Reports
 Reports can be generated at multiple stages:

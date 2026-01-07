@@ -349,16 +349,6 @@ def build_refined_blink_report(
 
     Parameters
     ----------
-    results : pd.DataFrame | None
-        Blink metrics including refined start/end samples and threshold metadata.
-        Time-related columns are seconds; sample indices are integer sample counts.
-        Required EAR columns: ``onset__refine__ear``, ``duration__refine__ear``,
-        ``onset__th_interpolation__ear``, ``duration__th_interpolation__ear``,
-        and ``trough__th_point__ear``.
-    signal : np.ndarray | None
-        Base signal to plot (e.g., EEG or EAR), sampled at ``sfreq``.
-    sfreq : float | None
-        Sampling frequency of ``signal`` in Hertz.
     channel_name : str
         Name used in plot labels/legends.
     epochs : mne.Epochs | None, optional
@@ -382,37 +372,29 @@ def build_refined_blink_report(
         from the results.
     output_path : Path | None, optional
         Destination for the generated HTML report; directories are created as needed.
-    pad_seconds : float, optional
-        Padding (seconds) around each blink window for plotting.
     max_plots : int | None, optional
         Maximum number of blinks to include; useful for large datasets.
-    metrics_keys : Iterable[str], optional
-        Column names to include in the inset metrics text on each plot.
 
     Returns
     -------
     mne.Report
         Generated report object with figures and summary HTML added.
     """
-    pad_seconds=0.05
     report = mne.Report(title="Refined Blink Validation")
-    # if epochs is None and (signal is None or sfreq is None):
-    #     raise ValueError("Provide either epochs or both signal and sfreq.")
-
-    # base_results = results
+    if epochs is None:
+        raise ValueError("Epochs are required to build the refined blink report.")
     epoch_signals = None
-    if epochs is not None:
-        # if epochs.metadata is None and base_results is None:
-        #     raise ValueError("Epochs metadata is required to build the report.")
-        base_results = epochs.metadata
-        sfreq = float(epochs.info["sfreq"])
-        epoch_signals = epochs.get_data(picks=channel_name)
-        if epoch_signals.ndim == 3 and epoch_signals.shape[1] == 1:
-            epoch_signals = epoch_signals[:, 0, :]
-        if epoch_signals.ndim != 2:
-            raise ValueError(
-                "Epoch data must be shaped as (n_epochs, n_samples) for reporting."
-            )
+    base_results = epochs.metadata
+    sfreq = float(epochs.info["sfreq"])
+    epoch_signals = epochs.get_data(picks=channel_name)
+    if epoch_signals.ndim == 3 and epoch_signals.shape[1] == 1:
+        epoch_signals = epoch_signals[:, 0, :]
+    if epoch_signals.ndim != 2:
+        raise ValueError(
+            "Epoch data must be shaped as (n_epochs, n_samples) for reporting."
+        )
+    metrics_keys: Iterable[str] = []
+    pad_seconds = 0.05
 
     pad_samples = int(round(pad_seconds * float(sfreq)))
 
@@ -562,13 +544,10 @@ def build_refined_blink_report(
         return int(np.clip(round(safe_time * sfreq), 0, n_samples - 1))
 
     for idx, row in enumerate(rows):
-        if epoch_signals is not None:
-            epoch_index = getattr(row, "epoch_index", None)
-            if epoch_index is None:
-                raise ValueError("Epoch-based reporting requires epoch_index in rows.")
-            current_signal = np.asarray(epoch_signals[int(epoch_index)], dtype=float)
-        else:
-            pass
+        epoch_index = getattr(row, "epoch_index", None)
+        if epoch_index is None:
+            raise ValueError("Epoch-based reporting requires epoch_index in rows.")
+        current_signal = np.asarray(epoch_signals[int(epoch_index)], dtype=float)
         n_samples = current_signal.shape[0]
         refined_onset_time = _safe_time(getattr(row, "onset__refine__ear"))
         refined_duration = _safe_time(getattr(row, "duration__refine__ear"))
@@ -770,7 +749,7 @@ def build_refined_blink_report(
                     label=label,
                 )
 
-        if interpolated_markers:
+        if interpolated_markers and mark_threshold_crossings:
             marker_styles = {
                 "Left interpolated threshold": ("^", "C1"),
                 "Right interpolated threshold": ("v", "C2"),
@@ -876,14 +855,11 @@ def build_refined_blink_report(
             if interpolated_times_available
             else "Threshold crossings"
         )
-        epoch_idx_hint = None
-        if epoch_duration and trough_time is not None:
-            try:
-                epoch_idx_hint = int(float(trough_time) // float(epoch_duration))
-            except (TypeError, ValueError):
-                epoch_idx_hint = None
-        if epoch_idx_hint is None and epoch_label is not None:
-            epoch_idx_hint = epoch_label
+        epoch_idx_hint = getattr(row, "epoch_index", None)
+        if epoch_idx_hint is None:
+            epoch_label = getattr(row, "epoch_label", None)
+            if epoch_label is not None:
+                epoch_idx_hint = epoch_label
         caption_epoch = (
             f"Epoch {epoch_idx_hint}" if epoch_idx_hint is not None else "Epoch"
         )
