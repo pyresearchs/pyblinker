@@ -13,6 +13,7 @@ A typical `pyblinker` report (MNE-based) includes:
 
 ### EAR refined report field alignment
 * **Feature/Change**: The refined blink report now derives threshold crossings and trough markers from the updated EAR timing fields (`onset__refine__ear`, `duration__refine__ear`, `onset__th_interpolation__ear`, `duration__th_interpolation__ear`, `trough__th_point__ear`) instead of legacy sample columns. If those fields are missing, the report helper derives them from refined sample indices when possible.
+* **Related Code**: `pyblinker/outside_annotation/reporting_flow.py` now also derives interpolated threshold timing from `left_interpolated_threshold_sample`/`right_interpolated_threshold_sample` when needed.
 * **Related Code**: `pyblinker/outside_annotation/reporting_flow.py`, `pyblinker/viz/ear_report.py`.
 * **Verification (Tutorials & Tests)**: `tutorial/03c_ear_threshold_multi_candidate_refinement.py`, `tutorial/06_refined_blink_report_tutorial.py`, `test/epoch_blink_finder/test_blink_report.py`.
 

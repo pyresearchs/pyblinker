@@ -445,21 +445,24 @@ def build_refined_blink_report(
         )
 
     if "onset__th_interpolation__ear" not in results.columns:
-        left_time = pd.to_numeric(
-            results.get("left_interpolated_threshold", float("nan")), errors="coerce"
+        left_time = results.get(
+            "left_interpolated_threshold", pd.Series(np.nan, index=results.index)
         )
-        results["onset__th_interpolation__ear"] = left_time
+        results["onset__th_interpolation__ear"] = pd.to_numeric(
+            left_time, errors="coerce"
+        )
     else:
         results["onset__th_interpolation__ear"] = pd.to_numeric(
             results["onset__th_interpolation__ear"], errors="coerce"
         )
 
     if "duration__th_interpolation__ear" not in results.columns:
-        right_time = pd.to_numeric(
-            results.get("right_interpolated_threshold", float("nan")), errors="coerce"
+        right_time = results.get(
+            "right_interpolated_threshold", pd.Series(np.nan, index=results.index)
         )
         results["duration__th_interpolation__ear"] = (
-            right_time - results["onset__th_interpolation__ear"]
+            pd.to_numeric(right_time, errors="coerce")
+            - results["onset__th_interpolation__ear"]
         )
     else:
         results["duration__th_interpolation__ear"] = pd.to_numeric(
@@ -468,12 +471,16 @@ def build_refined_blink_report(
 
     missing_interp = results["onset__th_interpolation__ear"].isna()
     if missing_interp.any():
-        left_samples = pd.to_numeric(
-            results.get("left_interpolated_threshold_sample"), errors="coerce"
+        left_samples = results.get(
+            "left_interpolated_threshold_sample",
+            pd.Series(np.nan, index=results.index),
         )
-        right_samples = pd.to_numeric(
-            results.get("right_interpolated_threshold_sample"), errors="coerce"
+        right_samples = results.get(
+            "right_interpolated_threshold_sample",
+            pd.Series(np.nan, index=results.index),
         )
+        left_samples = pd.to_numeric(left_samples, errors="coerce")
+        right_samples = pd.to_numeric(right_samples, errors="coerce")
         results.loc[missing_interp, "onset__th_interpolation__ear"] = (
             left_samples.loc[missing_interp] / sfreq
         )
