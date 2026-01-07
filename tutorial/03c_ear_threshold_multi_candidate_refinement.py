@@ -95,7 +95,6 @@ def main() -> None:
             overlay_sfreq=sfreq,
             overlay_label="EEG-E8",
             output_path=user_report_path,
-            epoch_duration=30.0,
         )
 
 

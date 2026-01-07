@@ -204,204 +204,141 @@ def _refine_ear_blinks_for_epoch(
     return refinements
 
 
+
 def _append_ear_refinements(
-    row_data: Dict[str, Any],
-    refinements: Sequence[Dict[str, Any]],
-    sfreq: float,
-    n_samp_epoch: int,
-) -> None:
-    if not refinements:
-        return
+		row_data: Dict[str, Any],
+		refinements: Sequence[Dict[str, Any]],
+		sfreq: float,
+		n_samp_epoch: int,
+		) -> None:
+	if not refinements:
+		return
 
-    peaks: List[int] = []
-    base_entries: List[Dict[str, Any]] = []
-    for refinement in refinements:
-        start_th = refinement["start__th_point__ear"]
-        end_th = refinement["end__th_point__ear"]
-        trough_th = refinement["trough__th_point__ear"]
-        onset__th__ear = refinement["start__th_point__ear"]
-        duration__th__ear = (
-            refinement["end__th_point__ear"] - refinement["start__th_point__ear"]
-        ) / sfreq
-        onset__th_interpolation__ear = refinement.get(
-            "onset__th_interpolation__ear", float("nan")
-        )
-        duration__th_interpolation__ear = refinement.get(
-            "duration__th_interpolation__ear", float("nan")
-        )
+	transposed: Dict[str, List[Any]] = {}
+	initialized = False
 
-        start = refinement.get("refined_start_sample", start_th)
-        end = refinement.get("refined_end_sample", end_th)
-        trough = trough_th
+	for refinement in refinements:
+		start_th = refinement["start__th_point__ear"]
+		end_th = refinement["end__th_point__ear"]
+		trough_th = refinement["trough__th_point__ear"]
 
-        onset_time = float(start_th) / sfreq
-        duration_time = max(0.0, float(end_th - start_th) / sfreq)
+		onset__th__ear = start_th
+		duration__th__ear = (end_th - start_th) / sfreq
 
-        has_interp = np.isfinite(onset__th_interpolation__ear) and np.isfinite(
-            duration__th_interpolation__ear
-        )
-        left_time = float(onset__th_interpolation__ear) if has_interp else float("nan")
-        right_time = (
-            float(onset__th_interpolation__ear + duration__th_interpolation__ear)
-            if has_interp
-            else float("nan")
-        )
-        left_sample = (
-            int(np.clip(round(left_time * sfreq), 0, n_samp_epoch - 1))
-            if np.isfinite(left_time)
-            else None
-        )
-        right_sample = (
-            int(np.clip(round(right_time * sfreq), 0, n_samp_epoch - 1))
-            if np.isfinite(right_time)
-            else None
-        )
+		onset__th_interpolation__ear = refinement.get(
+			"onset__th_interpolation__ear", float("nan")
+			)
+		duration__th_interpolation__ear = refinement.get(
+			"duration__th_interpolation__ear", float("nan")
+			)
 
-        if trough is not None and np.isfinite(trough):
-            peaks.append(int(trough))
-        else:
-            peaks.append(int(start_th))
-        base_entries.append(
-            {
-                "blink_onset_ear": onset_time,
-                "blink_duration_ear": duration_time,
-                "blink_onset_extremum_ear": (
-                    float(trough) / sfreq
-                    if trough is not None and np.isfinite(trough)
-                    else float(onset_time)
-                ),
-                "onset__refine__ear": onset_time,
-                "duration__refine__ear": duration_time,
-                "refined_start_sample": int(start),
-                "refined_end_sample": int(end),
-                "refined_lowest_point_sample": (
-                    int(trough)
-                    if trough is not None and np.isfinite(trough)
-                    else np.nan
-                ),
-                "refined_left_threshold": int(refinement["refined_left_threshold"]),
-                "refined_right_threshold": int(refinement["refined_right_threshold"]),
-                "search_window_start_sample": int(
-                    refinement["search_window_start_sample"]
-                ),
-                "search_window_end_sample": int(refinement["search_window_end_sample"]),
-                "search_window_start_time": float(
-                    refinement["search_window_start_time"]
-                ),
-                "search_window_end_time": float(refinement["search_window_end_time"]),
-                "refinement_succeeded": bool(refinement["refinement_succeeded"]),
-                "search_exhausted": bool(refinement["search_exhausted"]),
-                "extension_seconds_used": float(refinement["extension_seconds_used"]),
-                "extension_attempts": int(refinement["extension_attempts"]),
-                "onset__th_interpolation__ear": float(
-                    refinement.get("onset__th_interpolation__ear", float("nan"))
-                ),
-                "duration__th_interpolation__ear": float(
-                    refinement.get("duration__th_interpolation__ear", float("nan"))
-                ),
-                "left_interpolated_threshold": float(left_time),
-                "right_interpolated_threshold": float(right_time),
-                "left_interpolated_threshold_sample": (
-                    float(left_sample) if left_sample is not None else float("nan")
-                ),
-                "right_interpolated_threshold_sample": (
-                    float(right_sample) if right_sample is not None else float("nan")
-                ),
-                "left_interpolated_threshold_found": bool(
-                    refinement.get("left_interpolated_threshold_found", False)
-                ),
-                "right_interpolated_threshold_found": bool(
-                    refinement.get("right_interpolated_threshold_found", False)
-                ),
-                "interpolated_thresholds_found": bool(
-                    refinement.get("interpolated_thresholds_found", False)
-                ),
-                "onset__th_sample__ear": float(
-                    refinement.get("onset__th_sample__ear", float("nan"))
-                ),
-                "duration__th_sample__ear": float(
-                    refinement.get("duration__th_sample__ear", float("nan"))
-                ),
-                "start__th_point__ear": float(start_th),
-                "end__th_point__ear": float(end_th),
-                "trough__th_point__ear": float(trough_th)
-                if trough_th is not None and np.isfinite(trough_th)
-                else float("nan"),
-                "onset__th__ear": onset__th__ear,
-                "duration__th__ear": duration__th__ear,
-            }
-        )
+		start = refinement.get("refined_start_sample", start_th)
+		end = refinement.get("refined_end_sample", end_th)
+		trough = trough_th
 
-    if not base_entries:
-        return
+		onset_time = float(start_th) / sfreq
+		duration_time = max(0.0, float(end_th - start_th) / sfreq)
 
-    bounds = compute_outer_bounds(peaks, n_samp_epoch)
-    blink_entries: List[Dict[str, Any]] = []
-    for base_entry, (outer_start, outer_end) in zip(base_entries, bounds):
-        blink_entries.append(
-            {
-                "blink_onset_ear": base_entry["blink_onset_ear"],
-                "blink_duration_ear": base_entry["blink_duration_ear"],
-                "blink_onset_extremum_ear": base_entry["blink_onset_extremum_ear"],
-                "blink_outer_start_ear": outer_start,
-                "blink_outer_end_ear": outer_end,
-                "onset__refine__ear": base_entry["onset__refine__ear"],
-                "duration__refine__ear": base_entry["duration__refine__ear"],
-                "refined_start_sample": base_entry["refined_start_sample"],
-                "refined_end_sample": base_entry["refined_end_sample"],
-                "refined_lowest_point_sample": base_entry[
-                    "refined_lowest_point_sample"
-                ],
-                "refined_left_threshold": base_entry["refined_left_threshold"],
-                "refined_right_threshold": base_entry["refined_right_threshold"],
-                "search_window_start_sample": base_entry["search_window_start_sample"],
-                "search_window_end_sample": base_entry["search_window_end_sample"],
-                "search_window_start_time": base_entry["search_window_start_time"],
-                "search_window_end_time": base_entry["search_window_end_time"],
-                "refinement_succeeded": base_entry["refinement_succeeded"],
-                "search_exhausted": base_entry["search_exhausted"],
-                "extension_seconds_used": base_entry["extension_seconds_used"],
-                "extension_attempts": base_entry["extension_attempts"],
-                "onset__th_interpolation__ear": base_entry[
-                    "onset__th_interpolation__ear"
-                ],
-                "duration__th_interpolation__ear": base_entry[
-                    "duration__th_interpolation__ear"
-                ],
-                "left_interpolated_threshold": base_entry[
-                    "left_interpolated_threshold"
-                ],
-                "right_interpolated_threshold": base_entry[
-                    "right_interpolated_threshold"
-                ],
-                "left_interpolated_threshold_sample": base_entry[
-                    "left_interpolated_threshold_sample"
-                ],
-                "right_interpolated_threshold_sample": base_entry[
-                    "right_interpolated_threshold_sample"
-                ],
-                "left_interpolated_threshold_found": base_entry[
-                    "left_interpolated_threshold_found"
-                ],
-                "right_interpolated_threshold_found": base_entry[
-                    "right_interpolated_threshold_found"
-                ],
-                "interpolated_thresholds_found": base_entry[
-                    "interpolated_thresholds_found"
-                ],
-                "onset__th_sample__ear": base_entry["onset__th_sample__ear"],
-                "duration__th_sample__ear": base_entry["duration__th_sample__ear"],
-                "start__th_point__ear": base_entry["start__th_point__ear"],
-                "end__th_point__ear": base_entry["end__th_point__ear"],
-                "trough__th_point__ear": base_entry["trough__th_point__ear"],
-                "onset__th__ear": base_entry["onset__th__ear"],
-                "duration__th__ear": base_entry["duration__th__ear"],
-            }
-        )
+		has_interp = np.isfinite(onset__th_interpolation__ear) and np.isfinite(
+			duration__th_interpolation__ear
+			)
+		left_time = float(onset__th_interpolation__ear) if has_interp else float("nan")
+		right_time = (
+				float(onset__th_interpolation__ear + duration__th_interpolation__ear)
+				if has_interp
+				else float("nan")
+		)
 
-    keys = blink_entries[0].keys()
-    transposed = {key: [entry[key] for entry in blink_entries] for key in keys}
-    row_data.update(transposed)
+		left_sample = (
+				int(np.clip(round(left_time * sfreq), 0, n_samp_epoch - 1))
+				if np.isfinite(left_time)
+				else None
+		)
+		right_sample = (
+				int(np.clip(round(right_time * sfreq), 0, n_samp_epoch - 1))
+				if np.isfinite(right_time)
+				else None
+		)
+
+		entry: Dict[str, Any] = {
+				"blink_onset_ear": onset_time,
+				"blink_duration_ear": duration_time,
+				"blink_onset_extremum_ear": (
+						float(trough) / sfreq
+						if trough is not None and np.isfinite(trough)
+						else float(onset_time)
+				),
+				"onset__refine__ear": onset_time,
+				"duration__refine__ear": duration_time,
+				"refined_start_sample": int(start),
+				"refined_end_sample": int(end),
+				"refined_lowest_point_sample": (
+						int(trough) if trough is not None and np.isfinite(trough) else np.nan
+				),
+				"refined_left_threshold": int(refinement["refined_left_threshold"]),
+				"refined_right_threshold": int(refinement["refined_right_threshold"]),
+				"search_window_start_sample": int(refinement["search_window_start_sample"]),
+				"search_window_end_sample": int(refinement["search_window_end_sample"]),
+				"search_window_start_time": float(refinement["search_window_start_time"]),
+				"search_window_end_time": float(refinement["search_window_end_time"]),
+				"refinement_succeeded": bool(refinement["refinement_succeeded"]),
+				"search_exhausted": bool(refinement["search_exhausted"]),
+				"extension_seconds_used": float(refinement["extension_seconds_used"]),
+				"extension_attempts": int(refinement["extension_attempts"]),
+				"onset__th_interpolation__ear": float(
+					refinement.get("onset__th_interpolation__ear", float("nan"))
+					),
+				"duration__th_interpolation__ear": float(
+					refinement.get("duration__th_interpolation__ear", float("nan"))
+					),
+				"left_interpolated_threshold": float(left_time),
+				"right_interpolated_threshold": float(right_time),
+				"left_interpolated_threshold_sample": (
+						float(left_sample) if left_sample is not None else float("nan")
+				),
+				"right_interpolated_threshold_sample": (
+						float(right_sample) if right_sample is not None else float("nan")
+				),
+				"left_interpolated_threshold_found": bool(
+					refinement.get("left_interpolated_threshold_found", False)
+					),
+				"right_interpolated_threshold_found": bool(
+					refinement.get("right_interpolated_threshold_found", False)
+					),
+				"interpolated_thresholds_found": bool(
+					refinement.get("interpolated_thresholds_found", False)
+					),
+				"onset__th_sample__ear": float(
+					refinement.get("onset__th_sample__ear", float("nan"))
+					),
+				"duration__th_sample__ear": float(
+					refinement.get("duration__th_sample__ear", float("nan"))
+					),
+				"start__th_point__ear": float(start_th),
+				"end__th_point__ear": float(end_th),
+				"trough__th_point__ear": (
+						float(trough_th)
+						if trough_th is not None and np.isfinite(trough_th)
+						else float("nan")
+				),
+				"onset__th__ear": onset__th__ear,
+				"duration__th__ear": duration__th__ear,
+				}
+
+		# Initialize transposed dict once (preserves key order from first entry)
+		if not initialized:
+			transposed = {k: [] for k in entry.keys()}
+			initialized = True
+
+		# Append values directly into the transposed structure
+		for k, v in entry.items():
+			transposed[k].append(v)
+
+	if not initialized:
+		return
+
+	row_data.update(transposed)
+
 
 
 __all__ = [

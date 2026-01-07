@@ -333,31 +333,17 @@ def _determine_report_threshold(
 
 def build_refined_blink_report(
     *,
-    results: pd.DataFrame | None = None,
-    signal: np.ndarray | None = None,
-    sfreq: float | None = None,
-    channel_name: str,
     epochs: mne.Epochs | None = None,
-    overlay_signal: np.ndarray | None = None,
-    overlay_sfreq: float | None = None,
-    overlay_label: str = "EAR-avg_ear",
+    channel_name: str,
     plot_overlay: bool = False,
     plot_signal_as_scatter: bool = False,
     mark_threshold_crossings: bool = False,
     threshold_value: float | None = None,
+    overlay_signal: np.ndarray | None = None,
+    overlay_sfreq: float | None = None,
+    overlay_label: str = "EEG-E8",
     output_path: Path | None = None,
-    pad_seconds: float = 0.1,
     max_plots: int | None = None,
-    metrics_keys: Iterable[str] = (
-        "peak_max_blink",
-        "peak_time_blink",
-        "duration_zero",
-        "duration_base",
-        "closing_time_zero",
-        "reopening_time_zero",
-    ),
-    epoch_label: str | None = None,
-    epoch_duration: float | None = None,
 ) -> mne.Report:
     """Generate an MNE report visualizing refined blink boundaries and metrics.
 
@@ -408,17 +394,17 @@ def build_refined_blink_report(
     mne.Report
         Generated report object with figures and summary HTML added.
     """
-
+    pad_seconds=0.05
     report = mne.Report(title="Refined Blink Validation")
-    if epochs is None and (signal is None or sfreq is None):
-        raise ValueError("Provide either epochs or both signal and sfreq.")
+    # if epochs is None and (signal is None or sfreq is None):
+    #     raise ValueError("Provide either epochs or both signal and sfreq.")
 
-    base_results = results
+    # base_results = results
     epoch_signals = None
     if epochs is not None:
-        if epochs.metadata is None and base_results is None:
-            raise ValueError("Epochs metadata is required to build the report.")
-        base_results = epochs.metadata if base_results is None else base_results
+        # if epochs.metadata is None and base_results is None:
+        #     raise ValueError("Epochs metadata is required to build the report.")
+        base_results = epochs.metadata
         sfreq = float(epochs.info["sfreq"])
         epoch_signals = epochs.get_data(picks=channel_name)
         if epoch_signals.ndim == 3 and epoch_signals.shape[1] == 1:
@@ -582,7 +568,7 @@ def build_refined_blink_report(
                 raise ValueError("Epoch-based reporting requires epoch_index in rows.")
             current_signal = np.asarray(epoch_signals[int(epoch_index)], dtype=float)
         else:
-            current_signal = np.asarray(signal, dtype=float)
+            pass
         n_samples = current_signal.shape[0]
         refined_onset_time = _safe_time(getattr(row, "onset__refine__ear"))
         refined_duration = _safe_time(getattr(row, "duration__refine__ear"))
