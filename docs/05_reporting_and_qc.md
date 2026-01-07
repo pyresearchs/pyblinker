@@ -16,6 +16,9 @@ A typical `pyblinker` report (MNE-based) includes:
 * **Related Code**: `pyblinker/outside_annotation/reporting_flow.py` now also derives interpolated threshold timing from `left_interpolated_threshold_sample`/`right_interpolated_threshold_sample` when needed.
 * **Related Code**: `pyblinker/outside_annotation/reporting_flow.py`, `pyblinker/viz/ear_report.py`.
 * **Verification (Tutorials & Tests)**: `tutorial/03c_ear_threshold_multi_candidate_refinement.py`, `tutorial/06_refined_blink_report_tutorial.py`, `test/epoch_blink_finder/test_blink_report.py`.
+* **Feature/Change**: Reports can now accept an `mne.Epochs` object directly and will use epoch metadata plus per-epoch signals to place landmarks.
+* **Related Code**: `pyblinker/outside_annotation/reporting_flow.py`.
+* **Verification (Tutorials & Tests)**: `tutorial/03c_ear_threshold_multi_candidate_refinement.py`, `test/epoch_blink_finder/test_blink_report.py`.
 
 ## When to Generate Reports
 Reports can be generated at multiple stages:

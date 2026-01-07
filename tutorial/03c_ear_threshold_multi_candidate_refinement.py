@@ -13,7 +13,6 @@ from pathlib import Path
 import sys
 
 import mne
-import pandas as pd
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
@@ -49,55 +48,9 @@ def main() -> None:
 
     raw = mne.io.read_raw_fif(fif_path, preload=True, verbose=False)
     sfreq = float(raw.info["sfreq"])
-    ear_signal = raw.get_data(picks="EAR-avg_ear")[0]
-    eeg_overlay = raw.get_data(picks="EEG-E8")[0]
-    overlay_sfreq = float(raw.info["sfreq"])
-
-    def _listify(value):
-        if isinstance(value, list):
-            return value
-        if value is None:
-            return []
-        return [] if isinstance(value, float) and value != value else [value]
-
-    def _explode_epoch_metadata(metadata):
-        rows = []
-        for row in metadata.itertuples(index=False):
-            n_blinks = int(getattr(row, "n_blinks", 0))
-            if n_blinks == 0:
-                continue
-            fields = {
-                "onset__refine__ear": _listify(
-                    getattr(row, "onset__refine__ear", None)
-                ),
-                "duration__refine__ear": _listify(
-                    getattr(row, "duration__refine__ear", None)
-                ),
-                "onset__th_interpolation__ear": _listify(
-                    getattr(row, "onset__th_interpolation__ear", None)
-                ),
-                "duration__th_interpolation__ear": _listify(
-                    getattr(row, "duration__th_interpolation__ear", None)
-                ),
-                "trough__th_point__ear": _listify(
-                    getattr(row, "trough__th_point__ear", None)
-                ),
-                "refined_left_threshold": _listify(
-                    getattr(row, "refined_left_threshold", None)
-                ),
-                "refined_right_threshold": _listify(
-                    getattr(row, "refined_right_threshold", None)
-                ),
-                "refined_lowest_point_sample": _listify(
-                    getattr(row, "refined_lowest_point_sample", None)
-                ),
-            }
-            for idx in range(n_blinks):
-                rows.append({key: values[idx] for key, values in fields.items()})
-        return rows
 
     report_threshold = candidate_thresholds[0]
-    report_rows = []
+    report_epochs = None
     for theta in candidate_thresholds:
         base_config = {
             "ear": {
@@ -119,24 +72,27 @@ def main() -> None:
             progress_bar=False,
             segmentation_type=segmentation_config,
         )
-        report_rows.extend(_explode_epoch_metadata(epochs.metadata))
+        if theta == report_threshold:
+            report_epochs = epochs
 
     if save_reports:
         user_report_path = (
             output_dir / "ear_multi_threshold_refined_blink_report_user.html"
         )
-        report_df = pd.DataFrame.from_records(report_rows)
+        if report_epochs is None:
+            raise ValueError("No epochs were generated for the report threshold.")
+        eeg_overlay_epochs = report_epochs.get_data(picks="EEG-E8")
+        if eeg_overlay_epochs.ndim == 3 and eeg_overlay_epochs.shape[1] == 1:
+            eeg_overlay_epochs = eeg_overlay_epochs[:, 0, :]
         build_refined_blink_report(
-            results=report_df,
-            signal=ear_signal,
-            sfreq=sfreq,
+            epochs=report_epochs,
             channel_name="EAR-avg_ear",
             plot_overlay=True,
             plot_signal_as_scatter=True,
             mark_threshold_crossings=True,
             threshold_value=report_threshold,
-            overlay_signal=eeg_overlay,
-            overlay_sfreq=overlay_sfreq,
+            overlay_signal=eeg_overlay_epochs,
+            overlay_sfreq=sfreq,
             overlay_label="EEG-E8",
             output_path=user_report_path,
             epoch_duration=30.0,

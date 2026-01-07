@@ -333,10 +333,11 @@ def _determine_report_threshold(
 
 def build_refined_blink_report(
     *,
-    results: pd.DataFrame,
-    signal: np.ndarray,
-    sfreq: float,
+    results: pd.DataFrame | None = None,
+    signal: np.ndarray | None = None,
+    sfreq: float | None = None,
     channel_name: str,
+    epochs: mne.Epochs | None = None,
     overlay_signal: np.ndarray | None = None,
     overlay_sfreq: float | None = None,
     overlay_label: str = "EAR-avg_ear",
@@ -362,18 +363,22 @@ def build_refined_blink_report(
 
     Parameters
     ----------
-    results : pd.DataFrame
+    results : pd.DataFrame | None
         Blink metrics including refined start/end samples and threshold metadata.
         Time-related columns are seconds; sample indices are integer sample counts.
         Required EAR columns: ``onset__refine__ear``, ``duration__refine__ear``,
         ``onset__th_interpolation__ear``, ``duration__th_interpolation__ear``,
         and ``trough__th_point__ear``.
-    signal : np.ndarray
+    signal : np.ndarray | None
         Base signal to plot (e.g., EEG or EAR), sampled at ``sfreq``.
-    sfreq : float
+    sfreq : float | None
         Sampling frequency of ``signal`` in Hertz.
     channel_name : str
         Name used in plot labels/legends.
+    epochs : mne.Epochs | None, optional
+        Optional epochs object. When provided, metadata is read from
+        ``epochs.metadata`` and signals are drawn from the epoch data for the
+        requested ``channel_name``.
     overlay_signal : np.ndarray | None, optional
         Secondary signal to overlay on a twin axis; should be aligned to the same time base.
     overlay_sfreq : float | None, optional
@@ -405,10 +410,58 @@ def build_refined_blink_report(
     """
 
     report = mne.Report(title="Refined Blink Validation")
-    n_samples = signal.shape[0]
-    pad_samples = int(round(pad_seconds * sfreq))
+    if epochs is None and (signal is None or sfreq is None):
+        raise ValueError("Provide either epochs or both signal and sfreq.")
 
-    results = results.copy()
+    base_results = results
+    epoch_signals = None
+    if epochs is not None:
+        if epochs.metadata is None and base_results is None:
+            raise ValueError("Epochs metadata is required to build the report.")
+        base_results = epochs.metadata if base_results is None else base_results
+        sfreq = float(epochs.info["sfreq"])
+        epoch_signals = epochs.get_data(picks=channel_name)
+        if epoch_signals.ndim == 3 and epoch_signals.shape[1] == 1:
+            epoch_signals = epoch_signals[:, 0, :]
+        if epoch_signals.ndim != 2:
+            raise ValueError(
+                "Epoch data must be shaped as (n_epochs, n_samples) for reporting."
+            )
+
+    pad_samples = int(round(pad_seconds * float(sfreq)))
+
+    def _listify(value: object) -> list:
+        if isinstance(value, list):
+            return value
+        if value is None:
+            return []
+        if isinstance(value, float) and np.isnan(value):
+            return []
+        return [value]
+
+    def _explode_epoch_metadata(metadata: pd.DataFrame) -> pd.DataFrame:
+        rows: list[dict[str, object]] = []
+        for epoch_index, row in metadata.iterrows():
+            n_blinks = int(row.get("n_blinks", 0))
+            if n_blinks <= 0:
+                continue
+            per_col = {
+                col: _listify(row[col]) for col in metadata.columns if col != "n_blinks"
+            }
+            for idx in range(n_blinks):
+                entry = {
+                    col: (values[idx] if idx < len(values) else np.nan)
+                    for col, values in per_col.items()
+                }
+                entry["epoch_index"] = epoch_index
+                rows.append(entry)
+        return pd.DataFrame.from_records(rows)
+
+    results = base_results.copy() if base_results is not None else pd.DataFrame()
+    if epochs is not None:
+        results = _explode_epoch_metadata(results)
+        if results.empty:
+            return report
     if "onset__refine__ear" not in results.columns:
         left_samples = pd.to_numeric(
             results.get("refined_left_threshold", results.get("refined_start_sample")),
@@ -523,6 +576,14 @@ def build_refined_blink_report(
         return int(np.clip(round(safe_time * sfreq), 0, n_samples - 1))
 
     for idx, row in enumerate(rows):
+        if epoch_signals is not None:
+            epoch_index = getattr(row, "epoch_index", None)
+            if epoch_index is None:
+                raise ValueError("Epoch-based reporting requires epoch_index in rows.")
+            current_signal = np.asarray(epoch_signals[int(epoch_index)], dtype=float)
+        else:
+            current_signal = np.asarray(signal, dtype=float)
+        n_samples = current_signal.shape[0]
         refined_onset_time = _safe_time(getattr(row, "onset__refine__ear"))
         refined_duration = _safe_time(getattr(row, "duration__refine__ear"))
         if refined_onset_time is None or refined_duration is None:
@@ -582,7 +643,7 @@ def build_refined_blink_report(
         trough_time = trough_sample / sfreq if trough_sample is not None else None
 
         window_times = np.arange(start, end + 1, dtype=float) / sfreq
-        window_signal = signal[start : end + 1]
+        window_signal = current_signal[start : end + 1]
 
         fig, (ax, legend_ax) = plt.subplots(
             1,
@@ -657,7 +718,7 @@ def build_refined_blink_report(
             if idx < 0 or idx >= n_samples:
                 return None
             time = idx / sfreq
-            value = float(signal[idx])
+            value = float(current_signal[idx])
             if not np.isfinite(value):
                 return None
             return time, value
@@ -741,7 +802,7 @@ def build_refined_blink_report(
                 )
 
         if trough_time is not None and trough_sample is not None:
-            trough_value = float(signal[trough_sample])
+            trough_value = float(current_signal[trough_sample])
             ax.annotate(
                 "Trough (metadata)",
                 xy=(trough_time, trough_value),
@@ -753,17 +814,20 @@ def build_refined_blink_report(
 
         overlay_ax = None
         if plot_overlay and overlay_signal is not None:
+            overlay_data = overlay_signal
+            if epoch_signals is not None and overlay_signal.ndim == 2:
+                overlay_data = overlay_signal[int(epoch_index)]
             overlay_start, overlay_end = _compute_overlay_indices(
                 start=start,
                 end=end,
                 base_sfreq=sfreq,
-                overlay_len=overlay_signal.shape[0],
+                overlay_len=overlay_data.shape[0],
                 overlay_sfreq=overlay_sfreq,
             )
             overlay_times = np.arange(overlay_start, overlay_end + 1, dtype=float) / (
                 sfreq if overlay_sfreq is None else float(overlay_sfreq)
             )
-            overlay_window = overlay_signal[overlay_start : overlay_end + 1]
+            overlay_window = overlay_data[overlay_start : overlay_end + 1]
 
             overlay_ax = ax.twinx()
             overlay_ax.plot(
