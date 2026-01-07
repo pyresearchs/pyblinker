@@ -14,7 +14,7 @@ from typing import Dict, List, Mapping, Sequence, Set
 import mne
 import pandas as pd
 
-from .._core_blink import CANONICAL_METRIC_STEMS
+from .core_metrics import KINEMATIC_METRIC_STEMS
 from .per_blink import compute_segment_kinematics
 from ..energy.helpers import segment_to_samples, _safe_stats
 from ...utils.iter_utils import ensure_list
@@ -144,7 +144,7 @@ class KinematicBlinkFeatureExtractor:
         column_set: Set[str] = set()
         for mod, channels in modality_channels.items():
             for style in sorted(styles_by_modality.get(mod, {"base"})):
-                metrics_for_style = [f"{stem}_{style}" for stem in CANONICAL_METRIC_STEMS]
+                metrics_for_style = [f"{stem}_{style}" for stem in KINEMATIC_METRIC_STEMS]
                 for metric in metrics_for_style:
                     for stat in _STATS:
                         for ch in channels:
@@ -167,7 +167,7 @@ class KinematicBlinkFeatureExtractor:
                 styles = styles_by_modality.get(modality, {"base"})
                 use_fallback = fallback_styles.get(modality, False)
                 for style in sorted(styles):
-                    metrics_for_style = [f"{stem}_{style}" for stem in CANONICAL_METRIC_STEMS]
+                    metrics_for_style = [f"{stem}_{style}" for stem in KINEMATIC_METRIC_STEMS]
                     windows = _style_windows(metadata_row, modality, style)
                     if use_fallback and not windows:
                         onset_key = f"blink_onset_{modality}"

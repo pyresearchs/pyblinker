@@ -8,7 +8,7 @@ from pathlib import Path
 import mne
 import numpy as np
 
-from pyblinker.blink_features._core_blink import CANONICAL_METRIC_STEMS
+from pyblinker.blink_features.kinematics.core_metrics import KINEMATIC_METRIC_STEMS
 from pyblinker.blink_features.kinematics import compute_kinematic_features
 from pyblinker.blink_features.kinematics.per_blink import compute_segment_kinematics
 from pyblinker.blink_features.energy.helpers import segment_to_samples, _safe_stats
@@ -44,7 +44,7 @@ class TestKinematicFeatures(unittest.TestCase):
         df = compute_kinematic_features(self.epochs, picks=ch)
 
         styles = _available_styles(tuple(self.epochs.metadata.columns), "eeg")
-        metric_keys = [f"{stem}_{style}" for stem in CANONICAL_METRIC_STEMS for style in styles]
+        metric_keys = [f"{stem}_{style}" for stem in KINEMATIC_METRIC_STEMS for style in styles]
         expected_cols = [
             f"eeg__{style}__kinematic__{m}_{s}__{ch}"
             for m in metric_keys
@@ -70,7 +70,7 @@ class TestKinematicFeatures(unittest.TestCase):
         ch_names, channel_data, _, _, n_times = prepare_epoch_channel_data(
             epochs=self.epochs, picks=[ch], sfreq=sfreq
         )
-        metric_keys = [f"{stem}_{style}" for stem in CANONICAL_METRIC_STEMS for style in styles]
+        metric_keys = [f"{stem}_{style}" for stem in KINEMATIC_METRIC_STEMS for style in styles]
         per_metric = {m: [] for m in metric_keys}
         for style in styles:
             windows = _style_windows(meta, "eeg", style)
@@ -105,7 +105,7 @@ class TestKinematicFeatures(unittest.TestCase):
             method="base",
             modality="eeg",
         )
-        self.assertIn("area_abs_total_trapz_base", metrics)
+        self.assertIn("vel_peak_abs_base", metrics)
 
         ear_metrics = compute_segment_kinematics(
             segment,
@@ -114,7 +114,7 @@ class TestKinematicFeatures(unittest.TestCase):
             modality="ear",
         )
         self.assertTrue(
-            np.isnan(ear_metrics["area_abs_total_trapz_zero"]),
+            np.isnan(ear_metrics["vel_peak_abs_zero"]),
             msg="EAR zero-crossing metrics should be NaN",
         )
 

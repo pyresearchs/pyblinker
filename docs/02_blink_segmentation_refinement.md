@@ -24,6 +24,11 @@ Refinement typically happens when converting continuous data into epochs (`slice
 * **Related Code**: `pyblinker/segmentation/refinement/ear/epoch.py`, `pyblinker/segmentation/refinement/ear/threshold.py`.
 * **Verification (Tutorials & Tests)**: `tutorial/03c_ear_threshold_multi_candidate_refinement.py`, `test/segmentation/test_refine_annot_by_channel.py`.
 
+### EAR fallback threshold metadata
+* **Feature/Change**: When threshold-based refinement is unavailable, EAR fallback refinement now populates the `start__th_point__ear` and `end__th_point__ear` landmarks so downstream morphology and kinematic pipelines can rely on consistent keys.
+* **Related Code**: `pyblinker/segmentation/refinement/ear/epoch.py` (`_fallback_refinement`).
+* **Verification (Tutorials & Tests)**: `tutorial/03a_ear_threshold_blink_refinement.py`, `test/blink_features/morphology/test_epoch_morphology_features_aggregation.py`.
+
 ### Tuning Parameters
 Users can tune the refinement behavior, especially for EAR:
 *   **Threshold**: The EAR value defining "closed" vs. "open".

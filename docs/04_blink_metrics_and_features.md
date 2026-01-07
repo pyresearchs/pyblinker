@@ -87,7 +87,7 @@ graph TD
 
 *   **`pyblinker/pipeline.py`**: Defines `FEATURE_AGGREGATORS` and the `extract_features` function.
 *   **`pyblinker/blink_features/`**: Directory containing specific feature implementations:
-    *   `_core_blink.py` (Kinematics)
+    *   `_core_blink.py` (legacy shared blink core wrapper)
     *   `ear_metrics/` (EAR specific)
     *   `energy/` (Signal energy)
     *   `frequency_domain/` (Wavelets)
@@ -121,6 +121,24 @@ Automatic modality inference per channel prevents EEG defaults when processing E
 
 *Unit Tests*:
 *   `test/blink_features/kinematics/test_optional_channels_and_configs.py`: Exercises EAR-only, EEG-only, combined, and incomplete `SEGMENT_CONFIG` shapes to ensure channel picking and refinement do not crash when modalities are missing.
+
+## Morphology and kinematics metric split
+
+*Feature/change*: Blink waveform analytics are now split into morphology-only and kinematic-only pipelines. Morphology metrics (area, symmetry, rise/fall timing, widths, amplitudes, and EAR baseline handling) are computed separately from kinematic metrics (velocity, acceleration, and slope), preventing cross-domain outputs when a pipeline only needs one family.
+
+*Related Code*:
+*   `pyblinker/blink_features/morphology/core_metrics.py` (morphology-only blink metrics)
+*   `pyblinker/blink_features/kinematics/core_metrics.py` (kinematic-only blink metrics)
+*   `pyblinker/blink_features/morphology/per_blink.py` (morphology per-blink entry point)
+*   `pyblinker/blink_features/kinematics/per_blink.py` (kinematic per-blink entry point)
+
+*Tutorials*:
+*   `tutorial/05c_minimal_blink_feature_tutorial.py`: Shows how to request a single feature family (e.g., kinematics only).
+*   `tutorial/06a_ear_kinematics_feature_tutorial.py`: Demonstrates kinematic-only extraction for EAR signals.
+
+*Unit Tests*:
+*   `test/blink_features/kinematics/test_kinematics_eeg_only_config.py`: Ensures kinematic metrics run without morphology outputs for EEG-only configs.
+*   `test/blink_features/morphology/test_epoch_morphology_features_aggregation.py`: Validates morphology-only aggregation paths after the split.
 
 ## Kinematic epoch data preparation
 

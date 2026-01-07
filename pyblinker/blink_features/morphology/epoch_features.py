@@ -7,15 +7,15 @@ from typing import Dict, List, Sequence
 import mne
 import pandas as pd
 
+from .core_metrics import MORPHOLOGY_METRIC_STEMS
 from .per_blink import compute_blink_waveform_metrics
-from .._core_blink import CANONICAL_METRIC_STEMS
 from ..energy.helpers import extract_blink_windows, segment_to_samples, _safe_stats
 from ...utils.epoch_utils import build_metric_stat_columns, resolve_channels
 from ...utils.modality import infer_modality
 
 logger = get_logger(__name__)
 
-_BASE_METRICS = tuple(f"{stem}_base" for stem in CANONICAL_METRIC_STEMS)
+_BASE_METRICS = tuple(f"{stem}_base" for stem in MORPHOLOGY_METRIC_STEMS)
 # Derive metric and statistic names instead of hardcoding; morphology uses base-only
 _METRICS = _BASE_METRICS + ("duration",)
 _STATS = ("mean", "std", "cv")
