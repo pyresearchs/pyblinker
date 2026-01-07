@@ -29,7 +29,6 @@ import sys
 import os
 
 import mne
-import pandas as pd
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
@@ -41,8 +40,12 @@ from pyblinker.blink_features.ear_metrics import (  # noqa: E402
     load_coarse_blinks,
     load_ear_channel,
 )
-from pyblinker.segmentation.refinement.ear import EARRefinementConfig, EARThresholdBlinkRefiner  # noqa: E402
+from pyblinker.segmentation.refinement.ear import (  # noqa: E402
+    EARRefinementConfig,
+    EARThresholdBlinkRefiner,
+)
 from pyblinker.outside_annotation import build_refined_blink_report  # noqa: E402
+from pyblinker.viz import prepare_threshold_report_dataframe  # noqa: E402
 
 
 def main() -> None:
@@ -75,7 +78,9 @@ def main() -> None:
 
     print("Loading coarse blink annotations from:", annotation_csv)
     annotations = load_coarse_blinks(annotation_csv)
-    print(f"{len(annotations)} coarse blinks loaded with columns: {list(annotations.columns)}")
+    print(
+        f"{len(annotations)} coarse blinks loaded with columns: {list(annotations.columns)}"
+    )
 
     print("Loading EAR channel from FIF:", fif_path)
     ear_signal, sfreq = load_ear_channel(fif_path, channel="EAR-avg_ear")
@@ -98,41 +103,7 @@ def main() -> None:
     eeg_overlay = raw.get_data(picks="EEG-E8")[0]
     overlay_sfreq = float(raw.info["sfreq"])
 
-    report_df = features.copy()
-    report_df["ear_threshold_left_sample"] = pd.to_numeric(
-        report_df["refined_left_threshold"], errors="coerce"
-    )
-    report_df["ear_threshold_right_sample"] = pd.to_numeric(
-        report_df["refined_right_threshold"], errors="coerce"
-    )
-    report_df["ear_threshold_min_sample"] = pd.to_numeric(
-        report_df["refined_lowest_point_sample"], errors="coerce"
-    )
-
-    missing_left = report_df["refined_left_threshold"].isna()
-    missing_right = report_df["refined_right_threshold"].isna()
-    missing_min = report_df["refined_lowest_point_sample"].isna()
-
-    report_df.loc[missing_left, "ear_threshold_left_sample"] = report_df.loc[
-        missing_left, "refined_start_sample"
-    ]
-    report_df.loc[missing_right, "ear_threshold_right_sample"] = report_df.loc[
-        missing_right, "refined_end_sample"
-    ]
-    report_df.loc[missing_min, "ear_threshold_min_sample"] = report_df.loc[
-        missing_min, "refined_start_sample"
-    ]
-
-    report_df["ear_threshold_left_sample"] = (
-        report_df["ear_threshold_left_sample"].fillna(report_df["refined_start_sample"]).astype(int)
-    )
-    report_df["ear_threshold_right_sample"] = (
-        report_df["ear_threshold_right_sample"].fillna(report_df["refined_end_sample"]).astype(int)
-    )
-    report_df["ear_threshold_min_sample"] = (
-        report_df["ear_threshold_min_sample"].fillna(report_df["refined_start_sample"]).astype(int)
-    )
-    report_df["threshold_crossing_found"] = report_df["refinement_succeeded"].astype(bool)
+    report_df = prepare_threshold_report_dataframe(features, sfreq, ear_threshold)
 
     if save_reports:
         report_path = output_dir / "ear_threshold_refined_blink_report.html"

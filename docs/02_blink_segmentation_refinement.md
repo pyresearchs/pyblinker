@@ -19,6 +19,11 @@ Refinement typically happens when converting continuous data into epochs (`slice
 2.  **Search**: For each candidate, the algorithm searches within a small window (expanding if necessary) for the precise landmarks defined by the strategy.
 3.  **Result**: New metadata fields (e.g., `blink_onset_ear`, `refined_start_sample`, `interpolated_closing_slope`) are attached to the epochs.
 
+### EAR threshold landmark naming update
+* **Feature/Change**: EAR refinement now records threshold landmarks using the new keys (`start__th_point__ear`, `end__th_point__ear`, `trough__th_point__ear`, `onset__th__ear`, `duration__th__ear`) plus interpolation timing (`onset__th_interpolation__ear`, `duration__th_interpolation__ear`). Legacy fields may still exist but are no longer required for correctness.
+* **Related Code**: `pyblinker/segmentation/refinement/ear/epoch.py`, `pyblinker/segmentation/refinement/ear/threshold.py`.
+* **Verification (Tutorials & Tests)**: `tutorial/03c_ear_threshold_multi_candidate_refinement.py`, `test/segmentation/test_refine_annot_by_channel.py`.
+
 ### Tuning Parameters
 Users can tune the refinement behavior, especially for EAR:
 *   **Threshold**: The EAR value defining "closed" vs. "open".

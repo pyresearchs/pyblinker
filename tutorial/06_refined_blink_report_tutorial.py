@@ -27,6 +27,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import mne
+import numpy as np
 
 from pyblinker.outside_annotation import (
     BlinkRegionRefinementFlow,
@@ -73,7 +74,18 @@ def main() -> None:
             raise ValueError("Channel EAR-avg_ear not found for overlay") from exc
 
     build_refined_blink_report(
-        results=artifacts.results,
+        results=artifacts.results.assign(
+            onset__refine__ear=artifacts.results["refined_left_threshold"]
+            / artifacts.sfreq,
+            duration__refine__ear=(
+                artifacts.results["refined_right_threshold"]
+                - artifacts.results["refined_left_threshold"]
+            )
+            / artifacts.sfreq,
+            onset__th_interpolation__ear=np.nan,
+            duration__th_interpolation__ear=np.nan,
+            trough__th_point__ear=np.nan,
+        ),
         signal=artifacts.signal,
         sfreq=artifacts.sfreq,
         channel_name=config.channel,

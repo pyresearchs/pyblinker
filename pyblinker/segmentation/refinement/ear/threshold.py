@@ -270,7 +270,10 @@ class EARThresholdBlinkRefiner:
         return float(start_idx + local_min)
 
     def _compute_interpolated_threshold_crossings(
-        self, refined_start_sample: int, refined_end_sample: int, lowest_point_sample: float
+        self,
+        refined_start_sample: int,
+        refined_end_sample: int,
+        lowest_point_sample: float,
     ) -> Dict[str, float | int | bool]:
         """
         Check by rpb on 5/1/25
@@ -351,8 +354,6 @@ class EARThresholdBlinkRefiner:
 
         left_time = left_cross / self.sfreq
         right_time = right_cross / self.sfreq
-        left_sample_int = int(np.clip(round(left_cross), 0, n_samples - 1))
-        right_sample_int = int(np.clip(round(right_cross), 0, n_samples - 1))
         result.update(
             {
                 # "left_interpolated_threshold": float(left_time),
@@ -369,8 +370,7 @@ class EARThresholdBlinkRefiner:
         return result
 
     def refine_annotation_row(
-        self, row: Dict[str, float | str],
-            candidate_id: int
+        self, row: Dict[str, float | str], candidate_id: int
     ) -> Dict[str, float | int | str | bool]:
         """Refine a single blink annotation row.
 
@@ -394,7 +394,9 @@ class EARThresholdBlinkRefiner:
 
         coarse_start_sample = self.config.to_samples(coarse_onset, self.sfreq)
         coarse_duration_samples = self.config.to_samples(duration, self.sfreq)
-        coarse_end_sample = max(coarse_start_sample, coarse_start_sample + coarse_duration_samples)
+        coarse_end_sample = max(
+            coarse_start_sample, coarse_start_sample + coarse_duration_samples
+        )
 
         coarse_end_sample = min(coarse_end_sample, self.signal.shape[0] - 1)
         coarse_duration_seconds = self.config.duration_seconds(duration, self.sfreq)
@@ -408,17 +410,16 @@ class EARThresholdBlinkRefiner:
             self.config,
         )
         # Here, we focus based on the threshold search result to get the lowest point within the threshold refined window
-        refined_start_sample = int(np.round(search_result["onset__th_sample__ear"] * self.sfreq))
-        refined_end_sample  = int(np.round((search_result["onset__th_sample__ear"] +
-                                                              search_result["duration__th_sample__ear"]) * self.sfreq))
+        refined_start_sample = int(search_result["start__th_point__ear"])
+        refined_end_sample = int(search_result["end__th_point__ear"])
 
         # The output is the lowest point within the refined window define with threshold crossings
         refined_lowest_point_sample = self._compute_lowest_point_sample(
             refined_start_sample, refined_end_sample
         )
 
-        # refined_onset_time = refined_start_sample / self.sfreq
-        # refined_offset_time = refined_end_sample / self.sfreq
+        refined_onset_time = refined_start_sample / self.sfreq
+        refined_offset_time = refined_end_sample / self.sfreq
 
         coarse_offset_time = coarse_onset + coarse_duration_seconds
 
@@ -461,13 +462,13 @@ class EARThresholdBlinkRefiner:
             raise ValueError(
                 f"Annotation file is missing required columns: {sorted(missing_cols)}"
             )
-		# why not use refinements = _refine_ear_blinks_for_epoch(
-		#         seg,
-		#         blink_starts,
-		#         blink_ends,
-		#         sfreq,
-		#         segment_config,
-		#     )
+        # why not use refinements = _refine_ear_blinks_for_epoch(
+        #         seg,
+        #         blink_starts,
+        #         blink_ends,
+        #         sfreq,
+        #         segment_config,
+        #     )
 
         records: List[Dict[str, float | int | str | bool]] = []
         for idx, row in enumerate(annotations.itertuples(index=False)):
@@ -533,7 +534,9 @@ def refine_annotations_for_threshold(
     refiner = EARThresholdBlinkRefiner(signal, sfreq, threshold_config)
     refined = refiner.refine_annotations(annotations)
     refined["threshold_value"] = theta
-    refined["threshold_index"] = int(threshold_index) if threshold_index is not None else 0
+    refined["threshold_index"] = (
+        int(threshold_index) if threshold_index is not None else 0
+    )
 
     logger.info(
         "Refined annotations for threshold=%s; resulting rows=%s",
