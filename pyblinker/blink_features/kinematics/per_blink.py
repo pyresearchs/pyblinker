@@ -6,7 +6,8 @@ from typing import Dict, Mapping
 
 import numpy as np
 
-from .._core_blink import METHODS_BY_MODALITY, compute_blink_core
+from .._core_blink import METHODS_BY_MODALITY
+from .core_metrics import compute_blink_kinematic_metrics
 
 
 def compute_segment_kinematics(
@@ -38,16 +39,19 @@ def compute_segment_kinematics(
         Recording modality. ``"eeg"`` (default) enables zero-based metrics
         whereas ``"ear"`` (Eye Aspect Ratio) suppresses them.
     include_second_derivative
-        Forwarded to :func:`pyblinker.blink_features._core_blink.compute_blink_core`.
+        Forwarded to :func:`pyblinker.blink_features.kinematics.core_metrics.
+        compute_blink_kinematic_metrics`.
     use_abs_for_thresholds_and_areas
-        Forwarded to the shared core. Ignored for EAR data where dip magnitude
-        is computed relative to the local baseline.
+        Retained for backward compatibility with prior APIs; ignored by
+        kinematic-only calculations.
 
     Returns
     -------
     dict
         Mapping of metric names with method suffixes to floating point values.
     """
+
+    _ = use_abs_for_thresholds_and_areas
 
     if isinstance(segment, Mapping) and set(segment.keys()) >= {"raw"}:
         raw_seg = np.asarray(segment["raw"], dtype=float).reshape(-1)
@@ -62,13 +66,12 @@ def compute_segment_kinematics(
     if method is None:
         method = METHODS_BY_MODALITY.get(modality_key, ("base",))[0]
 
-    return compute_blink_core(
+    return compute_blink_kinematic_metrics(
         raw_seg,
         sfreq,
         start_end_method=method,
         modality=modality_key,
         include_second_derivative=include_second_derivative,
-        use_abs_for_thresholds_and_areas=use_abs_for_thresholds_and_areas,
         dx1=dx1,
         dx2=dx2,
     )

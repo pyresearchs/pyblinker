@@ -13,7 +13,8 @@ from typing import Dict, Iterable, Mapping
 
 import numpy as np
 
-from .._core_blink import METHODS_BY_MODALITY, compute_blink_core
+from .._core_blink import METHODS_BY_MODALITY
+from .core_metrics import compute_blink_morphology_metrics
 
 
 def _normalize_methods(modality: str, methods: Iterable[str] | None) -> tuple[str, ...]:
@@ -43,8 +44,11 @@ def compute_blink_waveform_metrics(
     compute_segment_kinematics` so callers can interchange the two depending on
     their feature subset needs. The returned key space is identical to the
     kinematic helper and all signal analytics are delegated to
-    :func:`pyblinker.blink_features._core_blink.compute_blink_core`.
+    :func:`pyblinker.blink_features.morphology.core_metrics.
+    compute_blink_morphology_metrics`.
     """
+
+    _ = include_second_derivative
 
     if isinstance(segment, Mapping):
         segments_by_method = {
@@ -69,12 +73,11 @@ def compute_blink_waveform_metrics(
     modality_key = modality.lower()
     for method in method_order:
         metrics.update(
-            compute_blink_core(
+            compute_blink_morphology_metrics(
                 segments_by_method[method],
                 sfreq,
                 start_end_method=method,
                 modality=modality_key,
-                include_second_derivative=include_second_derivative,
                 use_abs_for_thresholds_and_areas=use_abs_for_thresholds_and_areas,
             )
         )

@@ -97,6 +97,8 @@ def _fallback_refinement(
     return {
         "refined_start_sample": int(start),
         "refined_end_sample": int(end),
+        "start__th_point__ear": int(start),
+        "end__th_point__ear": int(end),
         "refined_left_threshold": int(start),
         "refined_right_threshold": int(end),
         "search_window_start_sample": int(start),
