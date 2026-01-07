@@ -72,9 +72,9 @@ def _append_peak_refinements(
         return
 
     seg_type = (modality_config or {}).get("seg_type")
-    compute_outer = False
+    # compute_outer = False
     if isinstance(seg_type, str):
-        compute_outer = seg_type == "outer"
+        compute_outer = seg_type
     elif isinstance(seg_type, Sequence) and not isinstance(seg_type, str):
         compute_outer = "outer" in seg_type
 

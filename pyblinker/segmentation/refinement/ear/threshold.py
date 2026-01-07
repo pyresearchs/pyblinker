@@ -198,8 +198,8 @@ def _progressive_threshold_search(
     refined_start, refined_end = pair
     extension_seconds = extension_used / sfreq
     return {
-        "refined_start_sample": int(refined_start),
-        "refined_end_sample": int(refined_end),
+        "start__th_point__ear": int(refined_start),
+        "end__th_point__ear": int(refined_end),
         "refined_left_threshold": int(refined_start),
         "refined_right_threshold": int(refined_end),
         "search_window_start_sample": int(window_start),
@@ -210,8 +210,8 @@ def _progressive_threshold_search(
         "search_exhausted": bool(search_exhausted),
         "extension_seconds_used": float(extension_seconds),
         "extension_attempts": int(attempts),
-        "onset__th_sample__ear": float(refined_start / sfreq),
-        "duration__th_sample__ear": float((refined_end - refined_start) / sfreq),
+        "onset__th_point__ear": float(refined_start / sfreq),
+        "duration__th_point__ear": float((refined_end - refined_start) / sfreq),
     }
 
 
@@ -355,10 +355,10 @@ class EARThresholdBlinkRefiner:
         right_sample_int = int(np.clip(round(right_cross), 0, n_samples - 1))
         result.update(
             {
-                "left_interpolated_threshold": float(left_time),
-                "right_interpolated_threshold": float(right_time),
-                "left_interpolated_threshold_sample": int(left_sample_int),
-                "right_interpolated_threshold_sample": int(right_sample_int),
+                # "left_interpolated_threshold": float(left_time),
+                # "right_interpolated_threshold": float(right_time),
+                # "left_interpolated_threshold_sample": int(left_sample_int),
+                # "right_interpolated_threshold_sample": int(right_sample_int),
                 "left_interpolated_threshold_found": True,
                 "right_interpolated_threshold_found": True,
                 "interpolated_thresholds_found": True,
