@@ -109,8 +109,8 @@ def replay_and_assert_blinkprops(
     assert_frame_equal(
         new_df,
         fixture.df_out,
-        check_dtype=False,
-        check_exact=False,
+        check_dtype=True,
+        check_exact=True,
         rtol=rtol,
         atol=atol,
     )
