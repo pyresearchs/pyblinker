@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 
 
+
 class BlinkProperties:
     """
     Return a structure with blink shapes and properties for individual blinks

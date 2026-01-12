@@ -63,12 +63,27 @@ def process_channel_data(detector, channel: str, verbose: bool = True) -> None:
         logger.warning("No good blinks found in channel: %s", channel)
         return
     # STEP 5: Compute blink properties
+    df_in=df.copy()
     df = BlinkProperties(
         detector.raw_data.get_data(picks=channel)[0],
         df,
         detector.params["sfreq"],
         detector.params,
     ).df
+    df_out=df.copy()
+    from pyblinker.utils.blinker_feature import save_blinkprops_pickle,load_blinkprops_pickle,replay_and_assert_blinkprops
+    save_blinkprops_pickle(
+        "blinkprops_case01.pkl",
+        candidate_signal=detector.raw_data.get_data(picks=channel)[0],
+        df_in=df,
+        srate=detector.params["sfreq"],
+        params=detector.params,
+        fitted=True,
+        df_out=bp.df,
+    )
+    # later, after refactor
+    fx = load_blinkprops_pickle("blinkprops_case01.pkl")
+    replay_and_assert_blinkprops(fx, BlinkProperties)
 
     # STEP 6: Apply pAVR restriction
     condition_1 = df["pos_amp_vel_ratio_zero"] < detector.params["p_avr_threshold"]
