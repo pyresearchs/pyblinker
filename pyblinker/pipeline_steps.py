@@ -71,19 +71,19 @@ def process_channel_data(detector, channel: str, verbose: bool = True) -> None:
         detector.params,
     ).df
     # df_out=df.copy()
-    from pyblinker.utils.blinker_feature import save_blinkprops_pickle,load_blinkprops_pickle,replay_and_assert_blinkprops
-    save_blinkprops_pickle(
-        "blinkprops_case01.pkl",
-        candidate_signal=detector.raw_data.get_data(picks=channel)[0],
-        df_in=df_in,
-        srate=detector.params["sfreq"],
-        params=detector.params,
-        fitted=True,
-        df_out=df_out,
-    )
+    # from pyblinker.utils.blinker_feature import save_blinkprops_pickle,load_blinkprops_pickle,replay_and_assert_blinkprops
+    # save_blinkprops_pickle(
+    #     "blinkprops_case01.pkl",
+    #     candidate_signal=detector.raw_data.get_data(picks=channel)[0],
+    #     df_in=df_in,
+    #     srate=detector.params["sfreq"],
+    #     params=detector.params,
+    #     fitted=True,
+    #     df_out=df_out,
+    # )
     # later, after refactor
-    fx = load_blinkprops_pickle("blinkprops_case01.pkl")
-    replay_and_assert_blinkprops(fx, BlinkProperties)
+    # fx = load_blinkprops_pickle("blinkprops_case01.pkl")
+    # replay_and_assert_blinkprops(fx, BlinkProperties)
 
     # STEP 6: Apply pAVR restriction
     condition_1 = df_out["pos_amp_vel_ratio_zero"] < detector.params["p_avr_threshold"]
