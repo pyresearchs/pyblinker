@@ -10,6 +10,8 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+DATA_PATH = REPO_ROOT / "tutorial" / "blinkprops_case01.pkl"
+
 from pyblinker.blink_features.waveform_features.extract_blink_properties import (  # noqa: E402
     BlinkProperties,
 )
@@ -18,5 +20,5 @@ from pyblinker.utils.blinker_feature import (  # noqa: E402
     replay_and_assert_blinkprops,
 )
 
-fx = load_blinkprops_pickle("blinkprops_case01.pkl")
+fx = load_blinkprops_pickle(DATA_PATH)
 replay_and_assert_blinkprops(fx, BlinkProperties)
