@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Dict, Sequence
 
 import numpy as np
+import pandas as pd
 
 from pyblinker.blink_features._blink_metrics_shared import (
     ALL_METHODS,
@@ -12,6 +13,7 @@ from pyblinker.blink_features._blink_metrics_shared import (
     _method_keys,
     core_nan_dict,
     logger,
+    normalize_modality,
 )
 
 KINEMATIC_METRIC_STEMS: Sequence[str] = (
@@ -22,6 +24,193 @@ KINEMATIC_METRIC_STEMS: Sequence[str] = (
     "acc_peak_abs",
     "acc_mean_abs",
 )
+
+
+def compute_blink_velocity(candidate_signal: np.ndarray) -> np.ndarray:
+    """Compute blink velocity as the first derivative of the raw signal."""
+
+    return np.diff(candidate_signal)
+
+
+def _compute_amplitude_velocity_ratio(
+    df,
+    candidate_signal: np.ndarray,
+    blink_velocity: np.ndarray,
+    srate: float,
+    *,
+    start_key: str,
+    end_key: str,
+    ratio_key: str,
+    aggregator: str = "max",
+    idx_col: str | None = None,
+) -> None:
+    start_vals = df[start_key].to_numpy().astype(int)
+    end_vals = df[end_key].to_numpy().astype(int)
+
+    lengths = (end_vals - start_vals + 1).astype(int)
+    max_len = lengths.max()
+    offsets = np.arange(max_len)[None, :]
+    mask = offsets < lengths[:, None]
+
+    all_indices = start_vals[:, None] + offsets
+    all_indices = all_indices[mask].astype(int)
+
+    row_idx_all = np.repeat(np.arange(len(lengths)), lengths)
+    velocities = blink_velocity[all_indices]
+
+    temp_df = pd.DataFrame(
+        {"row_idx": row_idx_all, "velocity": velocities, "index": all_indices}
+    )
+    if aggregator == "max":
+        idx_extreme = temp_df.groupby("row_idx")["velocity"].idxmax()
+    else:
+        idx_extreme = temp_df.groupby("row_idx")["velocity"].idxmin()
+
+    df_extreme = temp_df.loc[idx_extreme].sort_values("row_idx")
+
+    ratio_vals = (
+        100
+        * np.abs(
+            candidate_signal[df["max_blink"].to_numpy().astype(int)]
+            / df_extreme["velocity"].to_numpy()
+        )
+        / srate
+    )
+
+    df[ratio_key] = ratio_vals
+    if idx_col:
+        df[idx_col] = df_extreme["index"].to_numpy()
+
+
+def compute_amp_vel_ratio_zero_to_max(
+    df,
+    candidate_signal: np.ndarray,
+    blink_velocity: np.ndarray,
+    srate: float,
+    *,
+    modality: str,
+) -> None:
+    """Compute zero-to-maximum amplitude-velocity ratios."""
+
+    if modality == "ear":
+        df["pos_amp_vel_ratio_zero"] = np.nan
+        df["neg_amp_vel_ratio_zero"] = np.nan
+        df["peaks_pos_vel_zero"] = np.nan
+        return
+
+    _compute_amplitude_velocity_ratio(
+        df,
+        candidate_signal,
+        blink_velocity,
+        srate,
+        start_key="left_zero",
+        end_key="max_blink",
+        ratio_key="pos_amp_vel_ratio_zero",
+        aggregator="max",
+        idx_col="peaks_pos_vel_zero",
+    )
+    _compute_amplitude_velocity_ratio(
+        df,
+        candidate_signal,
+        blink_velocity,
+        srate,
+        start_key="max_blink",
+        end_key="right_zero",
+        ratio_key="neg_amp_vel_ratio_zero",
+        aggregator="min",
+    )
+
+
+def compute_amp_vel_ratio_base(
+    df,
+    candidate_signal: np.ndarray,
+    blink_velocity: np.ndarray,
+    srate: float,
+) -> None:
+    """Compute base-to-maximum amplitude-velocity ratios."""
+
+    _compute_amplitude_velocity_ratio(
+        df,
+        candidate_signal,
+        blink_velocity,
+        srate,
+        start_key="left_base",
+        end_key="max_blink",
+        ratio_key="pos_amp_vel_ratio_base",
+        aggregator="max",
+        idx_col="peaks_pos_vel_base",
+    )
+    _compute_amplitude_velocity_ratio(
+        df,
+        candidate_signal,
+        blink_velocity,
+        srate,
+        start_key="max_blink",
+        end_key="right_base",
+        ratio_key="neg_amp_vel_ratio_base",
+        aggregator="min",
+    )
+
+
+def compute_amp_vel_ratio_tent(
+    df,
+    candidate_signal: np.ndarray,
+    srate: float,
+) -> None:
+    """Compute tent-slope amplitude-velocity ratios."""
+
+    df["neg_amp_vel_ratio_tent"] = (
+        100
+        * np.abs(
+            candidate_signal[df["max_blink"].to_numpy().astype(int)] / df["aver_right_velocity"]
+        )
+        / srate
+    )
+
+    df["pos_amp_vel_ratio_tent"] = (
+        100
+        * np.abs(
+            candidate_signal[df["max_blink"].to_numpy().astype(int)] / df["aver_left_velocity"]
+        )
+        / srate
+    )
+
+
+def compute_inter_blink_max_vel(df, srate: float, *, modality: str) -> None:
+    """Compute inter-blink maximum velocity timing features."""
+
+    df["inter_blink_max_vel_base"] = (df["peaks_pos_vel_base"] * -1) / srate
+    if modality == "ear":
+        df["inter_blink_max_vel_zero"] = np.nan
+    else:
+        df["inter_blink_max_vel_zero"] = (df["peaks_pos_vel_zero"] * -1) / srate
+
+
+def compute_blink_kinematic_properties(
+    df,
+    candidate_signal: np.ndarray,
+    srate: float,
+    *,
+    modality: str | None = None,
+    fitted: bool = True,
+) -> pd.DataFrame:
+    """Compute per-blink kinematic properties used by BlinkProperties."""
+
+    modality_key = normalize_modality(modality)
+    blink_velocity = compute_blink_velocity(candidate_signal)
+
+    compute_amp_vel_ratio_zero_to_max(
+        df,
+        candidate_signal,
+        blink_velocity,
+        srate,
+        modality=modality_key,
+    )
+    compute_amp_vel_ratio_base(df, candidate_signal, blink_velocity, srate)
+    if fitted:
+        compute_amp_vel_ratio_tent(df, candidate_signal, srate)
+    compute_inter_blink_max_vel(df, srate, modality=modality_key)
+    return df
 
 
 def compute_blink_kinematic_metrics(
@@ -98,4 +287,12 @@ def compute_blink_kinematic_metrics(
     }
 
 
-__all__ = ["compute_blink_kinematic_metrics"]
+__all__ = [
+    "compute_amp_vel_ratio_base",
+    "compute_amp_vel_ratio_tent",
+    "compute_amp_vel_ratio_zero_to_max",
+    "compute_blink_kinematic_metrics",
+    "compute_blink_kinematic_properties",
+    "compute_blink_velocity",
+    "compute_inter_blink_max_vel",
+]

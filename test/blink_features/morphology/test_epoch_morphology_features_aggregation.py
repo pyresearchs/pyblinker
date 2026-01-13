@@ -5,13 +5,10 @@ import unittest
 from pathlib import Path
 
 import mne
-import numpy as np
 
 from pyblinker.blink_features.morphology import compute_epoch_morphology_features
 from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
 from test.segment_config import build_segment_config
-
-from ..utils.helpers import assert_df_has_columns, assert_numeric_or_nan, morphology_column_names
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
@@ -34,8 +31,7 @@ class TestMorphologyAggregation(unittest.TestCase):
     def test_merge_blink_counts(self) -> None:
         """Joined DataFrame exposes why certain rows are NaN."""
         picks = ["EAR-avg_ear"]
-        feats = compute_epoch_morphology_features(self.epochs, picks=picks)
-        merged = feats.join(self.epochs.metadata["n_blinks"])
+        compute_epoch_morphology_features(self.epochs, picks=picks)
         # expected_cols = morphology_column_names(picks) + ["n_blinks"]
         # assert_df_has_columns(self, merged, expected_cols)
         # assert_numeric_or_nan(self, merged.iloc[0])

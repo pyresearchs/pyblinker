@@ -140,6 +140,29 @@ Automatic modality inference per channel prevents EEG defaults when processing E
 *   `test/blink_features/kinematics/test_kinematics_eeg_only_config.py`: Ensures kinematic metrics run without morphology outputs for EEG-only configs.
 *   `test/blink_features/morphology/test_epoch_morphology_features_aggregation.py`: Validates morphology-only aggregation paths after the split.
 
+## BlinkProperties refactor into kinematics/morphology cores
+
+*Feature/change*: The BlinkProperties feature calculations (durations, shut times, amplitude-velocity ratios, and inter-blink timing) are now implemented in the kinematics and morphology core metric modules. BlinkProperties itself delegates to these core functions so the legacy API and output schema remain stable while the authoritative math lives in the dedicated feature domains.
+
+*Related Code*:
+*   `pyblinker/blink_features/kinematics/core_metrics.py` (amplitude-velocity ratios and inter-blink velocity timing)
+*   `pyblinker/blink_features/morphology/core_metrics.py` (durations, shut-time metrics, and peak/inter-blink timing)
+*   `pyblinker/blink_features/waveform_features/extract_blink_properties.py` (BlinkProperties delegating to core metrics)
+*   `pyblinker/pipeline_steps.py` (pipeline step uses the refactored core metrics)
+
+*Tutorials*:
+*   `tutorial/01a_basic_usage.py`
+*   `tutorial/verify_blink_properties_consistency.py`
+
+*Unit Tests*:
+*   `test/blink_features/pyblinker/test_blink_properties.py`
+*   `test/blinker_migration/test_step2_computeBlinkProperties.py`
+*   `test/blink_features/kinematics/test_kinematic_features.py`
+*   `test/blink_features/kinematics/test_kinematics_ear_only_config.py`
+*   `test/blink_features/kinematics/test_kinematics_eeg_only_config.py`
+*   `test/blink_features/kinematics/test_kinematics_eog_only_config.py`
+*   `test/blink_features/kinematics/test_kinematics_ear_eeg_eog.py`
+
 ## Kinematic epoch data preparation
 
 *Feature/change*: Kinematic feature computation now prepares epoch-level channel data via the shared aggregation helper, using the extractor sampling frequency to mirror the frequency-domain data preparation workflow. This keeps kinematic outputs compatible with the downstream aggregation framework.

@@ -16,10 +16,10 @@ if str(REPO_ROOT) not in sys.path:
 
 DATA_PATH = REPO_ROOT / "tutorial" / "blinkprops_case01.pkl"
 
-from pyblinker.blink_features.waveform_features.extract_blink_properties import (
+from pyblinker.blink_features.waveform_features.extract_blink_properties import (  # noqa: E402
     BlinkProperties,
 )
-from pyblinker.utils.blinker_feature import (
+from pyblinker.utils.blinker_feature import (  # noqa: E402
     load_blinkprops_pickle,
     replay_and_assert_blinkprops,
 )
