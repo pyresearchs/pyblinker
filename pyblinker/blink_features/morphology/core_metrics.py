@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Dict, Sequence
+from typing import Any, Dict, Sequence
 
 import numpy as np
-import pandas as pd
 
 from pyblinker.blink_features._blink_metrics_shared import (
     ALL_METHODS,
@@ -48,23 +47,26 @@ def compute_blink_durations(
     constant = 1  # Constant for matching Matlab output
     modality_key = normalize_modality(modality)
 
-    df["duration_base"] = (df["right_base"] - df["left_base"]) / srate
-    if {"right_zero", "left_zero"}.issubset(df.columns) and modality_key != "ear":
-        df["duration_zero"] = (df["right_zero"] - df["left_zero"]) / srate
-    else:
-        df["duration_zero"] = np.nan
-
-    if fitted:
-        df["duration_tent"] = (df["right_x_intercept"] - df["left_x_intercept"]) / srate
-        df["duration_half_base"] = (
-            (df["right_base_half_height"] - df["left_base_half_height"]) + constant
-        ) / srate
-        if {"right_zero_half_height", "left_zero_half_height"}.issubset(df.columns) and modality_key != "ear":
-            df["duration_half_zero"] = (
-                (df["right_zero_half_height"] - df["left_zero_half_height"]) + constant
-            ) / srate
+    for idx, row in df.iterrows():
+        df.at[idx, "duration_base"] = (row["right_base"] - row["left_base"]) / srate
+        if {"right_zero", "left_zero"}.issubset(df.columns) and modality_key != "ear":
+            df.at[idx, "duration_zero"] = (row["right_zero"] - row["left_zero"]) / srate
         else:
-            df["duration_half_zero"] = np.nan
+            df.at[idx, "duration_zero"] = np.nan
+
+        if fitted:
+            df.at[idx, "duration_tent"] = (
+                row["right_x_intercept"] - row["left_x_intercept"]
+            ) / srate
+            df.at[idx, "duration_half_base"] = (
+                (row["right_base_half_height"] - row["left_base_half_height"]) + constant
+            ) / srate
+            if {"right_zero_half_height", "left_zero_half_height"}.issubset(df.columns) and modality_key != "ear":
+                df.at[idx, "duration_half_zero"] = (
+                    (row["right_zero_half_height"] - row["left_zero_half_height"]) + constant
+                ) / srate
+            else:
+                df.at[idx, "duration_half_zero"] = np.nan
 
 
 def _compute_time_shut(
@@ -105,24 +107,23 @@ def compute_time_zero_shut(
 
     modality_key = normalize_modality(modality)
     if "left_zero" not in df.columns or modality_key == "ear":
-        df["closing_time_zero"] = np.nan
-        df["reopening_time_zero"] = np.nan
-        df["time_shut_zero"] = np.nan
+        for idx in df.index:
+            df.at[idx, "closing_time_zero"] = np.nan
+            df.at[idx, "reopening_time_zero"] = np.nan
+            df.at[idx, "time_shut_zero"] = np.nan
         return
 
-    df["closing_time_zero"] = (df["max_blink"] - df["left_zero"]) / srate
-    df["reopening_time_zero"] = (df["right_zero"] - df["max_blink"]) / srate
-    df["time_shut_zero"] = df.apply(
-        lambda row: _compute_time_shut(
+    for idx, row in df.iterrows():
+        df.at[idx, "closing_time_zero"] = (row["max_blink"] - row["left_zero"]) / srate
+        df.at[idx, "reopening_time_zero"] = (row["right_zero"] - row["max_blink"]) / srate
+        df.at[idx, "time_shut_zero"] = _compute_time_shut(
             row,
             candidate_signal,
             srate,
             shut_amp_fraction,
             key_prefix="Zero",
             default_no_thresh=np.nan,
-        ),
-        axis=1,
-    )
+        )
 
 
 def _compute_time_shut_tent(
@@ -157,30 +158,28 @@ def compute_time_base_shut(
 ) -> None:
     """Compute base closing/reopening and shut times."""
 
-    df["time_shut_base"] = df.apply(
-        lambda row: _compute_time_shut(
+    for idx, row in df.iterrows():
+        df.at[idx, "time_shut_base"] = _compute_time_shut(
             row,
             candidate_signal,
             srate,
             shut_amp_fraction,
             key_prefix="Base",
             default_no_thresh=0,
-        ),
-        axis=1,
-    )
-
-    if fitted:
-        df["closing_time_tent"] = (df["x_intersect"] - df["left_x_intercept"]) / srate
-        df["reopening_time_tent"] = (df["right_x_intercept"] - df["x_intersect"]) / srate
-        df["time_shut_tent"] = df.apply(
-            lambda row: _compute_time_shut_tent(
+        )
+        if fitted:
+            df.at[idx, "closing_time_tent"] = (
+                row["x_intersect"] - row["left_x_intercept"]
+            ) / srate
+            df.at[idx, "reopening_time_tent"] = (
+                row["right_x_intercept"] - row["x_intersect"]
+            ) / srate
+            df.at[idx, "time_shut_tent"] = _compute_time_shut_tent(
                 row,
                 candidate_signal,
                 srate,
                 shut_amp_fraction,
-            ),
-            axis=1,
-        )
+            )
 
 
 def compute_blink_peak_times(
@@ -192,14 +191,20 @@ def compute_blink_peak_times(
 ) -> None:
     """Compute peak and inter-blink timing features."""
 
-    df["peak_max_blink"] = df["max_value"]
-    if fitted:
-        df["peak_max_tent"] = df["y_intersect"]
-        df["peak_time_tent"] = df["x_intersect"] / srate
-    df["peak_time_blink"] = df["max_blink"] / srate
+    max_blinks = [int(value) for value in df["max_blink"].tolist()]
+    signal_len = len(candidate_signal)
+    for idx, row in df.iterrows():
+        df.at[idx, "peak_max_blink"] = row["max_value"]
+        if fitted:
+            df.at[idx, "peak_max_tent"] = row["y_intersect"]
+            df.at[idx, "peak_time_tent"] = row["x_intersect"] / srate
+        df.at[idx, "peak_time_blink"] = row["max_blink"] / srate
 
-    peaks_with_len = np.append(df["max_blink"].to_numpy(), len(candidate_signal))
-    df["inter_blink_max_amp"] = np.diff(peaks_with_len) / srate
+        next_peak = signal_len
+        row_pos = df.index.get_loc(idx)
+        if row_pos + 1 < len(max_blinks):
+            next_peak = max_blinks[row_pos + 1]
+        df.at[idx, "inter_blink_max_amp"] = (next_peak - row["max_blink"]) / srate
 
 
 def compute_blink_morphology_properties(
@@ -210,7 +215,7 @@ def compute_blink_morphology_properties(
     modality: str | None = None,
     shut_amp_fraction: float,
     fitted: bool = True,
-) -> pd.DataFrame:
+) -> Any:
     """Compute per-blink morphology properties used by BlinkProperties."""
 
     compute_blink_durations(df, srate, modality=modality, fitted=fitted)

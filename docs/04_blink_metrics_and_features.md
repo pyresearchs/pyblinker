@@ -143,6 +143,7 @@ Automatic modality inference per channel prevents EEG defaults when processing E
 ## BlinkProperties refactor into kinematics/morphology cores
 
 *Feature/change*: The BlinkProperties feature calculations (durations, shut times, amplitude-velocity ratios, and inter-blink timing) are now implemented in the kinematics and morphology core metric modules. BlinkProperties itself delegates to these core functions so the legacy API and output schema remain stable while the authoritative math lives in the dedicated feature domains.
+The core helpers are structured to compute metrics one blink at a time so per-blink workflows (including `per_blink` entry points) remain supported without relying on vectorized DataFrame-wide calculations.
 
 *Related Code*:
 *   `pyblinker/blink_features/kinematics/core_metrics.py` (amplitude-velocity ratios and inter-blink velocity timing)
