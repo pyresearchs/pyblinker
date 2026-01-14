@@ -7,7 +7,10 @@ from pathlib import Path
 
 import mne
 
-from pyblinker.blink_features.kinematics import compute_kinematic_features
+from pyblinker.blink_features.kinematics.kinematic_features import (
+    KinematicBlinkFeatureExtractor,
+    _available_styles,
+)
 from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
 
 
@@ -47,11 +50,25 @@ class TestEegOnlyKinematicPipeline(unittest.TestCase):
             segmentation_type=segment_config,
         )
 
-        df = compute_kinematic_features(epochs, picks=EEG_CHANNEL)
+        extractor = KinematicBlinkFeatureExtractor(epochs=epochs)
+        df = extractor.compute(picks=EEG_CHANNEL)
 
         self.assertNotIn("blink_onset_ear", epochs.metadata.columns)
         self.assertIn("blink_onset_eeg", epochs.metadata.columns)
         self.assertTrue(all(col.endswith(f"__{EEG_CHANNEL}") for col in df.columns))
+        styles = _available_styles(tuple(epochs.metadata.columns), "eeg")
+        required_metrics = (
+            "amp_vel_ratio_base",
+            "amp_vel_ratio_tent",
+            "amp_vel_ratio_zero_to_max",
+            "blink_velocity",
+            "inter_blink_max_vel",
+        )
+        for style in styles:
+            for metric in required_metrics:
+                for stat in ("mean", "std", "cv"):
+                    expected = f"eeg__{style}__kinematic__{metric}_{stat}__{EEG_CHANNEL}"
+                    self.assertIn(expected, df.columns)
         self.assertGreater(df.notna().sum().sum(), 0)
 
 

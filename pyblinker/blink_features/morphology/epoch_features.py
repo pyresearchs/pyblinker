@@ -9,7 +9,7 @@ import pandas as pd
 
 from .core_metrics import MORPHOLOGY_METRIC_STEMS
 from .per_blink import compute_blink_waveform_metrics
-from ..energy.helpers import extract_blink_windows, segment_to_samples, _safe_stats
+from ..energy.helpers import segment_to_samples, _safe_stats
 from ..utils.aggregation import prepare_epoch_channel_data
 from ...utils.epoch_utils import resolve_channels
 from ...utils.iter_utils import ensure_list

@@ -12,7 +12,9 @@ from tqdm import tqdm
 from pyblinker.logging import get_logger
 from pyblinker.utils.statistics_utils import get_good_blink_mask, get_blink_statistic
 from pyblinker.blinker.fit_blink import FitBlinks
-from pyblinker.blink_features.waveform_features.extract_blink_properties import BlinkProperties
+from pyblinker.blink_features.waveform_features.extract_blink_properties import (
+    BlinkProperties,
+)
 from pyblinker.blinker.get_blink_positions import get_blink_position
 from pyblinker.blinker.get_representative_channel import channel_selection
 
@@ -63,7 +65,7 @@ def process_channel_data(detector, channel: str, verbose: bool = True) -> None:
         logger.warning("No good blinks found in channel: %s", channel)
         return
     # STEP 5: Compute blink properties
-    df_in=df.copy()
+    df_in = df.copy()
     df_out = BlinkProperties(
         detector.raw_data.get_data(picks=channel)[0],
         df_in,
@@ -148,4 +150,3 @@ def get_blink(detector):
     )
 
     return annot, ch, n_good_blinks, df, fig_data, ch_selected
-
