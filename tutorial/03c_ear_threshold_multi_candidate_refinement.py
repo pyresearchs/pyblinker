@@ -9,16 +9,15 @@ flattened per-threshold columns.
 from __future__ import annotations
 
 import os
-from pathlib import Path
 import sys
-
+from pathlib import Path
+from pyblinker.utils.evaluation import mat_data
 import mne
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from pyblinker.blink_features.ear_metrics import load_coarse_blinks  # noqa: E402
 from pyblinker.outside_annotation import build_refined_blink_report  # noqa: E402
 from pyblinker.segmentation.refinement import (  # noqa: E402
     slice_raw_into_mne_epochs_refine_annot,
@@ -43,11 +42,13 @@ def main() -> None:
     ]
 
     print("Loading coarse blink annotations from:", annotation_csv)
-    annotations = load_coarse_blinks(annotation_csv)
-    print(f"{len(annotations)} coarse blinks loaded.")
+    # annotations = load_coarse_blinks(annotation_csv)
+    # print(f"{len(annotations)} coarse blinks loaded.")
+
 
     raw = mne.io.read_raw_fif(fif_path, preload=True, verbose=False)
-    sfreq = float(raw.info["sfreq"])
+    raw.set_annotations(mat_data.read_annotations_as_mne(annotation_csv))
+
 
     report_threshold = candidate_thresholds[0]
     report_epochs = None
@@ -74,7 +75,9 @@ def main() -> None:
         )
         if theta == report_threshold:
             report_epochs = epochs
-
+    metadata=epochs.metadata
+    metadata.to_pickle(output_dir / "ear__metadata.pkl")
+    sfreq = float(raw.info["sfreq"])
     if save_reports:
         user_report_path = (
             output_dir / "ear_multi_threshold_refined_blink_report_user.html"
