@@ -52,12 +52,8 @@ def compute_blink_waveform_metrics(
 
     if isinstance(segment, Mapping) and set(segment.keys()) >= {"raw"}:
         raw_seg = np.asarray(segment["raw"], dtype=float).reshape(-1)
-        dx1 = np.asarray(segment.get("dx1"), dtype=float).reshape(-1) if "dx1" in segment else None
-        dx2 = np.asarray(segment.get("dx2"), dtype=float).reshape(-1) if "dx2" in segment else None
     else:
         raw_seg = np.asarray(segment, dtype=float).reshape(-1)
-        dx1 = None
-        dx2 = None
 
 
     modality_key = modality.lower()

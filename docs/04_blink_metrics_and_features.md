@@ -27,6 +27,7 @@ Unless noted otherwise:
 *   **Velocity**: `vel_peak_abs`, `vel_mean_abs`, `slope_rise`, `slope_fall`.
 *   **Amplitude**: `amp_peak_abs`, `amp_peak_to_trough`.
 *   **Area**: `area_abs_total_trapz`, `symmetry_trapz`.
+*   **Blink ratios & timing**: `amp_vel_ratio_base`, `amp_vel_ratio_tent`, `amp_vel_ratio_zero_to_max`, `blink_velocity`, `inter_blink_max_vel`.
 
 ### 2. EAR-specific Features
 *Derived from Eye Aspect Ratio video signals.*
@@ -122,6 +123,25 @@ Automatic modality inference per channel prevents EEG defaults when processing E
 *Unit Tests*:
 *   `test/blink_features/kinematics/test_optional_channels_and_configs.py`: Exercises EAR-only, EEG-only, combined, and incomplete `SEGMENT_CONFIG` shapes to ensure channel picking and refinement do not crash when modalities are missing.
 
+## Kinematic extractor import path cleanup
+
+*Feature/change*: Kinematic feature tests and tutorials now import the extractor or wrapper directly from `kinematic_features.py` to avoid relying on package-level lazy exports. This keeps imports explicit and consistent with the recommended usage pattern.
+
+*Related Code*:
+*   `pyblinker/blink_features/kinematics/kinematic_features.py` (extractor and wrapper implementation)
+*   `pyblinker/blink_features/kinematics/__init__.py` (minimal module surface)
+
+*Tutorials*:
+*   `tutorial/06a_ear_kinematics_feature_tutorial.py`
+*   `tutorial/06b_eeg_kinematics_feature_tutorial.py`
+
+*Unit Tests*:
+*   `test/blink_features/kinematics/test_kinematic_features.py`
+*   `test/blink_features/kinematics/test_kinematics_ear_only_config.py`
+*   `test/blink_features/kinematics/test_kinematics_eeg_only_config.py`
+*   `test/blink_features/kinematics/test_kinematics_eog_only_config.py`
+*   `test/blink_features/kinematics/test_kinematics_ear_eeg_eog.py`
+
 ## Morphology and kinematics metric split
 
 *Feature/change*: Blink waveform analytics are now split into morphology-only and kinematic-only pipelines. Morphology metrics (area, symmetry, rise/fall timing, widths, amplitudes, and EAR baseline handling) are computed separately from kinematic metrics (velocity, acceleration, and slope), preventing cross-domain outputs when a pipeline only needs one family.
@@ -139,6 +159,30 @@ Automatic modality inference per channel prevents EEG defaults when processing E
 *Unit Tests*:
 *   `test/blink_features/kinematics/test_kinematics_eeg_only_config.py`: Ensures kinematic metrics run without morphology outputs for EEG-only configs.
 *   `test/blink_features/morphology/test_epoch_morphology_features_aggregation.py`: Validates morphology-only aggregation paths after the split.
+
+## BlinkProperties refactor into kinematics/morphology cores
+
+*Feature/change*: The BlinkProperties feature calculations (durations, shut times, amplitude-velocity ratios, and inter-blink timing) are now implemented in the kinematics and morphology core metric modules. BlinkProperties itself delegates to these core functions so the legacy API and output schema remain stable while the authoritative math lives in the dedicated feature domains.
+The core helpers are structured to compute metrics one blink at a time so per-blink workflows (including `per_blink` entry points) remain supported without relying on vectorized DataFrame-wide calculations.
+
+*Related Code*:
+*   `pyblinker/blink_features/kinematics/core_metrics.py` (amplitude-velocity ratios and inter-blink velocity timing)
+*   `pyblinker/blink_features/morphology/core_metrics.py` (durations, shut-time metrics, and peak/inter-blink timing)
+*   `pyblinker/blink_features/waveform_features/extract_blink_properties.py` (BlinkProperties delegating to core metrics)
+*   `pyblinker/pipeline_steps.py` (pipeline step uses the refactored core metrics)
+
+*Tutorials*:
+*   `tutorial/01a_basic_usage.py`
+*   `tutorial/verify_blink_properties_consistency.py`
+
+*Unit Tests*:
+*   `test/blink_features/pyblinker/test_blink_properties.py`
+*   `test/blinker_migration/test_step2_computeBlinkProperties.py`
+*   `test/blink_features/kinematics/test_kinematic_features.py`
+*   `test/blink_features/kinematics/test_kinematics_ear_only_config.py`
+*   `test/blink_features/kinematics/test_kinematics_eeg_only_config.py`
+*   `test/blink_features/kinematics/test_kinematics_eog_only_config.py`
+*   `test/blink_features/kinematics/test_kinematics_ear_eeg_eog.py`
 
 ## Kinematic epoch data preparation
 

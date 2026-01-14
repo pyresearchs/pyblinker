@@ -77,3 +77,11 @@ def _first_index_le(values: np.ndarray, threshold: float) -> int | None:
     matches = np.flatnonzero(values <= threshold)
     return int(matches[0]) if matches.size else None
 
+
+def normalize_modality(modality: str | None) -> str:
+    """Normalize modality inputs to canonical keys used by blink metrics."""
+
+    modality_norm = str(modality or "eeg").lower()
+    if modality_norm == "eog":
+        modality_norm = "eeg"
+    return "ear" if modality_norm == "ear" else "eeg"

@@ -7,7 +7,9 @@ from pathlib import Path
 
 import mne
 
-from pyblinker.blink_features.kinematics import compute_kinematic_features
+from pyblinker.blink_features.kinematics.kinematic_features import (
+    KinematicBlinkFeatureExtractor,
+)
 from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
 
 
@@ -49,7 +51,8 @@ class TestEarOnlyKinematicPipeline(unittest.TestCase):
             segmentation_type=segment_config,
         )
 
-        df = compute_kinematic_features(epochs, picks=EAR_CHANNEL)
+        extractor = KinematicBlinkFeatureExtractor(epochs=epochs)
+        df = extractor.compute(picks=EAR_CHANNEL)
 
         self.assertNotIn("blink_onset_eeg", epochs.metadata.columns)
         self.assertTrue(all(col.endswith(f"__{EAR_CHANNEL}") for col in df.columns))

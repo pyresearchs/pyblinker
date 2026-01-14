@@ -7,7 +7,7 @@ from typing import Dict, Mapping
 import numpy as np
 
 from .._core_blink import METHODS_BY_MODALITY
-from .core_metrics import compute_blink_kinematic_metrics
+from .core_metrics import KINEMATIC_METRICS_NO_STYLE, compute_blink_kinematic_metrics
 
 
 def compute_segment_kinematics(
@@ -66,7 +66,7 @@ def compute_segment_kinematics(
     if method is None:
         method = METHODS_BY_MODALITY.get(modality_key, ("base",))[0]
 
-    return compute_blink_kinematic_metrics(
+    metrics = compute_blink_kinematic_metrics(
         raw_seg,
         sfreq,
         start_end_method=method,
@@ -75,3 +75,8 @@ def compute_segment_kinematics(
         dx1=dx1,
         dx2=dx2,
     )
+    for metric in KINEMATIC_METRICS_NO_STYLE:
+        key_with_suffix = f"{metric}_{method}"
+        if key_with_suffix in metrics and metric not in metrics:
+            metrics[metric] = metrics[key_with_suffix]
+    return metrics
