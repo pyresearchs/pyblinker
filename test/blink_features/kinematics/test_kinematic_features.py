@@ -12,11 +12,14 @@ from pyblinker.blink_features.kinematics.core_metrics import (
     KINEMATIC_METRIC_STEMS,
     KINEMATIC_METRICS_NO_STYLE,
 )
-from pyblinker.blink_features.kinematics import compute_kinematic_features
 from pyblinker.blink_features.kinematics.per_blink import compute_segment_kinematics
 from pyblinker.blink_features.energy.helpers import segment_to_samples, _safe_stats
 from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
-from pyblinker.blink_features.kinematics.kinematic_features import _available_styles, _style_windows
+from pyblinker.blink_features.kinematics.kinematic_features import (
+    KinematicBlinkFeatureExtractor,
+    _available_styles,
+    _style_windows,
+)
 from pyblinker.blink_features.utils.aggregation import prepare_epoch_channel_data
 from test.segment_config import build_segment_config
 
@@ -44,7 +47,8 @@ class TestKinematicFeatures(unittest.TestCase):
     def test_dataframe_and_nan_epochs(self) -> None:
         """DataFrame has expected columns and NaNs for zero-blink epochs."""
         ch = "EEG-E8"
-        df = compute_kinematic_features(self.epochs, picks=ch)
+        extractor = KinematicBlinkFeatureExtractor(epochs=self.epochs)
+        df = extractor.compute(picks=ch)
 
         styles = _available_styles(tuple(self.epochs.metadata.columns), "eeg")
         metric_keys = [
@@ -70,7 +74,8 @@ class TestKinematicFeatures(unittest.TestCase):
     def test_manual_first_epoch(self) -> None:
         """Manual computation for the first epoch matches library output."""
         ch = "EEG-E8"
-        df = compute_kinematic_features(self.epochs, picks=ch)
+        extractor = KinematicBlinkFeatureExtractor(epochs=self.epochs)
+        df = extractor.compute(picks=ch)
         sfreq = float(self.epochs.info["sfreq"])
         meta = self.epochs.metadata.iloc[0]
         styles = sorted(_available_styles(tuple(self.epochs.metadata.columns), "eeg"))

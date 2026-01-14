@@ -10,7 +10,7 @@ from pathlib import Path
 
 import mne
 
-from pyblinker.blink_features.kinematics import compute_kinematic_features
+from pyblinker.blink_features.kinematics.kinematic_features import compute_kinematic_features
 from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
 from pyblinker.utils.evaluation import mat_data
 
