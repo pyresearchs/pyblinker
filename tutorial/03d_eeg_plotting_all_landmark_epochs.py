@@ -242,6 +242,32 @@ def _plot_epoch_blink(
         "Right zero half-height": row.get("end__right_zero_half_height__eeg"),
     }
 
+    landmark_labels = {
+        "start__left_base__eeg": "left base",
+        "end__right_base__eeg": "right base",
+        "start__left_zero__eeg": "left zero",
+        "end__right_zero__eeg": "right zero",
+        "start__left_x_intercept__eeg": "left x-intercept",
+        "end__right_x_intercept__eeg": "right x-intercept",
+        "start__left_base_half_height__eeg": "left base half-height",
+        "end__right_base_half_height__eeg": "right base half-height",
+        "start__left_zero_half_height__eeg": "left zero half-height",
+        "end__right_zero_half_height__eeg": "right zero half-height",
+        "x_intersect__eeg": "intersection x",
+        "y_intersect__eeg": "intersection y",
+    }
+
+    missing_landmarks = []
+    for column, label in landmark_labels.items():
+        value = row.get(column)
+        try:
+            numeric = float(value)
+        except (TypeError, ValueError):
+            missing_landmarks.append(label)
+            continue
+        if not np.isfinite(numeric):
+            missing_landmarks.append(label)
+
     for label, sample in landmark_map.items():
         point = _sample_value(sample, signal=eeg_signal, sfreq=sfreq)
         if point is None:
@@ -295,6 +321,9 @@ def _plot_epoch_blink(
         " EEG landmarks shown: base, zero-crossings, x-intercepts, half-height points, "
         "and intersection (x_intersect__eeg, y_intersect__eeg)."
     )
+    if missing_landmarks:
+        missing_text = ", ".join(sorted(set(missing_landmarks)))
+        caption += f" All landmarks available except for {missing_text}."
 
     return fig, caption
 
