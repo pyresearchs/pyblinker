@@ -2,9 +2,16 @@
 
 from __future__ import annotations
 
+# ruff: noqa: E402
+
 import logging
 from pathlib import Path
 from typing import Iterable
+import sys
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 import matplotlib.pyplot as plt
 import mne
@@ -104,6 +111,18 @@ def _pick_boundary(row: pd.Series, columns: Iterable[str]) -> float | None:
     return None
 
 
+def _ensure_1d_signal(signal: np.ndarray) -> np.ndarray:
+    signal = np.asarray(signal)
+    if signal.ndim == 1:
+        return signal
+    if signal.ndim == 2:
+        if signal.shape[0] == 1:
+            return signal[0]
+        if signal.shape[1] == 1:
+            return signal[:, 0]
+    return signal.reshape(-1)
+
+
 def _plot_epoch_blink(
     *,
     row: pd.Series,
@@ -115,6 +134,9 @@ def _plot_epoch_blink(
     pad_samples: int,
     candidate_id: object,
 ) -> tuple[plt.Figure, str]:
+    eeg_signal = _ensure_1d_signal(eeg_signal)
+    if ear_signal is not None:
+        ear_signal = _ensure_1d_signal(ear_signal)
     n_samples = eeg_signal.shape[0]
     left = _pick_boundary(
         row,
@@ -136,8 +158,8 @@ def _plot_epoch_blink(
         left = 0.0
         right = float(n_samples - 1)
 
-    start = int(max(0, min(n_samples - 1, round(left))) - pad_samples)
-    end = int(min(n_samples - 1, round(right)) + pad_samples)
+    start = max(0, int(min(n_samples - 1, round(left)) - pad_samples))
+    end = min(n_samples - 1, int(round(right)) + pad_samples)
 
     times = np.arange(start, end + 1, dtype=float) / sfreq
     window = eeg_signal[start : end + 1]
@@ -332,9 +354,9 @@ def build_eeg_landmark_report(
 def main() -> None:
     logging.basicConfig(level=logging.INFO)
 
-    project_root = Path(__file__).resolve().parents[1]
+    project_root = PROJECT_ROOT
     raw_path = project_root / "test" / "test_files" / "ear_eog_raw.fif"
-    output_path = project_root / "artifacts" / "eeg_epoch_landmarks.html"
+    output_path = project_root / "tutorial_outputs" / "eeg_epoch_landmarks.html"
 
     raw = mne.io.read_raw_fif(raw_path, preload=True, verbose="ERROR")
 
