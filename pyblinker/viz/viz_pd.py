@@ -92,10 +92,12 @@ def viz_complete_blink_prop(
         1D signal array.
     row : dict
         Dict-like with required keys:
-          'start_blink', 'end_blink', 'blink_bottom_point_l_x', 'blink_top_point_l_x',
-          'blink_bottom_point_l_y', 'blink_top_point_l_y', 'blink_bottom_point_r_x',
-          'blink_top_point_r_x', 'blink_bottom_point_r_y', 'blink_top_point_r_y',
-          'x_intersect', 'y_intersect', 'left_zero', 'right_zero', 'max_blink'
+          'start_blink', 'end_blink', 'max_blink'
+        Missing/NaN keypoint values are skipped gracefully for the following optional keys:
+          'blink_bottom_point_l_x', 'blink_top_point_l_x', 'blink_bottom_point_l_y',
+          'blink_top_point_l_y', 'blink_bottom_point_r_x', 'blink_top_point_r_x',
+          'blink_bottom_point_r_y', 'blink_top_point_r_y', 'x_intersect', 'y_intersect',
+          'left_zero', 'right_zero'
     srate : float, optional
         Sampling rate in Hz. If provided, x-axis is in samples (label shows both samples and seconds).
     pad : int, default 20
@@ -119,12 +121,35 @@ def viz_complete_blink_prop(
     data = np.asarray(data).ravel()
     n = data.size
 
-    def _get_int(key: str) -> int:
-        v = int(row[key])
-        return v
+    def _is_missing(value: Any) -> bool:
+        if value is None:
+            return True
+        if isinstance(value, float) and np.isnan(value):
+            return True
+        return False
 
-    start_blink = _get_int('start_blink')
-    end_blink = _get_int('end_blink')
+    def _get_required_int(key: str) -> int:
+        if key not in row:
+            raise KeyError(f"Missing required key '{key}' in row data.")
+        value = row[key]
+        if _is_missing(value):
+            raise ValueError(f"Missing value for required key '{key}'.")
+        return int(value)
+
+    def _get_optional_int(key: str) -> Optional[int]:
+        value = row.get(key)
+        if _is_missing(value):
+            return None
+        return int(value)
+
+    def _get_optional_float(key: str) -> Optional[float]:
+        value = row.get(key)
+        if _is_missing(value):
+            return None
+        return float(value)
+
+    start_blink = _get_required_int('start_blink')
+    end_blink = _get_required_int('end_blink')
 
     if start_blink > end_blink:
         start_blink, end_blink = end_blink, start_blink  # swap if out of order
@@ -138,10 +163,11 @@ def viz_complete_blink_prop(
         fig = plt.figure() if ax is None else ax.figure
         if not show:
             plt.close(fig)
+        max_blink = _get_optional_int('max_blink')
         return {
             'fig': fig,
             'blink_quality': 'Unknown',
-            'maxFrames': int(row.get('max_blink', -1)),
+            'maxFrames': max_blink if max_blink is not None else -1,
             'idx_window': np.array([], dtype=int),
         }
 
@@ -174,46 +200,72 @@ def viz_complete_blink_prop(
     def _in_window(x: int) -> bool:
         return pre <= x <= post
 
-    def _finite(y: float) -> bool:
+    def _finite(y: Optional[float]) -> bool:
+        if y is None:
+            return False
         return np.isfinite(y)
 
     def _scatter(xs: Iterable[int], ys: Iterable[float], **kwargs):
         xs = list(xs)
         ys = list(ys)
-        keep = [
-            i for i, (x, y) in enumerate(zip(xs, ys))
-            if isinstance(x, (int, np.integer)) and _in_window(int(x)) and _finite(float(y))
-        ]
+        keep = []
+        for i, (x, y) in enumerate(zip(xs, ys)):
+            if not isinstance(x, (int, np.integer)):
+                continue
+            if not _in_window(int(x)):
+                continue
+            if _is_missing(y):
+                continue
+            y_val = float(y)
+            if not _finite(y_val):
+                continue
+            keep.append(i)
         if keep:
             ax.scatter([xs[i] for i in keep], [ys[i] for i in keep], **kwargs)
 
     # Left eye keypoints
-    _scatter(
-        [int(row['blink_bottom_point_l_x']), int(row['blink_top_point_l_x'])],
-        [float(row['blink_bottom_point_l_y']), float(row['blink_top_point_l_y'])],
-        marker='*', s=200, label='left top/bottom'
-    )
+    left_bottom_x = _get_optional_int('blink_bottom_point_l_x')
+    left_top_x = _get_optional_int('blink_top_point_l_x')
+    left_bottom_y = _get_optional_float('blink_bottom_point_l_y')
+    left_top_y = _get_optional_float('blink_top_point_l_y')
+    if left_bottom_x is not None and left_top_x is not None:
+        _scatter(
+            [left_bottom_x, left_top_x],
+            [left_bottom_y, left_top_y],
+            marker='*', s=200, label='left top/bottom'
+        )
 
     # Right eye keypoints
-    _scatter(
-        [int(row['blink_bottom_point_r_x']), int(row['blink_top_point_r_x'])],
-        [float(row['blink_bottom_point_r_y']), float(row['blink_top_point_r_y'])],
-        marker='*', s=200, label='right top/bottom'
-    )
+    right_bottom_x = _get_optional_int('blink_bottom_point_r_x')
+    right_top_x = _get_optional_int('blink_top_point_r_x')
+    right_bottom_y = _get_optional_float('blink_bottom_point_r_y')
+    right_top_y = _get_optional_float('blink_top_point_r_y')
+    if right_bottom_x is not None and right_top_x is not None:
+        _scatter(
+            [right_bottom_x, right_top_x],
+            [right_bottom_y, right_top_y],
+            marker='*', s=200, label='right top/bottom'
+        )
 
     # Tent point (intersection)
-    xi = int(row['x_intersect'])
-    yi = float(row['y_intersect'])
-    if _in_window(xi) and _finite(yi):
+    xi = _get_optional_int('x_intersect')
+    yi = _get_optional_float('y_intersect')
+    if xi is not None and yi is not None and _in_window(xi) and _finite(yi):
         ax.scatter(xi, yi, label='tent point')
 
     # Zero crossings
-    lz = int(row['left_zero'])
-    rz = int(row['right_zero'])
-    _scatter([lz, rz], [0.0, 0.0], marker='d', s=100, label='zero crossings')
+    lz = _get_optional_int('left_zero')
+    rz = _get_optional_int('right_zero')
+    zero_xs = [value for value in (lz, rz) if value is not None]
+    if zero_xs:
+        _scatter(
+            zero_xs,
+            [0.0] * len(zero_xs),
+            marker='d', s=100, label='zero crossings'
+        )
 
     # Max frame
-    max_blink = int(row['max_blink'])
+    max_blink = _get_required_int('max_blink')
     if 0 <= max_blink < n and _in_window(max_blink) and _finite(float(data[max_blink])):
         ax.scatter(max_blink, float(data[max_blink]), label='max frame')
 
