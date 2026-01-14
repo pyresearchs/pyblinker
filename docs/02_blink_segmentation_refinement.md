@@ -3,6 +3,48 @@
 ## Purpose
 Once a candidate blink region is identified, `pyblinker` refines the start and end points to ensure consistent feature extraction. Accurate segmentation is critical because metrics like "duration", "closing speed", and "amplitude" depend entirely on these boundaries.
 
+### Landmark renaming reference (Blinker ➜ PyBlinker)
+
+| Original Blinker name  | PyBlinker name (landmark)         |
+|------------------------| --------------------------------- |
+| right base             | end__right_base__eeg              |
+| lefet base             | start__left_base__eeg             |
+| right zero             | end__right_zero__eeg              |
+| left zero              | start__left_zero__eeg             |
+| right_X_intercept      | end__right_x_intercept__eeg       |
+| left_X_intercept       | start__left_x_intercept__eeg      |
+| RIGHT_BASE_HALF_HEIGHT | end__right_base_half_height__eeg  |
+| LEFT_BASE_HALF_HEIGHT  | start__left_base_half_height__eeg |
+| RIGHT_ZERO_HALF_HEIGHT | end__right_zero_half_height__eeg  |
+| LEFT_ZERO_HALF_HEIGH   | start__left_zero_half_height__eeg |
+| X_INTERSECT            | x_intersect__eeg                  |
+| Y_INTERSECT            | y_intersect__eeg                  |
+
+---
+
+### Feature-style names (preferred for calculation)
+
+| Feature name                    | Derived from                                                         |
+| ------------------------------- | -------------------------------------------------------------------- |
+| onset__base__eeg                | start__left_base__eeg                                                |
+| duration__base__eeg             | end__right_base__eeg − start__left_base__eeg                         |
+| onset__zero__eeg                | start__left_zero__eeg                                                |
+| duration__zero__eeg             | end__right_zero__eeg − start__left_zero__eeg                         |
+| onset__x_intercept__eeg         | start__left_x_intercept__eeg                                         |
+| duration__x_intercept__eeg      | end__right_x_intercept__eeg − start__left_x_intercept__eeg           |
+| onset__base_half_height__eeg    | start__left_base_half_height__eeg                                    |
+| duration__base_half_height__eeg | end__right_base_half_height__eeg − start__left_base_half_height__eeg |
+| onset__zero_half_height__eeg    | start__left_zero_half_height__eeg                                    |
+| duration__zero_half_height__eeg | end__right_zero_half_height__eeg − start__left_zero_half_height__eeg |
+
+---
+
+### Note
+
+We include the **left** and **right** in the landmark naming convention so that we not confuse with the convention use in **Blinker**.
+
+
+
 ## Segmentation Strategies
 Different modalities and research questions require different definitions of "start" and "end". `pyblinker` supports several strategies, specified during the refinement step:
 
