@@ -8,7 +8,10 @@ from pathlib import Path
 import mne
 import numpy as np
 
-from pyblinker.blink_features.kinematics.core_metrics import KINEMATIC_METRIC_STEMS
+from pyblinker.blink_features.kinematics.core_metrics import (
+    KINEMATIC_METRIC_STEMS,
+    KINEMATIC_METRICS_NO_STYLE,
+)
 from pyblinker.blink_features.kinematics import compute_kinematic_features
 from pyblinker.blink_features.kinematics.per_blink import compute_segment_kinematics
 from pyblinker.blink_features.energy.helpers import segment_to_samples, _safe_stats
@@ -44,13 +47,17 @@ class TestKinematicFeatures(unittest.TestCase):
         df = compute_kinematic_features(self.epochs, picks=ch)
 
         styles = _available_styles(tuple(self.epochs.metadata.columns), "eeg")
-        metric_keys = [f"{stem}_{style}" for stem in KINEMATIC_METRIC_STEMS for style in styles]
+        metric_keys = [
+            stem if stem in KINEMATIC_METRICS_NO_STYLE else f"{stem}_{style}"
+            for stem in KINEMATIC_METRIC_STEMS
+            for style in styles
+        ]
         expected_cols = [
             f"eeg__{style}__kinematic__{m}_{s}__{ch}"
             for m in metric_keys
             for style in styles
             for s in ("mean", "std", "cv")
-            if m.endswith(style)
+            if m.endswith(style) or m in KINEMATIC_METRICS_NO_STYLE
         ]
         assert_df_has_columns(self, df, expected_cols)
         assert_numeric_or_nan(self, df.iloc[0])
@@ -70,9 +77,16 @@ class TestKinematicFeatures(unittest.TestCase):
         ch_names, channel_data, _, _, n_times = prepare_epoch_channel_data(
             epochs=self.epochs, picks=[ch], sfreq=sfreq
         )
-        metric_keys = [f"{stem}_{style}" for stem in KINEMATIC_METRIC_STEMS for style in styles]
-        per_metric = {m: [] for m in metric_keys}
+        metrics_by_style = {
+            style: [
+                stem if stem in KINEMATIC_METRICS_NO_STYLE else f"{stem}_{style}"
+                for stem in KINEMATIC_METRIC_STEMS
+            ]
+            for style in styles
+        }
+        manual = {}
         for style in styles:
+            per_metric = {m: [] for m in metrics_by_style[style]}
             windows = _style_windows(meta, "eeg", style)
             for onset, dur in windows:
                 sl = segment_to_samples(onset, dur, sfreq, n_times)
@@ -82,16 +96,13 @@ class TestKinematicFeatures(unittest.TestCase):
                     "dx2": channel_data[ch_names[0]]["dx2"][0, sl],
                 }
                 metrics = compute_segment_kinematics(seg, sfreq, method=style, modality="eeg")
-                for m in metric_keys:
-                    if m.endswith(style):
-                        per_metric[m].append(metrics[m])
+                for m in metrics_by_style[style]:
+                    per_metric[m].append(metrics[m])
 
-        manual = {}
-        for metric, values in per_metric.items():
-            stats = _safe_stats(values)
-            for stat_name, value in stats.items():
-                style = metric.split("_")[-1]
-                manual[f"eeg__{style}__kinematic__{metric}_{stat_name}__{ch}"] = value
+            for metric, values in per_metric.items():
+                stats = _safe_stats(values)
+                for stat_name, value in stats.items():
+                    manual[f"eeg__{style}__kinematic__{metric}_{stat_name}__{ch}"] = value
 
         for key, val in manual.items():
             self.assertAlmostEqual(df.iloc[0][key], val, places=7)

@@ -27,6 +27,7 @@ Unless noted otherwise:
 *   **Velocity**: `vel_peak_abs`, `vel_mean_abs`, `slope_rise`, `slope_fall`.
 *   **Amplitude**: `amp_peak_abs`, `amp_peak_to_trough`.
 *   **Area**: `area_abs_total_trapz`, `symmetry_trapz`.
+*   **Blink ratios & timing**: `amp_vel_ratio_base`, `amp_vel_ratio_tent`, `amp_vel_ratio_zero_to_max`, `blink_velocity`, `inter_blink_max_vel`.
 
 ### 2. EAR-specific Features
 *Derived from Eye Aspect Ratio video signals.*

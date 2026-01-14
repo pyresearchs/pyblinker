@@ -22,6 +22,19 @@ KINEMATIC_METRIC_STEMS: Sequence[str] = (
     "slope_fall_neg",
     "acc_peak_abs",
     "acc_mean_abs",
+    "amp_vel_ratio_base",
+    "amp_vel_ratio_tent",
+    "amp_vel_ratio_zero_to_max",
+    "blink_velocity",
+    "inter_blink_max_vel",
+)
+
+KINEMATIC_METRICS_NO_STYLE: Sequence[str] = (
+    "amp_vel_ratio_base",
+    "amp_vel_ratio_tent",
+    "amp_vel_ratio_zero_to_max",
+    "blink_velocity",
+    "inter_blink_max_vel",
 )
 
 
@@ -233,6 +246,50 @@ def compute_blink_kinematic_metrics(
         slope_rise_pos = float(np.max(velocity))
         slope_fall_neg = float(np.min(velocity))
 
+    if velocity.size == 0 or seg.size == 0:
+        blink_velocity = float("nan")
+        amp_vel_ratio_base = float("nan")
+        amp_vel_ratio_zero_to_max = float("nan")
+        amp_vel_ratio_tent = float("nan")
+        inter_blink_max_vel = float("nan")
+    else:
+        max_idx = int(np.argmax(seg))
+        vel_end = velocity.size - 1
+        blink_velocity = float(np.mean(np.abs(velocity)))
+
+        def ratio_from_velocity(start_idx: int, end_idx: int, *, aggregator: str) -> float:
+            start_idx = max(0, start_idx)
+            end_idx = min(end_idx, vel_end)
+            if end_idx < start_idx:
+                return float("nan")
+            velocities = velocity[start_idx : end_idx + 1]
+            if velocities.size == 0:
+                return float("nan")
+            local_idx = int(np.argmax(velocities)) if aggregator == "max" else int(np.argmin(velocities))
+            extreme_vel = velocities[local_idx]
+            if extreme_vel == 0:
+                return float("nan")
+            return float(100 * abs(seg[max_idx] / extreme_vel) / sfreq)
+
+        pos_ratio = ratio_from_velocity(0, max_idx, aggregator="max")
+        neg_ratio = ratio_from_velocity(max_idx, seg.size - 1, aggregator="min")
+        amp_vel_ratio_base = float(np.nanmean([pos_ratio, neg_ratio]))
+        amp_vel_ratio_zero_to_max = float(np.nanmean([pos_ratio, neg_ratio]))
+
+        left_vel = velocity[:max_idx]
+        right_vel = velocity[max_idx:]
+        left_mean = float(np.mean(left_vel)) if left_vel.size > 0 else float("nan")
+        right_mean = float(np.mean(right_vel)) if right_vel.size > 0 else float("nan")
+        tent_vals = []
+        if left_mean != 0 and not np.isnan(left_mean):
+            tent_vals.append(float(100 * abs(seg[max_idx] / left_mean) / sfreq))
+        if right_mean != 0 and not np.isnan(right_mean):
+            tent_vals.append(float(100 * abs(seg[max_idx] / right_mean) / sfreq))
+        amp_vel_ratio_tent = float(np.nanmean(tent_vals)) if tent_vals else float("nan")
+
+        pos_peak_idx = int(np.argmax(velocity))
+        inter_blink_max_vel = float((pos_peak_idx * -1) / sfreq)
+
     if include_second_derivative:
         if dx2 is not None:
             acceleration = np.asarray(dx2, dtype=float).reshape(-1)
@@ -259,6 +316,11 @@ def compute_blink_kinematic_metrics(
         f"slope_fall_neg_{method}": slope_fall_neg,
         f"acc_peak_abs_{method}": acc_peak_abs,
         f"acc_mean_abs_{method}": acc_mean_abs,
+        f"amp_vel_ratio_base_{method}": amp_vel_ratio_base,
+        f"amp_vel_ratio_tent_{method}": amp_vel_ratio_tent,
+        f"amp_vel_ratio_zero_to_max_{method}": amp_vel_ratio_zero_to_max,
+        f"blink_velocity_{method}": blink_velocity,
+        f"inter_blink_max_vel_{method}": inter_blink_max_vel,
     }
 
 
@@ -270,4 +332,5 @@ __all__ = [
     "compute_blink_kinematic_properties",
     "compute_blink_velocity",
     "compute_inter_blink_max_vel",
+    "KINEMATIC_METRICS_NO_STYLE",
 ]
