@@ -188,7 +188,6 @@ def _plot_epoch_blink(
     )
     legend_ax.axis("off")
     ax.plot(times, window, lw=1.0, color="black", alpha=0.25, label=channel_name)
-    ax.scatter(times, window, s=6, color="black", alpha=0.45)
     ax.axhline(0.0, color="red", lw=1.0, alpha=0.8, label="y=0")
 
     overlay_ax = None
@@ -286,6 +285,8 @@ def _plot_epoch_blink(
     if np.isfinite(x_val) and np.isfinite(y_val):
         color, marker = marker_styles["Intersection"]
         ax.scatter([x_val / sfreq], [y_val], color=color, marker=marker, s=50, label="Intersection")
+
+    ax.scatter(times, window, s=6, color="black", alpha=0.45)
 
     ax.set_title(f"Candidate {candidate_id} • {channel_name}")
     ax.set_xlabel("Time (s)")
