@@ -59,6 +59,31 @@ Unless noted otherwise:
 
 *Frequency-domain aggregation change*: Channel selection, missing-channel validation, and sampling-frequency warnings for wavelet aggregation now live in a shared helper to keep the computation path consistent across callers.
 
+#### xxxx
+Below is the definition use in the paper https://www.frontiersin.org/journals/neuroscience/articles/10.3389/fnins.2017.00012/full
+leftZero is the last zero crossing before maxFrame
+If the signal does not cross zero between this blink and the previous blink, leftZero is the frame of the lowest amplitude between the blinks.
+
+rightZero is the first zero crossing after maxFrame
+
+The upStroke is the interval between leftZero and maxFrame, 
+and the downStroke is the interval between maxFrame and rightZero.
+
+
+The leftBase is the first local minimum to the left of the maximum velocity frame in the upStroke.
+rightBase is the first local minimum to the right of the maximum velocity frame in the downStroke.
+
+
+half-zero duration: the width of the blink in seconds at half of the blink amplitude from the zero level
+half-base duration: the width at half of the blink amplitude measured from the leftBase of the blink.
+base duration: rightBase–leftBase 
+zero duration: is rightZero–leftZero
+tent duration: the difference between the intersections of the downStroke and upStroke linear fit lines with the zero line.
+
+positive amplitude velocity ratio (pAVR):the ratio of the maximum amplitude of the blink over the maximum velocity (rate of change) during the blink upStroke
+negative amplitude velocity ratio (nAVR): the ratio of the maximum amplitude of the blink over the maximum velocity found in the blink downStroke.
+
+
 *Related Code*:
 *   `pyblinker/blink_features/frequency_domain/aggregate.py` (wavelet aggregation entry point)
 *   `pyblinker/blink_features/utils/aggregation.py` (channel preparation and validation helper)
