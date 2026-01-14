@@ -5,20 +5,20 @@ Once a candidate blink region is identified, `pyblinker` refines the start and e
 
 ### Landmark renaming reference (Blinker ➜ PyBlinker)
 
-| Original Blinker name  | PyBlinker name (landmark)         |
-|------------------------| --------------------------------- |
-| right base             | end__right_base__eeg              |
-| lefet base             | start__left_base__eeg             |
-| right zero             | end__right_zero__eeg              |
-| left zero              | start__left_zero__eeg             |
-| right_X_intercept      | end__right_x_intercept__eeg       |
-| left_X_intercept       | start__left_x_intercept__eeg      |
+| Original Blinker name | PyBlinker name (landmark)         |
+|-----------------------| --------------------------------- |
+| right base            | end__right_base__eeg              |
+| left base             | start__left_base__eeg             |
+| right zero            | end__right_zero__eeg              |
+| left zero             | start__left_zero__eeg             |
+| right_X_intercept     | end__right_x_intercept__eeg       |
+| left_X_intercept      | start__left_x_intercept__eeg      |
 | RIGHT_BASE_HALF_HEIGHT | end__right_base_half_height__eeg  |
-| LEFT_BASE_HALF_HEIGHT  | start__left_base_half_height__eeg |
+| LEFT_BASE_HALF_HEIGHT | start__left_base_half_height__eeg |
 | RIGHT_ZERO_HALF_HEIGHT | end__right_zero_half_height__eeg  |
-| LEFT_ZERO_HALF_HEIGH   | start__left_zero_half_height__eeg |
-| X_INTERSECT            | x_intersect__eeg                  |
-| Y_INTERSECT            | y_intersect__eeg                  |
+| LEFT_ZERO_HALF_HEIGH  | start__left_zero_half_height__eeg |
+| X_INTERSECT           | x_intersect__eeg                  |
+| Y_INTERSECT           | y_intersect__eeg                  |
 
 ---
 
