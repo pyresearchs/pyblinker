@@ -24,7 +24,7 @@ A typical `pyblinker` report (MNE-based) includes:
 * **Verification (Tutorials & Tests)**: `tutorial/03a_ear_threshold_blink_refinement.py`, `tutorial/03c_ear_threshold_multi_candidate_refinement.py`, `tutorial/06_refined_blink_report_tutorial.py`.
 
 ### EEG epoch landmark plotting
-* **Feature/Change**: Added a dedicated plotting helper that renders each epoch’s EEG signal with all refined landmark points sourced from `epochs.metadata`, mirroring the landmark overlays used in refined blink reports.
+* **Feature/Change**: Added a dedicated plotting helper that renders each epoch’s EEG signal with all refined landmark points (e.g., `start__left_base__eeg`, `x_intersect__eeg`) sourced from `epochs.metadata`, mirroring the landmark overlays used in refined blink reports.
 * **Related Code**: `tutorial/03d_eeg_plotting_all_landmark_epochs.py`.
 * **Verification (Tutorials & Tests)**: `tutorial/03d_eeg_plotting_all_landmark_epochs.py`, `test/segmentation/test_eeg_refinement_outputs.py`.
 

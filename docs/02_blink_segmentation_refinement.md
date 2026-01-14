@@ -62,7 +62,7 @@ Refinement typically happens when converting continuous data into epochs (`slice
 3.  **Result**: New metadata fields (e.g., `blink_onset_ear`, `refined_start_sample`, `interpolated_closing_slope`) are attached to the epochs.
 
 ### EEG landmark geometry refactor
-* **Feature/Change**: Core geometry helpers (zero-crossings, baseline, half-height, fit-range, and line intersections) now live in `pyblinker/segmentation/geometry.py`. The refinement stack uses these helpers for both continuous signals and epoch-local EEG/EOG segments, producing consistent landmark columns such as `startleftbaseeeg` and `xintersecteeg`.
+* **Feature/Change**: Core geometry helpers (zero-crossings, baseline, half-height, fit-range, and line intersections) now live in `pyblinker/segmentation/geometry.py`. The refinement stack uses these helpers for both continuous signals and epoch-local EEG/EOG segments, producing consistent landmark columns such as `start__left_base__eeg` and `x_intersect__eeg`.
 * **Related Code**: `pyblinker/segmentation/geometry.py`, `pyblinker/segmentation/refinement/eeg/refinement.py`, `pyblinker/blinker/fit_blink.py`.
 * **Verification (Tutorials & Tests)**: `tutorial/03d_eeg_plotting_all_landmark_epochs.py`, `test/segmentation/test_eeg_refinement_outputs.py`, `test/blinker_migration/test_step1_bii_fit_blink.py`.
 

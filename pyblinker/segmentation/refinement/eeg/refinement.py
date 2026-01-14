@@ -125,18 +125,18 @@ def _compute_epoch_landmarks(
 ) -> Dict[str, List[float]]:
     n_blinks = len(blink_starts)
     landmark_columns = [
-        f"startleftbase{key_prefix}",
-        f"endrightbase{key_prefix}",
-        f"startleftzero{key_prefix}",
-        f"endrightzero{key_prefix}",
-        f"startleftxintercept{key_prefix}",
-        f"endrightxintercept{key_prefix}",
-        f"startleftbasehalfheight{key_prefix}",
-        f"endrightbasehalfheight{key_prefix}",
-        f"startleftzerohalfheight{key_prefix}",
-        f"endrightzerohalfheight{key_prefix}",
-        f"xintersect{key_prefix}",
-        f"yintersect{key_prefix}",
+        f"start__left_base__{key_prefix}",
+        f"end__right_base__{key_prefix}",
+        f"start__left_zero__{key_prefix}",
+        f"end__right_zero__{key_prefix}",
+        f"start__left_x_intercept__{key_prefix}",
+        f"end__right_x_intercept__{key_prefix}",
+        f"start__left_base_half_height__{key_prefix}",
+        f"end__right_base_half_height__{key_prefix}",
+        f"start__left_zero_half_height__{key_prefix}",
+        f"end__right_zero_half_height__{key_prefix}",
+        f"x_intersect__{key_prefix}",
+        f"y_intersect__{key_prefix}",
     ]
 
     results: Dict[str, List[float]] = {col: [float("nan")] * n_blinks for col in landmark_columns}
@@ -174,8 +174,8 @@ def _compute_epoch_landmarks(
 
     for row in df.itertuples():
         idx = int(row.blink_index)
-        results[f"startleftzero{key_prefix}"][idx] = float(row.left_zero)
-        results[f"endrightzero{key_prefix}"][idx] = float(row.right_zero)
+        results[f"start__left_zero__{key_prefix}"][idx] = float(row.left_zero)
+        results[f"end__right_zero__{key_prefix}"][idx] = float(row.right_zero)
 
     try:
         df_base = create_left_right_base(segment, df)
@@ -184,8 +184,8 @@ def _compute_epoch_landmarks(
 
     for row in df_base.itertuples():
         idx = int(row.blink_index)
-        results[f"startleftbase{key_prefix}"][idx] = float(row.left_base)
-        results[f"endrightbase{key_prefix}"][idx] = float(row.right_base)
+        results[f"start__left_base__{key_prefix}"][idx] = float(row.left_base)
+        results[f"end__right_base__{key_prefix}"][idx] = float(row.right_base)
 
         (
             left_zero_half_height,
@@ -201,10 +201,10 @@ def _compute_epoch_landmarks(
             row.outer_end,
         )
 
-        results[f"startleftbasehalfheight{key_prefix}"][idx] = float(left_base_half_height)
-        results[f"endrightbasehalfheight{key_prefix}"][idx] = float(right_base_half_height)
-        results[f"startleftzerohalfheight{key_prefix}"][idx] = float(left_zero_half_height)
-        results[f"endrightzerohalfheight{key_prefix}"][idx] = float(right_zero_half_height)
+        results[f"start__left_base_half_height__{key_prefix}"][idx] = float(left_base_half_height)
+        results[f"end__right_base_half_height__{key_prefix}"][idx] = float(right_base_half_height)
+        results[f"start__left_zero_half_height__{key_prefix}"][idx] = float(left_zero_half_height)
+        results[f"end__right_zero_half_height__{key_prefix}"][idx] = float(right_zero_half_height)
 
         if int(row.left_zero) >= int(row.max_blink) or int(row.right_zero) <= int(row.max_blink):
             continue
@@ -240,10 +240,10 @@ def _compute_epoch_landmarks(
                 right_x_intercept,
             ) = lines_intersection(signal=segment, x_right=x_right, x_left=x_left)
 
-            results[f"startleftxintercept{key_prefix}"][idx] = float(left_x_intercept)
-            results[f"endrightxintercept{key_prefix}"][idx] = float(right_x_intercept)
-            results[f"xintersect{key_prefix}"][idx] = float(x_intersect)
-            results[f"yintersect{key_prefix}"][idx] = float(y_intersect)
+            results[f"start__left_x_intercept__{key_prefix}"][idx] = float(left_x_intercept)
+            results[f"end__right_x_intercept__{key_prefix}"][idx] = float(right_x_intercept)
+            results[f"x_intersect__{key_prefix}"][idx] = float(x_intersect)
+            results[f"y_intersect__{key_prefix}"][idx] = float(y_intersect)
 
     return results
 
