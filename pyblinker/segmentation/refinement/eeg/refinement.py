@@ -6,6 +6,17 @@ from typing import Any, Dict, List, Sequence, Tuple
 
 import mne
 import numpy as np
+import pandas as pd
+
+from pyblinker.blinker.default_setting import DEFAULT_PARAMS
+from pyblinker.segmentation.geometry import (
+    compute_fit_range,
+    create_left_right_base,
+    get_half_height,
+    get_max_blink,
+    left_right_zero_crossing,
+    lines_intersection,
+)
 
 from .bounds import compute_outer_bounds
 
@@ -72,7 +83,7 @@ def _append_peak_refinements(
         return
 
     seg_type = (modality_config or {}).get("seg_type")
-    # compute_outer = False
+    compute_outer = False
     if isinstance(seg_type, str):
         compute_outer = seg_type
     elif isinstance(seg_type, Sequence) and not isinstance(seg_type, str):
@@ -90,6 +101,151 @@ def _append_peak_refinements(
     keys = blink_entries[0].keys()
     transposed = {key: [entry[key] for entry in blink_entries] for key in keys}
     row_data.update(transposed)
+
+    base_fraction = float((modality_config or {}).get("base_fraction", DEFAULT_PARAMS["base_fraction"]))
+    landmarks = _compute_epoch_landmarks(
+        segment=segment,
+        blink_starts=blink_starts,
+        blink_ends=blink_ends,
+        n_samp_epoch=n_samp_epoch,
+        key_prefix=key_prefix,
+        base_fraction=base_fraction,
+    )
+    row_data.update(landmarks)
+
+
+def _compute_epoch_landmarks(
+    *,
+    segment: np.ndarray,
+    blink_starts: Sequence[int],
+    blink_ends: Sequence[int],
+    n_samp_epoch: int,
+    key_prefix: str,
+    base_fraction: float,
+) -> Dict[str, List[float]]:
+    n_blinks = len(blink_starts)
+    landmark_columns = [
+        f"startleftbase{key_prefix}",
+        f"endrightbase{key_prefix}",
+        f"startleftzero{key_prefix}",
+        f"endrightzero{key_prefix}",
+        f"startleftxintercept{key_prefix}",
+        f"endrightxintercept{key_prefix}",
+        f"startleftbasehalfheight{key_prefix}",
+        f"endrightbasehalfheight{key_prefix}",
+        f"startleftzerohalfheight{key_prefix}",
+        f"endrightzerohalfheight{key_prefix}",
+        f"xintersect{key_prefix}",
+        f"yintersect{key_prefix}",
+    ]
+
+    results: Dict[str, List[float]] = {col: [float("nan")] * n_blinks for col in landmark_columns}
+    if n_blinks == 0 or segment.size == 0:
+        return results
+
+    max_blinks: List[int] = []
+    for start, end in zip(blink_starts, blink_ends):
+        _, max_blink = get_max_blink(segment, start, end)
+        max_blinks.append(int(max_blink))
+
+    outer_bounds = compute_outer_bounds(max_blinks, n_samp_epoch)
+    df = pd.DataFrame(
+        {
+            "blink_index": np.arange(n_blinks, dtype=int),
+            "start_blink": blink_starts,
+            "end_blink": blink_ends,
+            "max_blink": max_blinks,
+            "outer_start": [bounds[0] for bounds in outer_bounds],
+            "outer_end": [bounds[1] for bounds in outer_bounds],
+        }
+    )
+
+    df[["left_zero", "right_zero"]] = df.apply(
+        lambda row: left_right_zero_crossing(
+            segment,
+            row["max_blink"],
+            row["outer_start"],
+            row["outer_end"],
+            signal_type=key_prefix,
+        ),
+        axis=1,
+        result_type="expand",
+    )
+
+    for row in df.itertuples():
+        idx = int(row.blink_index)
+        results[f"startleftzero{key_prefix}"][idx] = float(row.left_zero)
+        results[f"endrightzero{key_prefix}"][idx] = float(row.right_zero)
+
+    try:
+        df_base = create_left_right_base(segment, df)
+    except ValueError:
+        return results
+
+    for row in df_base.itertuples():
+        idx = int(row.blink_index)
+        results[f"startleftbase{key_prefix}"][idx] = float(row.left_base)
+        results[f"endrightbase{key_prefix}"][idx] = float(row.right_base)
+
+        (
+            left_zero_half_height,
+            right_zero_half_height,
+            left_base_half_height,
+            right_base_half_height,
+        ) = get_half_height(
+            segment,
+            row.max_blink,
+            row.left_zero,
+            row.right_zero,
+            row.left_base,
+            row.outer_end,
+        )
+
+        results[f"startleftbasehalfheight{key_prefix}"][idx] = float(left_base_half_height)
+        results[f"endrightbasehalfheight{key_prefix}"][idx] = float(right_base_half_height)
+        results[f"startleftzerohalfheight{key_prefix}"][idx] = float(left_zero_half_height)
+        results[f"endrightzerohalfheight{key_prefix}"][idx] = float(right_zero_half_height)
+
+        if int(row.left_zero) >= int(row.max_blink) or int(row.right_zero) <= int(row.max_blink):
+            continue
+
+        try:
+            x_left, x_right, *_ = compute_fit_range(
+                segment,
+                row.max_blink,
+                row.left_zero,
+                row.right_zero,
+                base_fraction,
+                top_bottom=True,
+            )
+        except (IndexError, ValueError):
+            continue
+
+        if (
+            isinstance(x_left, np.ndarray)
+            and isinstance(x_right, np.ndarray)
+            and x_left.size > 1
+            and x_right.size > 1
+        ):
+            (
+                _left_slope,
+                _right_slope,
+                _aver_left_velocity,
+                _aver_right_velocity,
+                _right_r2,
+                _left_r2,
+                x_intersect,
+                y_intersect,
+                left_x_intercept,
+                right_x_intercept,
+            ) = lines_intersection(signal=segment, x_right=x_right, x_left=x_left)
+
+            results[f"startleftxintercept{key_prefix}"][idx] = float(left_x_intercept)
+            results[f"endrightxintercept{key_prefix}"][idx] = float(right_x_intercept)
+            results[f"xintersect{key_prefix}"][idx] = float(x_intersect)
+            results[f"yintersect{key_prefix}"][idx] = float(y_intersect)
+
+    return results
 
 
 def refine_blinks_from_epochs(

@@ -11,8 +11,6 @@ if str(PROJECT_ROOT) not in sys.path:
 DATA_DIR = PROJECT_ROOT / "test" / "test_files"
 
 import mne
-import pandas as pd
-
 from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
 from pyblinker.utils.evaluation import mat_data
 from test.segment_config import build_segment_config
@@ -21,6 +19,18 @@ from test.segment_config import build_segment_config
 EXPECTED_COLUMNS = [
 		"blink_onset",
 		"blink_duration",
+		"startleftbaseeeg",
+		"endrightbaseeeg",
+		"startleftzeroeeg",
+		"endrightzeroeeg",
+		"startleftxintercepteeg",
+		"endrightxintercepteeg",
+		"startleftbasehalfheighteeg",
+		"endrightbasehalfheighteeg",
+		"startleftzerohalfheighteeg",
+		"endrightzerohalfheighteeg",
+		"xintersecteeg",
+		"yintersecteeg",
 		]
 
 
@@ -34,7 +44,7 @@ class TestEarRefinementMetadata(unittest.TestCase):
 
 		base_config = {
 				"eeg": {
-						"channel": "EEG-E8",
+						"channel": "EEGE8",
 						},
 				}
 
@@ -52,9 +62,11 @@ class TestEarRefinementMetadata(unittest.TestCase):
 
 	def test_metadata_matches_reference(self) -> None:
 		got_metadata = self.epochs.metadata
-		# ensure columns like,start__left_base__eeg,end__right_base__eeg, start__left_zero__eeg,end__right_zero__eeg,	start__left_x_intercept__eeg
-		# 	end__right_x_intercept__eeg, start__left_base_half_height__eeg,	end__right_base_half_height__eeg,start__left_zero_half_height
-		# end__right_zero_half_height__eeg  are available
+		missing = [col for col in EXPECTED_COLUMNS if col not in got_metadata.columns]
+		self.assertFalse(
+			missing,
+			msg=f"Missing expected EEG refinement columns: {', '.join(missing)}",
+			)
 
 
 if __name__ == "__main__":

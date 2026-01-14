@@ -18,16 +18,20 @@ By this doing this, the feature calculation functions can remain agnostic to how
 """
 from __future__ import annotations
 
+# ruff: noqa: E402
 import unittest
 from pathlib import Path
+import sys
+
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 import mne
 from pyblinker.blink_features.energy.energy_features import compute_energy_features
 from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
 from test.segment_config import build_segment_config
 from test.blink_features.utils.helpers import assert_df_has_columns
-
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 
 class TestEnergyFeatures(unittest.TestCase):

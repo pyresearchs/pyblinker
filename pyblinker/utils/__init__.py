@@ -18,8 +18,6 @@ from .io_utils import prepare_refined_segments, save_epoch_raws
 from .metadata_utils import onset_entry_to_blinks
 from .modality import infer_modality
 from .ear import select_auto_threshold
-from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
-from pyblinker.segmentation.refinement.eeg import refine_blinks_from_epochs, refine_local_maximum_stub
 from .report_utils import add_blink_plots_to_report, generate_epoch_report
 from .statistics_utils import (
     calculate_good_ratio,
@@ -58,3 +56,22 @@ __all__ = [
     "refine_blinks_from_epochs",
     "slice_raw_into_mne_epochs_refine_annot",
 ]
+
+
+def __getattr__(name: str):
+    if name == "slice_raw_into_mne_epochs_refine_annot":
+        from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
+
+        return slice_raw_into_mne_epochs_refine_annot
+    if name in {"refine_blinks_from_epochs", "refine_local_maximum_stub"}:
+        from pyblinker.segmentation.refinement.eeg import (
+            refine_blinks_from_epochs,
+            refine_local_maximum_stub,
+        )
+
+        lookup = {
+            "refine_blinks_from_epochs": refine_blinks_from_epochs,
+            "refine_local_maximum_stub": refine_local_maximum_stub,
+        }
+        return lookup[name]
+    raise AttributeError(f"module 'pyblinker.utils' has no attribute {name!r}")

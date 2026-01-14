@@ -460,15 +460,19 @@ def fit_and_extract_properties(
             metrics = compute_segment_kinematics(
                 segment,
                 sfreq,
-                methods=(method,),
+                method=method,
                 modality=modality,
             )
+            metrics = {key: val for key, val in metrics.items() if key not in props_df.columns}
             waveform_metrics = compute_blink_waveform_metrics(
                 segment,
                 sfreq,
-                methods=(method,),
+                method=method,
                 modality=modality,
             )
+            waveform_metrics = {
+                key: val for key, val in waveform_metrics.items() if key not in props_df.columns
+            }
             metrics.update(waveform_metrics)
             row_metrics.update(metrics)
 
@@ -476,4 +480,3 @@ def fit_and_extract_properties(
 
     metrics_df = pd.DataFrame(metric_records, index=props_df.index)
     return pd.concat([props_df, metrics_df], axis=1)
-
