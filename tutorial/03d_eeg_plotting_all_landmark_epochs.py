@@ -158,8 +158,27 @@ def _plot_epoch_blink(
         left = 0.0
         right = float(n_samples - 1)
 
-    start = max(0, int(min(n_samples - 1, round(left)) - pad_samples))
-    end = min(n_samples - 1, int(round(right)) + pad_samples)
+    landmark_samples = [
+        row.get(col)
+        for col in (
+            *LANDMARK_SAMPLE_COLUMNS,
+            "x_intersect__eeg",
+        )
+    ]
+    finite_landmarks = []
+    for value in landmark_samples:
+        try:
+            numeric = float(value)
+        except (TypeError, ValueError):
+            continue
+        if np.isfinite(numeric):
+            finite_landmarks.append(numeric)
+
+    min_sample = min([left, *finite_landmarks])
+    max_sample = max([right, *finite_landmarks])
+
+    start = max(0, int(round(min_sample)) - pad_samples)
+    end = min(n_samples - 1, int(round(max_sample)) + pad_samples)
 
     times = np.arange(start, end + 1, dtype=float) / sfreq
     window = eeg_signal[start : end + 1]
@@ -168,7 +187,9 @@ def _plot_epoch_blink(
         1, 2, figsize=(10, 3), gridspec_kw={"width_ratios": [5, 1]}
     )
     legend_ax.axis("off")
-    ax.plot(times, window, lw=1.0, color="black", label=channel_name)
+    ax.plot(times, window, lw=1.0, color="black", alpha=0.25, label=channel_name)
+    ax.scatter(times, window, s=6, color="black", alpha=0.45)
+    ax.axhline(0.0, color="red", lw=1.0, alpha=0.8, label="y=0")
 
     overlay_ax = None
     if ear_signal is not None:
