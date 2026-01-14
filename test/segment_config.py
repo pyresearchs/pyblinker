@@ -35,11 +35,21 @@ def build_segment_config(
 
     config: Dict[str, Any] = deepcopy(base_config) if base_config is not None else {}
 
+    def _normalize_channel(channel_name: str) -> str:
+        if channel_name in raw.ch_names:
+            return channel_name
+        if channel_name.startswith("EEG") and "-" not in channel_name:
+            dashed = f"EEG-{channel_name[3:]}"
+            if dashed in raw.ch_names:
+                return dashed
+        return channel_name
+
     def _section(modality: str, channel: str | None) -> Dict[str, Any]:
         section = deepcopy(config.get(modality, {}))
         if channel is None:
             section.pop("channel", None)
             return section
+        channel = _normalize_channel(channel)
         if channel not in raw.ch_names:
             raise ValueError(f"Channel '{channel}' not found in raw data for modality '{modality}'.")
         section["channel"] = channel

@@ -15,6 +15,11 @@ The transition from continuous data to epochs involves:
 1.  **Slicing**: The raw data is cut into fixed-length segments (default 30s) or segments locked to experimental events.
 2.  **Metadata Alignment**: `pyblinker` calculates which blinks fall into which epoch and updates the epoch metadata with `blink_onset`, `blink_duration`, and other properties relative to the epoch start.
 
+### EEG landmark metadata in epochs
+* **Feature/Change**: Epoch metadata now includes EEG landmark columns (`start__left_base__eeg`, `end__right_base__eeg`, `start__left_zero__eeg`, `end__right_zero__eeg`, `start__left_x_intercept__eeg`, `end__right_x_intercept__eeg`, `start__left_base_half_height__eeg`, `end__right_base_half_height__eeg`, `start__left_zero_half_height__eeg`, `end__right_zero_half_height__eeg`, `x_intersect__eeg`, `y_intersect__eeg`) when EEG refinement is enabled. Values are stored as sample indices relative to the epoch start (with intersection y-values as signal amplitudes).
+* **Related Code**: `pyblinker/segmentation/refinement/epochs.py`, `pyblinker/segmentation/refinement/refine_epoch.py`, `pyblinker/segmentation/refinement/eeg/refinement.py`.
+* **Verification (Tutorials & Tests)**: `tutorial/03d_eeg_plotting_all_landmark_epochs.py`, `test/segmentation/test_eeg_refinement_outputs.py`.
+
 ### Channel selection per modality
 Epoch creation now expects an explicit, single-channel configuration per modality via the segmentation settings passed to `slice_raw_into_mne_epochs_refine_annot`:
 

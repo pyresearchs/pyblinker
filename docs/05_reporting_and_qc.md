@@ -23,6 +23,11 @@ A typical `pyblinker` report (MNE-based) includes:
 * **Related Code**: `pyblinker/outside_annotation/reporting_flow.py`.
 * **Verification (Tutorials & Tests)**: `tutorial/03a_ear_threshold_blink_refinement.py`, `tutorial/03c_ear_threshold_multi_candidate_refinement.py`, `tutorial/06_refined_blink_report_tutorial.py`.
 
+### EEG epoch landmark plotting
+* **Feature/Change**: The EEG epoch landmark tutorial now renders EEG traces as low-opacity lines with scatter points, includes a horizontal zero-reference line, pads each blink window to include the last available EEG landmark before plotting, and annotates the caption when any landmark values are missing. Landmarks still come from exploded `epochs.metadata` fields like `start__left_base__eeg` and `x_intersect__eeg`.
+* **Related Code**: `tutorial/03d_eeg_plotting_all_landmark_epochs.py`.
+* **Verification (Tutorials & Tests)**: `tutorial/03d_eeg_plotting_all_landmark_epochs.py`, `test/segmentation/test_eeg_refinement_outputs.py`.
+
 ## When to Generate Reports
 Reports can be generated at multiple stages:
 

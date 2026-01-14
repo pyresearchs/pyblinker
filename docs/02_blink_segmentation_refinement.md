@@ -61,6 +61,11 @@ Refinement typically happens when converting continuous data into epochs (`slice
 2.  **Search**: For each candidate, the algorithm searches within a small window (expanding if necessary) for the precise landmarks defined by the strategy.
 3.  **Result**: New metadata fields (e.g., `blink_onset_ear`, `refined_start_sample`, `interpolated_closing_slope`) are attached to the epochs.
 
+### EEG landmark geometry refactor
+* **Feature/Change**: Core geometry helpers (zero-crossings, baseline, half-height, fit-range, and line intersections) now live in `pyblinker/segmentation/geometry.py`. The refinement stack uses these helpers for both continuous signals and epoch-local EEG/EOG segments, producing consistent landmark columns such as `start__left_base__eeg` and `x_intersect__eeg`.
+* **Related Code**: `pyblinker/segmentation/geometry.py`, `pyblinker/segmentation/refinement/eeg/refinement.py`, `pyblinker/blinker/fit_blink.py`.
+* **Verification (Tutorials & Tests)**: `tutorial/03d_eeg_plotting_all_landmark_epochs.py`, `test/segmentation/test_eeg_refinement_outputs.py`, `test/blinker_migration/test_step1_bii_fit_blink.py`.
+
 ### EAR threshold landmark naming update
 * **Feature/Change**: EAR refinement now records threshold landmarks using the new keys (`start__th_point__ear`, `end__th_point__ear`, `trough__th_point__ear`, `onset__th__ear`, `duration__th__ear`) plus interpolation timing (`onset__th_interpolation__ear`, `duration__th_interpolation__ear`). Legacy fields may still exist but are no longer required for correctness.
 * **Related Code**: `pyblinker/segmentation/refinement/ear/epoch.py`, `pyblinker/segmentation/refinement/ear/threshold.py`.
