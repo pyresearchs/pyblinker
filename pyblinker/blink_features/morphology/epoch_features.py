@@ -193,7 +193,6 @@ def _build_blink_landmark_frame(
     signal: np.ndarray,
     sfreq: float,
     n_times: int,
-    *,
     modality: str,
     styles: Sequence[str],
 ) -> pd.DataFrame:
@@ -279,7 +278,6 @@ def _apply_morphology_properties(
     blink_df: pd.DataFrame,
     signal: np.ndarray,
     sfreq: float,
-    *,
     modality: str,
 ) -> pd.DataFrame:
     """Populate morphology timing metrics on a per-blink DataFrame.
@@ -489,11 +487,39 @@ class MorphologyBlinkFeatureExtractor:
 
     def _prepare_inputs(
         self,
-        *,
         picks: str | Sequence[str] | None,
         sfreq: float,
     ) -> Tuple[List[str], dict, pd.Index, int, int]:
-        """Resolve channels and load epoch/channel data."""
+        """
+        Resolve target channels and extract epoch-wise signal arrays.
+
+        Pipeline (functions called)
+        ---------------------------
+        1) resolve_channels(self.epochs, picks, default=_default_morphology_channels)
+        2) prepare_epoch_channel_data(epochs=self.epochs, picks=..., sfreq=sfreq)
+
+        Parameters
+        ----------
+        picks : str | list[str] | None
+            Channel selection rule (passed to resolve_channels()).
+        sfreq : float
+            Sampling frequency in Hz.
+
+        Returns
+        -------
+        ch_names : list[str]
+            Final resolved channel names to compute morphology on.
+        channel_data : dict
+            Channel dictionary holding per-channel extracted arrays.
+            Expected access pattern later:
+                channel_data[ch]["raw"][epoch_index]
+        index : pandas.Index
+            Index aligned with epochs (used as output DataFrame index).
+        n_epochs : int
+            Number of epochs present.
+        n_times : int
+            Number of samples per epoch.
+        """
         ch_names = resolve_channels(self.epochs, picks, default=_default_morphology_channels)
         return prepare_epoch_channel_data(
             epochs=self.epochs,
@@ -529,7 +555,6 @@ class MorphologyBlinkFeatureExtractor:
 
     def _build_styles_by_modality(
         self,
-        *,
         modalities: Set[str],
         metadata_cols: Sequence[str] | None,
     ) -> Dict[str, Set[str]]:
@@ -545,7 +570,32 @@ class MorphologyBlinkFeatureExtractor:
         modality_channels: Dict[str, List[str]],
         styles_by_modality: Dict[str, Set[str]],
     ) -> List[str]:
-        """Build stable output column names upfront."""
+        """
+        Build the full list of output column names upfront.
+
+        Why this exists
+        ---------------
+        Building all columns first ensures the output DataFrame has a stable shape
+        even when some epochs have no blinks/windows.
+
+        Pipeline (functions called)
+        ---------------------------
+        - _metrics_for_style(style)
+        - uses constants: MORPHOLOGY_METRIC_STEMS, _STATS
+        - adds legacy metrics: _LEGACY_MORPHOLOGY_METRICS (EEG only)
+
+        Parameters
+        ----------
+        modality_channels : dict[str, list[str]]
+            Mapping of modality -> list of channel names.
+        styles_by_modality : dict[str, set[str]]
+            Mapping of modality -> waveform metric styles to compute.
+
+        Returns
+        -------
+        columns : list[str]
+            Sorted list of unique output column names.
+        """
         column_set: Set[str] = set()
 
         for mod, channels in modality_channels.items():
@@ -575,7 +625,6 @@ class MorphologyBlinkFeatureExtractor:
     # ------------------------------------------------------------------
     def _compute_epoch_record(
         self,
-        *,
         epoch_index: int,
         metadata_row: pd.Series,
         modality_channels: Dict[str, List[str]],
@@ -585,7 +634,43 @@ class MorphologyBlinkFeatureExtractor:
         n_times: int,
         n_epochs: int,
     ) -> Dict[str, float]:
-        """Compute all morphology stats for a single epoch."""
+        """
+        Compute all morphology stats for a single epoch.
+
+        Pipeline (functions called)
+        ---------------------------
+        For each modality and channel, this function calls:
+
+        - _compute_channel_record(...)
+            -> _build_blink_df(...)
+            -> _compute_style_stats_into_record(...)
+            -> _add_legacy_metrics_if_available(...) (EEG only)
+
+        Parameters
+        ----------
+        epoch_index : int
+            Current epoch index (0-based).
+        metadata_row : pandas.Series
+            One row of epochs.metadata corresponding to the epoch.
+        modality_channels : dict[str, list[str]]
+            Modality -> channel names to process.
+        styles_by_modality : dict[str, set[str]]
+            Modality -> styles available for that modality.
+        channel_data : dict
+            Data prepared by prepare_epoch_channel_data().
+        sfreq : float
+            Sampling frequency (Hz).
+        n_times : int
+            Number of samples in this epoch.
+        n_epochs : int
+            Total number of epochs (used for logging only).
+
+        Returns
+        -------
+        record : dict[str, float]
+            Dictionary of computed feature values for this epoch.
+            Keys are column names, values are floats (possibly NaN).
+        """
         logger.debug("Morphology epoch %d/%d", epoch_index + 1, n_epochs)
 
         record: Dict[str, float] = {}
@@ -619,7 +704,6 @@ class MorphologyBlinkFeatureExtractor:
 
     def _compute_channel_record(
         self,
-        *,
         record: Dict[str, float],
         epoch_index: int,
         modality: str,
@@ -631,7 +715,50 @@ class MorphologyBlinkFeatureExtractor:
         n_times: int,
         styles: Sequence[str],
     ) -> None:
-        """Compute channel-specific morphology features for one epoch."""
+        """
+        Compute morphology features for one (epoch, modality, channel).
+
+        Pipeline (functions called)
+        ---------------------------
+        1) _build_blink_df(...)
+            -> _build_blink_landmark_frame(...)
+            -> _apply_morphology_properties(...)
+
+        2) For each style in `styles`:
+            _compute_style_stats_into_record(...)
+
+        3) Legacy EEG metrics:
+            _add_legacy_metrics_if_available(...) (only if modality == "eeg" and
+            channel_index_in_modality == 0)
+
+        Parameters
+        ----------
+        record : dict[str, float]
+            Output feature dictionary mutated in-place.
+        epoch_index : int
+            Current epoch index.
+        modality : str
+            Modality name (e.g., "eeg", "eog", "ear").
+        channel_name : str
+            Channel name being processed.
+        channel_index_in_modality : int
+            Index of the channel inside modality channel list (used for legacy metrics).
+        metadata_row : pandas.Series
+            Epoch metadata row.
+        signal : array-like
+            1D signal waveform of shape (n_times,).
+        sfreq : float
+            Sampling frequency in Hz.
+        n_times : int
+            Number of samples per epoch.
+        styles : list[str]
+            Styles to compute for this modality.
+
+        Returns
+        -------
+        None
+            This function does not return anything. It updates `record` in-place.
+        """
         logger.debug(
             "Epoch %d: channel=%s modality=%s",
             epoch_index + 1,
@@ -666,7 +793,6 @@ class MorphologyBlinkFeatureExtractor:
 
     def _build_blink_df(
         self,
-        *,
         metadata_row: pd.Series,
         signal: np.ndarray,
         sfreq: float,
@@ -693,7 +819,6 @@ class MorphologyBlinkFeatureExtractor:
 
     def _compute_style_stats_into_record(
         self,
-        *,
         record: Dict[str, float],
         metadata_row: pd.Series,
         signal: np.ndarray,
@@ -704,7 +829,45 @@ class MorphologyBlinkFeatureExtractor:
         channel_name: str,
         blink_df: pd.DataFrame,
     ) -> None:
-        """Compute style-specific metric values and write stats into `record`."""
+        """
+        Compute per-window waveform metrics for one style and aggregate into stats.
+
+        Pipeline (functions called)
+        ---------------------------
+        1) windows = _style_windows(metadata_row, modality, style)
+        2) per_metric_values = _compute_metrics_over_windows(...)
+            -> segment_to_samples(...)
+            -> compute_blink_waveform_metrics(...)
+        3) per_metric_values["duration"] = _duration_values_from_blink_df(...)
+        4) _write_metric_stats_to_record(...)
+            -> _safe_stats(...)
+
+        Parameters
+        ----------
+        record : dict[str, float]
+            Feature dict updated in-place.
+        metadata_row : pandas.Series
+            Metadata row for the epoch.
+        signal : array-like
+            1D channel waveform for the epoch.
+        sfreq : float
+            Sampling frequency (Hz).
+        n_times : int
+            Number of samples in epoch.
+        modality : str
+            Modality name.
+        style : str
+            Style/method name ("base", "blink", etc.).
+        channel_name : str
+            Channel name used to build output keys.
+        blink_df : pandas.DataFrame
+            Blink landmark and morphology properties frame.
+
+        Returns
+        -------
+        None
+            This function does not return anything. It updates `record` in-place.
+        """
         windows = _style_windows(metadata_row, modality, style)
         metric_names = [f"{stem}_{style}" for stem in MORPHOLOGY_METRIC_STEMS]
 
@@ -741,7 +904,6 @@ class MorphologyBlinkFeatureExtractor:
 
     def _compute_metrics_over_windows(
         self,
-        *,
         signal: np.ndarray,
         windows: Sequence[Tuple[float, float]],
         metric_names: Sequence[str],
@@ -750,7 +912,39 @@ class MorphologyBlinkFeatureExtractor:
         modality: str,
         style: str,
     ) -> Dict[str, List[float]]:
-        """Compute waveform metrics for each window and collect values per metric."""
+        """
+        Compute waveform metrics for each window and collect values per metric.
+
+        Pipeline (functions called)
+        ---------------------------
+        For every window (onset_s, duration_s):
+        1) sl = segment_to_samples(onset_s, duration_s, sfreq, n_times)
+        2) segment = signal[sl]
+        3) metrics = compute_blink_waveform_metrics(segment, sfreq, method=style, modality=modality)
+
+        Parameters
+        ----------
+        signal : array-like
+            1D waveform array of shape (n_times,).
+        windows : list[tuple[float, float]]
+            List of windows as (onset_seconds, duration_seconds).
+        metric_names : list[str]
+            Metric keys expected from compute_blink_waveform_metrics().
+        sfreq : float
+            Sampling frequency in Hz.
+        n_times : int
+            Total number of samples for bounds checking.
+        modality : str
+            Modality name.
+        style : str
+            Metric computation method/style.
+
+        Returns
+        -------
+        per_metric_values : dict[str, list[float]]
+            Dictionary mapping each metric name to a list of computed values
+            (one value per window). Missing metrics are filled with NaN.
+        """
         out: Dict[str, List[float]] = {m: [] for m in metric_names}
 
         for onset_s, duration_s in windows:
@@ -789,7 +983,6 @@ class MorphologyBlinkFeatureExtractor:
 
     def _write_metric_stats_to_record(
         self,
-        *,
         record: Dict[str, float],
         modality: str,
         style: str,
