@@ -5,6 +5,7 @@
 ### Changed
 - Compute morphology epoch metrics with shared core duration/shut-time helpers while emitting both legacy flat column names and fully-qualified style-aware names.
 - Replace lazy morphology package exports with explicit imports aligned to the kinematics package.
+- Add morphology aggregation logging and clarify core metric responsibilities in documentation strings.
 
 ### Added
 - EEG-only morphology test coverage for style-aware duration columns and legacy aliases.

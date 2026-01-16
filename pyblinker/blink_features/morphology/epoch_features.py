@@ -282,6 +282,15 @@ def _apply_morphology_properties(
     *,
     modality: str,
 ) -> pd.DataFrame:
+    """Populate morphology timing metrics on a per-blink DataFrame.
+
+    - compute_blink_durations: duration_base, duration_zero, duration_tent,
+      duration_half_base, duration_half_zero.
+    - compute_time_zero_shut: closing_time_zero, reopening_time_zero, time_shut_zero.
+    - compute_time_base_shut: time_shut_base, closing_time_tent, reopening_time_tent,
+      time_shut_tent.
+    - compute_blink_peak_times: inter_blink_max_amp (inter-blink timing).
+    """
     if blink_df.empty:
         return blink_df
 
@@ -458,10 +467,22 @@ class MorphologyBlinkFeatureExtractor:
                 if isinstance(self.epochs.metadata, pd.DataFrame)
                 else pd.Series(dtype=float)
             )
+            logger.debug("Morphology epoch %d/%d", ei + 1, n_epochs)
             record: Dict[str, float] = {}
             for modality, channels in modality_channels.items():
                 styles = sorted(styles_by_modality.get(modality, {"base"}))
+                logger.debug(
+                    "Morphology modality=%s styles=%s channels=%s",
+                    modality,
+                    styles,
+                    channels,
+                )
                 for ch_index, ch in enumerate(channels):
+                    logger.debug(
+                        "Morphology epoch=%d channel=%s",
+                        ei + 1,
+                        ch,
+                    )
                     signal = channel_data[ch]["raw"][ei]
                     blink_df = _build_blink_landmark_frame(
                         metadata_row,
