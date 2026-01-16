@@ -1,7 +1,7 @@
 """Aggregate blink morphology features from :class:`mne.Epochs`."""
 from __future__ import annotations
 
-from typing import Dict, List, Mapping, Sequence, Set
+from typing import Dict, List, Mapping, Sequence, Set, Tuple
 
 import mne
 import numpy as np
@@ -382,169 +382,443 @@ class MorphologyBlinkFeatureExtractor:
         raise ValueError("Neither self.epochs nor self.raw defined (need MNE object).")
 
     def compute(self, picks: str | Sequence[str] | None = None) -> pd.DataFrame:
-        """Compute blink morphology statistics for each epoch.
+        """
+        Compute blink morphology statistics for each epoch.
+
+        Pipeline (functions called)
+        ---------------------------
+        This function orchestrates the full morphology extraction pipeline and
+        internally calls, in order:
+
+        1) _validate_inputs()
+        2) _sampling_frequency()
+        3) _prepare_inputs() -> resolve_channels(), prepare_epoch_channel_data()
+        4) _build_modality_map() -> _infer_modality()
+        5) _group_channels_by_modality()
+        6) _get_metadata_cols()
+        7) _build_styles_by_modality() -> _available_styles()
+        8) _build_output_columns()
+        9) For each epoch -> _compute_epoch_record()
+           - which calls _compute_channel_record() and deeper steps
 
         Parameters
         ----------
-        picks : str | list of str | None, optional
-            Channel name(s) to include. ``None`` selects channels containing
-            ``"EOG"`` or ``"EAR"``. If any requested channel is missing a
-            :class:`ValueError` is raised.
+        picks : str | list[str] | None
+            Channels to include. If None, uses default channels such as those
+            containing "EOG" or "EAR".
 
         Returns
         -------
-        pandas.DataFrame
-            DataFrame indexed like ``epochs`` containing ``mean``, ``std``, and
-            ``cv`` aggregates for each morphology metric per channel.
+        df : pandas.DataFrame
+            A wide DataFrame indexed like `epochs` (same index returned by
+            prepare_epoch_channel_data). Columns contain per-epoch summary
+            statistics for each morphology metric per channel.
+
+            Each column follows the pattern:
+                "{modality}__{style}__morphology__{metric}_{stat}__{channel}"
+
+            Examples of returned stats include:
+                mean, std, cv (depending on your `_STATS` constant)
 
         Raises
         ------
         ValueError
-            If required metadata columns are absent or ``picks`` contain unknown
-            channels.
+            If `self.epochs` is missing or `epochs.metadata` is not provided.
 
         Notes
         -----
-        If an epoch contains no blinks, all morphology statistics for that epoch
-        are ``NaN``.
+        If an epoch contains no valid blink windows, all values for that epoch
+        will be NaN for the affected metrics.
         """
+        self._validate_inputs()
         logger.info("Computing morphology features for epochs")
 
-        if self.epochs is None:
-            raise ValueError("self.epochs is required for feature computation")
-        if self.epochs.metadata is None:
-            raise ValueError("epochs.metadata must be provided")
-
         sfreq = self._sampling_frequency()
-        ch_names = resolve_channels(self.epochs, picks, default=_default_morphology_channels)
-        ch_names, channel_data, index, n_epochs, n_times = prepare_epoch_channel_data(
-            epochs=self.epochs,
-            picks=ch_names,
+
+        ch_names, channel_data, index, n_epochs, n_times = self._prepare_inputs(
+            picks=picks,
             sfreq=sfreq,
         )
 
-        modality_map: Dict[str, str] = {ch: _infer_modality(ch, self.epochs.info) for ch in ch_names}
-        modality_channels: Dict[str, List[str]] = {}
-        for ch, mod in modality_map.items():
-            modality_channels.setdefault(mod, []).append(ch)
-        styles_by_modality: Dict[str, Set[str]] = {
-            modality: {"base"} for modality in modality_channels
-        }
+        modality_map = self._build_modality_map(ch_names)
+        modality_channels = self._group_channels_by_modality(modality_map)
+        metadata_cols = self._get_metadata_cols()
 
-        metadata_cols: Sequence[str] | None = (
-            tuple(self.epochs.metadata.columns)
-            if isinstance(self.epochs.metadata, pd.DataFrame)
-            else None
+        styles_by_modality = self._build_styles_by_modality(
+            modalities=set(modality_channels.keys()),
+            metadata_cols=metadata_cols,
         )
 
-        for mod in set(modality_map.values()):
-            styles = _available_styles(metadata_cols, mod)
-            # fallback_styles[mod] = not styles
-            styles_by_modality[mod] = styles
+        columns = self._build_output_columns(modality_channels, styles_by_modality)
+        logger.debug("Morphology output columns: %d", len(columns))
 
-        column_set: Set[str] = set()
-        for mod, channels in modality_channels.items():
-            for style in sorted(styles_by_modality.get(mod, {"base"})):
-                metrics_for_style = [f"{stem}_{style}" for stem in MORPHOLOGY_METRIC_STEMS]
-                metrics_for_style.append("duration")
-                for metric in metrics_for_style:
-                    for stat in _STATS:
-                        for ch in channels:
-                            column_set.add(f"{mod}__{style}__morphology__{metric}_{stat}__{ch}")
-            if mod == "eeg" and channels:
-                column_set.update(_LEGACY_MORPHOLOGY_METRICS)
-
-        columns = sorted(column_set)
         if n_epochs == 0:
+            logger.info("No epochs available. Returning empty DataFrame.")
             return pd.DataFrame(index=index, columns=columns, dtype=float)
 
-        records: List[Dict[str, float]] = []
         logger.info("Computing morphology features for %d epochs", n_epochs)
 
+        records: List[Dict[str, float]] = []
         for ei in range(n_epochs):
-            metadata_row = (
-                self.epochs.metadata.iloc[ei]
-                if isinstance(self.epochs.metadata, pd.DataFrame)
-                else pd.Series(dtype=float)
+            metadata_row = self._get_metadata_row(ei)
+            record = self._compute_epoch_record(
+                epoch_index=ei,
+                metadata_row=metadata_row,
+                modality_channels=modality_channels,
+                styles_by_modality=styles_by_modality,
+                channel_data=channel_data,
+                sfreq=sfreq,
+                n_times=n_times,
+                n_epochs=n_epochs,
             )
-            logger.debug("Morphology epoch %d/%d", ei + 1, n_epochs)
-            record: Dict[str, float] = {}
-            for modality, channels in modality_channels.items():
-                styles = sorted(styles_by_modality.get(modality, {"base"}))
-                logger.debug(
-                    "Morphology modality=%s styles=%s channels=%s",
-                    modality,
-                    styles,
-                    channels,
-                )
-                for ch_index, ch in enumerate(channels):
-                    logger.debug(
-                        "Morphology epoch=%d channel=%s",
-                        ei + 1,
-                        ch,
-                    )
-                    signal = channel_data[ch]["raw"][ei]
-                    blink_df = _build_blink_landmark_frame(
-                        metadata_row,
-                        signal,
-                        sfreq,
-                        n_times,
-                        modality=modality,
-                        styles=styles,
-                    )
-                    blink_df = _apply_morphology_properties(
-                        blink_df,
-                        signal,
-                        sfreq,
-                        modality=modality,
-                    )
-                    for style in styles:
-                        metrics_for_style = [
-                            f"{stem}_{style}" for stem in MORPHOLOGY_METRIC_STEMS
-                        ]
-                        windows = _style_windows(metadata_row, modality, style)
-                        per_metric: Dict[str, List[float]] = {
-                            m: [] for m in metrics_for_style
-                        }
-                        for onset_s, duration_s in windows:
-                            sl = segment_to_samples(onset_s, duration_s, sfreq, n_times)
-                            segment = signal[sl]
-                            metrics = compute_blink_waveform_metrics(
-                                segment,
-                                sfreq,
-                                method=style,
-                                modality=modality,
-                            )
-                            for metric_name in metrics_for_style:
-                                per_metric[metric_name].append(
-                                    metrics.get(metric_name, float("nan"))
-                                )
-
-                        duration_key = _DURATION_STYLE_MAP.get(style)
-                        if duration_key and duration_key in blink_df.columns:
-                            per_metric["duration"] = blink_df[duration_key].tolist()
-                        else:
-                            per_metric["duration"] = []
-
-                        for metric, values in per_metric.items():
-                            stats = _safe_stats(values)
-                            for stat_name, value in stats.items():
-                                column = (
-                                    f"{modality}__{style}__morphology__{metric}_{stat_name}__{ch}"
-                                )
-                                record[column] = value
-
-                    if modality == "eeg" and ch_index == 0 and not blink_df.empty:
-                        for legacy_metric in _LEGACY_MORPHOLOGY_METRICS:
-                            if legacy_metric in blink_df.columns:
-                                record[legacy_metric] = _safe_stats(
-                                    blink_df[legacy_metric].tolist()
-                                )["mean"]
             records.append(record)
 
         df = pd.DataFrame.from_records(records, index=index, columns=columns)
         logger.debug("Morphology feature DataFrame shape: %s", df.shape)
         return df
+
+    # ------------------------------------------------------------------
+    # Input preparation & validation
+    # ------------------------------------------------------------------
+    def _validate_inputs(self) -> None:
+        """Validate that the required MNE objects and metadata exist."""
+        if self.epochs is None:
+            raise ValueError("self.epochs is required for feature computation")
+        if self.epochs.metadata is None:
+            raise ValueError("epochs.metadata must be provided")
+
+    def _prepare_inputs(
+        self,
+        *,
+        picks: str | Sequence[str] | None,
+        sfreq: float,
+    ) -> Tuple[List[str], dict, pd.Index, int, int]:
+        """Resolve channels and load epoch/channel data."""
+        ch_names = resolve_channels(self.epochs, picks, default=_default_morphology_channels)
+        return prepare_epoch_channel_data(
+            epochs=self.epochs,
+            picks=ch_names,
+            sfreq=sfreq,
+        )
+
+    def _get_metadata_cols(self) -> Sequence[str] | None:
+        """Return metadata column names if epochs.metadata is a DataFrame."""
+        if isinstance(self.epochs.metadata, pd.DataFrame):
+            return tuple(self.epochs.metadata.columns)
+        return None
+
+    def _get_metadata_row(self, epoch_index: int) -> pd.Series:
+        """Fetch metadata row for an epoch (or an empty Series if unavailable)."""
+        if isinstance(self.epochs.metadata, pd.DataFrame):
+            return self.epochs.metadata.iloc[epoch_index]
+        return pd.Series(dtype=float)
+
+    # ------------------------------------------------------------------
+    # Modality/style/column planning
+    # ------------------------------------------------------------------
+    def _build_modality_map(self, ch_names: Sequence[str]) -> Dict[str, str]:
+        """Infer modality for each channel (e.g., eeg/eog/ear)."""
+        return {ch: _infer_modality(ch, self.epochs.info) for ch in ch_names}
+
+    def _group_channels_by_modality(self, modality_map: Dict[str, str]) -> Dict[str, List[str]]:
+        """Group channels by modality."""
+        grouped: Dict[str, List[str]] = {}
+        for ch, mod in modality_map.items():
+            grouped.setdefault(mod, []).append(ch)
+        return grouped
+
+    def _build_styles_by_modality(
+        self,
+        *,
+        modalities: Set[str],
+        metadata_cols: Sequence[str] | None,
+    ) -> Dict[str, Set[str]]:
+        """Determine available waveform styles per modality based on metadata."""
+        styles_by_modality: Dict[str, Set[str]] = {}
+        for mod in modalities:
+            styles = _available_styles(metadata_cols, mod)
+            styles_by_modality[mod] = styles
+        return styles_by_modality
+
+    def _build_output_columns(
+        self,
+        modality_channels: Dict[str, List[str]],
+        styles_by_modality: Dict[str, Set[str]],
+    ) -> List[str]:
+        """Build stable output column names upfront."""
+        column_set: Set[str] = set()
+
+        for mod, channels in modality_channels.items():
+            styles = sorted(styles_by_modality.get(mod, {"base"}))
+            for style in styles:
+                metric_names = self._metrics_for_style(style)
+                for metric in metric_names:
+                    for stat in _STATS:
+                        for ch in channels:
+                            column_set.add(
+                                f"{mod}__{style}__morphology__{metric}_{stat}__{ch}"
+                            )
+
+            if mod == "eeg" and channels:
+                column_set.update(_LEGACY_MORPHOLOGY_METRICS)
+
+        return sorted(column_set)
+
+    def _metrics_for_style(self, style: str) -> List[str]:
+        """Return list of metrics for a given style (including duration)."""
+        metric_names = [f"{stem}_{style}" for stem in MORPHOLOGY_METRIC_STEMS]
+        metric_names.append("duration")
+        return metric_names
+
+    # ------------------------------------------------------------------
+    # Core computation (epoch/modality/channel/style)
+    # ------------------------------------------------------------------
+    def _compute_epoch_record(
+        self,
+        *,
+        epoch_index: int,
+        metadata_row: pd.Series,
+        modality_channels: Dict[str, List[str]],
+        styles_by_modality: Dict[str, Set[str]],
+        channel_data: dict,
+        sfreq: float,
+        n_times: int,
+        n_epochs: int,
+    ) -> Dict[str, float]:
+        """Compute all morphology stats for a single epoch."""
+        logger.debug("Morphology epoch %d/%d", epoch_index + 1, n_epochs)
+
+        record: Dict[str, float] = {}
+
+        for modality, channels in modality_channels.items():
+            styles = sorted(styles_by_modality.get(modality, {"base"}))
+            logger.debug(
+                "Epoch %d: modality=%s styles=%s channels=%s",
+                epoch_index + 1,
+                modality,
+                styles,
+                channels,
+            )
+
+            for ch_index, ch in enumerate(channels):
+                signal = channel_data[ch]["raw"][epoch_index]
+                self._compute_channel_record(
+                    record=record,
+                    epoch_index=epoch_index,
+                    modality=modality,
+                    channel_name=ch,
+                    channel_index_in_modality=ch_index,
+                    metadata_row=metadata_row,
+                    signal=signal,
+                    sfreq=sfreq,
+                    n_times=n_times,
+                    styles=styles,
+                )
+
+        return record
+
+    def _compute_channel_record(
+        self,
+        *,
+        record: Dict[str, float],
+        epoch_index: int,
+        modality: str,
+        channel_name: str,
+        channel_index_in_modality: int,
+        metadata_row: pd.Series,
+        signal: np.ndarray,
+        sfreq: float,
+        n_times: int,
+        styles: Sequence[str],
+    ) -> None:
+        """Compute channel-specific morphology features for one epoch."""
+        logger.debug(
+            "Epoch %d: channel=%s modality=%s",
+            epoch_index + 1,
+            channel_name,
+            modality,
+        )
+
+        blink_df = self._build_blink_df(
+            metadata_row=metadata_row,
+            signal=signal,
+            sfreq=sfreq,
+            n_times=n_times,
+            modality=modality,
+            styles=styles,
+        )
+
+        for style in styles:
+            self._compute_style_stats_into_record(
+                record=record,
+                metadata_row=metadata_row,
+                signal=signal,
+                sfreq=sfreq,
+                n_times=n_times,
+                modality=modality,
+                style=style,
+                channel_name=channel_name,
+                blink_df=blink_df,
+            )
+
+        if modality == "eeg" and channel_index_in_modality == 0:
+            self._add_legacy_metrics_if_available(record, blink_df)
+
+    def _build_blink_df(
+        self,
+        *,
+        metadata_row: pd.Series,
+        signal: np.ndarray,
+        sfreq: float,
+        n_times: int,
+        modality: str,
+        styles: Sequence[str],
+    ) -> pd.DataFrame:
+        """Build and enrich the blink landmark dataframe."""
+        blink_df = _build_blink_landmark_frame(
+            metadata_row,
+            signal,
+            sfreq,
+            n_times,
+            modality=modality,
+            styles=styles,
+        )
+        blink_df = _apply_morphology_properties(
+            blink_df,
+            signal,
+            sfreq,
+            modality=modality,
+        )
+        return blink_df
+
+    def _compute_style_stats_into_record(
+        self,
+        *,
+        record: Dict[str, float],
+        metadata_row: pd.Series,
+        signal: np.ndarray,
+        sfreq: float,
+        n_times: int,
+        modality: str,
+        style: str,
+        channel_name: str,
+        blink_df: pd.DataFrame,
+    ) -> None:
+        """Compute style-specific metric values and write stats into `record`."""
+        windows = _style_windows(metadata_row, modality, style)
+        metric_names = [f"{stem}_{style}" for stem in MORPHOLOGY_METRIC_STEMS]
+
+        logger.debug(
+            "Style compute: modality=%s style=%s channel=%s windows=%d",
+            modality,
+            style,
+            channel_name,
+            len(windows),
+        )
+
+        per_metric_values = self._compute_metrics_over_windows(
+            signal=signal,
+            windows=windows,
+            metric_names=metric_names,
+            sfreq=sfreq,
+            n_times=n_times,
+            modality=modality,
+            style=style,
+        )
+
+        per_metric_values["duration"] = self._duration_values_from_blink_df(
+            blink_df,
+            style,
+        )
+
+        self._write_metric_stats_to_record(
+            record=record,
+            modality=modality,
+            style=style,
+            channel_name=channel_name,
+            per_metric_values=per_metric_values,
+        )
+
+    def _compute_metrics_over_windows(
+        self,
+        *,
+        signal: np.ndarray,
+        windows: Sequence[Tuple[float, float]],
+        metric_names: Sequence[str],
+        sfreq: float,
+        n_times: int,
+        modality: str,
+        style: str,
+    ) -> Dict[str, List[float]]:
+        """Compute waveform metrics for each window and collect values per metric."""
+        out: Dict[str, List[float]] = {m: [] for m in metric_names}
+
+        for onset_s, duration_s in windows:
+            logger.debug(
+                "Window compute: modality=%s style=%s onset=%s duration=%s",
+                modality,
+                style,
+                onset_s,
+                duration_s,
+            )
+            sl = segment_to_samples(onset_s, duration_s, sfreq, n_times)
+            segment = signal[sl]
+
+            metrics = compute_blink_waveform_metrics(
+                segment,
+                sfreq,
+                method=style,
+                modality=modality,
+            )
+
+            for metric_name in metric_names:
+                out[metric_name].append(metrics.get(metric_name, float("nan")))
+
+        return out
+
+    def _duration_values_from_blink_df(
+        self,
+        blink_df: pd.DataFrame,
+        style: str,
+    ) -> List[float]:
+        """Extract duration list from blink_df for the given style."""
+        duration_key = _DURATION_STYLE_MAP.get(style)
+        if duration_key and duration_key in blink_df.columns:
+            return blink_df[duration_key].tolist()
+        return []
+
+    def _write_metric_stats_to_record(
+        self,
+        *,
+        record: Dict[str, float],
+        modality: str,
+        style: str,
+        channel_name: str,
+        per_metric_values: Dict[str, List[float]],
+    ) -> None:
+        """Aggregate each metric list and write into the feature record."""
+        for metric, values in per_metric_values.items():
+            stats = _safe_stats(values)
+            for stat_name, value in stats.items():
+                col = (
+                    f"{modality}__{style}__morphology__{metric}_{stat_name}__{channel_name}"
+                )
+                record[col] = value
+
+    def _add_legacy_metrics_if_available(
+        self,
+        record: Dict[str, float],
+        blink_df: pd.DataFrame,
+    ) -> None:
+        """Preserve legacy EEG morphology metrics behavior."""
+        if blink_df.empty:
+            return
+
+        for legacy_metric in _LEGACY_MORPHOLOGY_METRICS:
+            if legacy_metric in blink_df.columns:
+                record[legacy_metric] = _safe_stats(
+                    blink_df[legacy_metric].tolist()
+                )["mean"]
 
 
 def compute_morphology_features(

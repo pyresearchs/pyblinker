@@ -250,7 +250,7 @@ The core helpers are structured to compute metrics one blink at a time so per-bl
 
 ## Morphology epoch naming alignment and legacy metrics
 
-*Feature/change*: Morphology epoch extraction now computes duration, shut-time, and inter-blink timing values via the shared core metrics and emits both legacy flat names (e.g., `duration_base`, `closing_time_zero`) and fully-qualified morphology columns (e.g., `eeg__base__morphology__duration_mean__EEG-E8`). This keeps legacy tutorials consistent while aligning with the newer style-aware column convention.
+*Feature/change*: Morphology epoch extraction now computes duration, shut-time, and inter-blink timing values via the shared core metrics and emits both legacy flat names (e.g., `duration_base`, `closing_time_zero`) and fully-qualified morphology columns (e.g., `eeg__base__morphology__duration_mean__EEG-E8`). This keeps legacy tutorials consistent while aligning with the newer style-aware column convention. The extractor is structured into small helper methods with debug logging to make epoch/modality/channel/style troubleshooting easier.
 
 *Related Code*:
 *   `pyblinker/blink_features/morphology/epoch_features.py` (epoch-level aggregation, legacy column aliases, and duration stats)
