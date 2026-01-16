@@ -75,11 +75,13 @@ def get_blink_position(
         # No blinks found, return empty DataFrame
         return pd.DataFrame({'start_blink': [], 'end_blink': []})
 
-    # Remove blinks that are too close together (< min_event_len apart)
+    min_event_sep = params.get('min_event_sep', params['min_event_len'])
+
+    # Remove blinks that are too close together (< min_event_sep apart)
     pos_mask = np.ones(arr_end.size, dtype=bool)
     # Differences between consecutive end and subsequent start
     blink_durations = (arr_start[1:] - arr_end[:-1]) / params['sfreq']
-    close_indices = np.argwhere(blink_durations <= params['min_event_len'])
+    close_indices = np.argwhere(blink_durations < min_event_sep)
 
     # Invalidate both the earlier and later blink intervals
     pos_mask[close_indices] = False
@@ -90,4 +92,3 @@ def get_blink_position(
         'end_blink': arr_end[pos_mask]
     }
     return pd.DataFrame(blink_position)
-

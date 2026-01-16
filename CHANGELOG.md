@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.0.68] - 2026-01-16
+
+### Fixed
+- Match MATLAB blink position separation handling by allowing candidates exactly at the minimum separation threshold.
+
 ## [0.0.67] - 2026-01-15
 
 ### Changed

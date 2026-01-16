@@ -2,7 +2,6 @@
 # Saved variables: blinkComp (waveform), srate (=100), stdThreshold (=1.5)
 
 import argparse
-import os
 import sys
 from pathlib import Path
 
@@ -125,5 +124,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 
