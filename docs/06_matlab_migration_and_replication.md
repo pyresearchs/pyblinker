@@ -79,6 +79,16 @@ The blink position detection step now matches the MATLAB separation rule by trea
 *   **Tutorials**: None.
 *   **Unit Tests**: `test/blinker_pyblinker_comparison/compare_get_blink_position.py` (compares Python and MATLAB blink positions end-to-end).
 
+### Vectorized Blink Position Detection
+The blink position detection step was refactored into focused helper functions and vectorized threshold crossings to improve efficiency while preserving MATLAB-equivalent behavior.
+
+**Related Code**
+*   `pyblinker/blinker/get_blink_positions.py`
+
+**Verification (Tutorials & Tests)**
+*   **Tutorials**: None.
+*   **Unit Tests**: `test/blinker_pyblinker_comparison/compare_get_blink_position.py` (compares Python and MATLAB blink positions end-to-end).
+
 ### Unit Tests
 *   **`test/blinker_migration/test_step1a.py`**: Validates candidate signal generation. It compares the raw signal vector used for detection against the MATLAB export.
 *   **`test/blinker_migration/test_step1bii_fitblink.py`**: Checks the shape fitting algorithm. It verifies that `fit_blink.py` produces the same $R^2$ values and slope parameters as the MATLAB `fitBlink` function.

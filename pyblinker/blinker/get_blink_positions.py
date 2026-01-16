@@ -6,6 +6,60 @@ from .default_setting import SCALING_FACTOR
 from ..fitutils import mad
 
 
+def _compute_detection_threshold(
+    blink_component: np.ndarray, params: dict
+) -> tuple[float, float]:
+    mu = np.mean(blink_component, dtype=np.float64)
+    mad_val = mad(blink_component)
+    robust_std = SCALING_FACTOR * mad_val
+    min_blink_frames = params["min_event_len"] * params["sfreq"]
+    threshold = mu + params["std_threshold"] * robust_std
+    return threshold, min_blink_frames
+
+
+def _find_blink_candidates(
+    blink_component: np.ndarray, threshold: float, min_blink_frames: float
+) -> tuple[np.ndarray, np.ndarray]:
+    above = blink_component > threshold
+    if not np.any(above):
+        return np.array([], dtype=np.int64), np.array([], dtype=np.int64)
+
+    starts = np.flatnonzero(np.logical_and(~above[:-1], above[1:])) + 1
+    ends = np.flatnonzero(np.logical_and(above[:-1], ~above[1:])) + 1
+
+    if above[0]:
+        starts = np.insert(starts, 0, 0)
+
+    if starts.size and ends.size and ends[0] < starts[0]:
+        ends = ends[1:]
+
+    pair_count = min(starts.size, ends.size)
+    if pair_count == 0:
+        return np.array([], dtype=np.int64), np.array([], dtype=np.int64)
+
+    starts = starts[:pair_count]
+    ends = ends[:pair_count]
+
+    durations = ends - starts
+    keep_mask = durations > min_blink_frames
+    return starts[keep_mask].astype(np.int64), ends[keep_mask].astype(np.int64)
+
+
+def _remove_close_blinks(
+    starts: np.ndarray, ends: np.ndarray, *, sfreq: float, min_event_sep: float
+) -> tuple[np.ndarray, np.ndarray]:
+    if ends.size == 0:
+        return starts, ends
+
+    pos_mask = np.ones(ends.size, dtype=bool)
+    blink_durations = (starts[1:] - ends[:-1]) / sfreq
+    close_indices = np.argwhere(blink_durations < min_event_sep).ravel()
+
+    pos_mask[close_indices] = False
+    pos_mask[close_indices + 1] = False
+    return starts[pos_mask], ends[pos_mask]
+
+
 def get_blink_position(
     params, blink_component=None, ch=None, *, progress_bar: bool = True
 ):
@@ -35,60 +89,32 @@ def get_blink_position(
     # Ensure 1D array
     assert blink_component.ndim == 1, "blink_component must be a 1D array"
 
-    # Compute basic statistics
-    mu = np.mean(blink_component, dtype=np.float64)
-    mad_val = mad(blink_component)
-    robust_std= SCALING_FACTOR * mad_val
+    threshold, min_blink_frames = _compute_detection_threshold(
+        blink_component, params
+    )
 
-    # Minimum blink length in frames
-    min_blink_frames = params['min_event_len'] * params['sfreq']
-    threshold = mu + params['std_threshold'] * robust_std
+    if progress_bar:
+        with tqdm(
+            total=blink_component.size,
+            desc=f"Get blink start and end for channel {ch}",
+            disable=not progress_bar,
+        ) as bar:
+            bar.update(blink_component.size)
 
-    in_blink = False
-    start_blinks = []
-    end_blinks = []
-
-    for idx in tqdm(
-        range(blink_component.size),
-        desc=f"Get blink start and end for channel {ch}",
-        disable=not progress_bar,
-    ):
-        val = blink_component[idx]
-
-        # Start condition
-        if (not in_blink) and (val > threshold):
-            start = idx
-            in_blink = True
-
-        # End condition
-        elif in_blink and (val < threshold):
-            if (idx - start) > min_blink_frames:
-                start_blinks.append(start)
-                end_blinks.append(idx)
-            in_blink = False
-
-    # Convert lists to arrays
-    arr_start = np.array(start_blinks)
-    arr_end = np.array(end_blinks)
+    arr_start, arr_end = _find_blink_candidates(
+        blink_component, threshold, min_blink_frames
+    )
 
     if arr_end.size == 0:
-        # No blinks found, return empty DataFrame
         return pd.DataFrame({'start_blink': [], 'end_blink': []})
 
-    min_event_sep = params.get('min_event_sep', params['min_event_len'])
-
-    # Remove blinks that are too close together (< min_event_sep apart)
-    pos_mask = np.ones(arr_end.size, dtype=bool)
-    # Differences between consecutive end and subsequent start
-    blink_durations = (arr_start[1:] - arr_end[:-1]) / params['sfreq']
-    close_indices = np.argwhere(blink_durations < min_event_sep)
-
-    # Invalidate both the earlier and later blink intervals
-    pos_mask[close_indices] = False
-    pos_mask[close_indices + 1] = False
+    min_event_sep = params.get("min_event_sep", params["min_event_len"])
+    arr_start, arr_end = _remove_close_blinks(
+        arr_start, arr_end, sfreq=params["sfreq"], min_event_sep=min_event_sep
+    )
 
     blink_position = {
-        'start_blink': arr_start[pos_mask],
-        'end_blink': arr_end[pos_mask]
+        "start_blink": arr_start,
+        "end_blink": arr_end,
     }
     return pd.DataFrame(blink_position)
