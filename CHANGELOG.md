@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.0.68] - 2026-01-16
+
+### Fixed
+- Match MATLAB blink position separation handling by allowing candidates exactly at the minimum separation threshold.
+
+### Changed
+- Refactor blink position detection into vectorized helpers for improved efficiency without altering behavior.
+
 ## [0.0.67] - 2026-01-15
 
 ### Changed
