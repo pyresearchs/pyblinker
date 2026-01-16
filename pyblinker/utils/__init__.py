@@ -19,13 +19,6 @@ from .metadata_utils import onset_entry_to_blinks
 from .modality import infer_modality
 from .ear import select_auto_threshold
 from .report_utils import add_blink_plots_to_report, generate_epoch_report
-from .statistics_utils import (
-    calculate_good_ratio,
-    calculate_within_range,
-    get_blink_statistic,
-    get_good_blink_mask,
-    get_max_blink,
-)
 from .velocity_utils import average_velocity
 
 __all__ = [
@@ -59,6 +52,23 @@ __all__ = [
 
 
 def __getattr__(name: str):
+    if name in {
+        "calculate_good_ratio",
+        "calculate_within_range",
+        "get_blink_statistic",
+        "get_good_blink_mask",
+        "get_max_blink",
+    }:
+        from . import statistics_utils
+
+        lookup = {
+            "calculate_good_ratio": statistics_utils.calculate_good_ratio,
+            "calculate_within_range": statistics_utils.calculate_within_range,
+            "get_blink_statistic": statistics_utils.get_blink_statistic,
+            "get_good_blink_mask": statistics_utils.get_good_blink_mask,
+            "get_max_blink": statistics_utils.get_max_blink,
+        }
+        return lookup[name]
     if name == "slice_raw_into_mne_epochs_refine_annot":
         from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
 
