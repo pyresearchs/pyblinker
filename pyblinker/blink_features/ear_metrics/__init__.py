@@ -8,19 +8,11 @@ from .feature_extraction import (
 )
 from .features import ear_before_blink_avg_epoch, ear_extrema_epoch
 from .io import load_coarse_blinks, load_ear_channel
-from .refinement import (
-    EARRefinementConfig,
-    EARThresholdBlinkRefiner,
-    refine_annotations_for_threshold,
-)
 
 __all__ = [
     "aggregate_ear_features",
     "EARBlinkFeatureExtractor",
     "EARFeatureConfig",
-    "EARRefinementConfig",
-    "EARThresholdBlinkRefiner",
-    "refine_annotations_for_threshold",
     "compute_blink_features",
     "ear_before_blink_avg_epoch",
     "ear_extrema_epoch",

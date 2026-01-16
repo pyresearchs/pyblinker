@@ -17,22 +17,8 @@ from .feature_dataframe import to_epoch_indexed
 from .io_utils import prepare_refined_segments, save_epoch_raws
 from .metadata_utils import onset_entry_to_blinks
 from .modality import infer_modality
-from .refinement_utils import (
-    plot_refined_blinks,
-    refine_blinks_from_epochs,
-    refine_ear_extrema_and_threshold_stub,
-    refine_local_maximum_stub,
-    slice_raw_into_mne_epochs_refine_annot,
-)
 from .ear import select_auto_threshold
 from .report_utils import add_blink_plots_to_report, generate_epoch_report
-from .statistics_utils import (
-    calculate_good_ratio,
-    calculate_within_range,
-    get_blink_statistic,
-    get_good_blink_mask,
-    get_max_blink,
-)
 from .velocity_utils import average_velocity
 
 __all__ = [
@@ -50,11 +36,6 @@ __all__ = [
     "to_epoch_indexed",
     "generate_epoch_report",
     "add_blink_plots_to_report",
-    "refine_ear_extrema_and_threshold_stub",
-    "refine_local_maximum_stub",
-    "refine_blinks_from_epochs",
-    "plot_refined_blinks",
-    "slice_raw_into_mne_epochs_refine_annot",
     "onset_entry_to_blinks",
     "calculate_within_range",
     "calculate_good_ratio",
@@ -64,4 +45,43 @@ __all__ = [
     "average_velocity",
     "infer_modality",
     "select_auto_threshold",
+    "refine_local_maximum_stub",
+    "refine_blinks_from_epochs",
+    "slice_raw_into_mne_epochs_refine_annot",
 ]
+
+
+def __getattr__(name: str):
+    if name in {
+        "calculate_good_ratio",
+        "calculate_within_range",
+        "get_blink_statistic",
+        "get_good_blink_mask",
+        "get_max_blink",
+    }:
+        from . import statistics_utils
+
+        lookup = {
+            "calculate_good_ratio": statistics_utils.calculate_good_ratio,
+            "calculate_within_range": statistics_utils.calculate_within_range,
+            "get_blink_statistic": statistics_utils.get_blink_statistic,
+            "get_good_blink_mask": statistics_utils.get_good_blink_mask,
+            "get_max_blink": statistics_utils.get_max_blink,
+        }
+        return lookup[name]
+    if name == "slice_raw_into_mne_epochs_refine_annot":
+        from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
+
+        return slice_raw_into_mne_epochs_refine_annot
+    if name in {"refine_blinks_from_epochs", "refine_local_maximum_stub"}:
+        from pyblinker.segmentation.refinement.eeg import (
+            refine_blinks_from_epochs,
+            refine_local_maximum_stub,
+        )
+
+        lookup = {
+            "refine_blinks_from_epochs": refine_blinks_from_epochs,
+            "refine_local_maximum_stub": refine_local_maximum_stub,
+        }
+        return lookup[name]
+    raise AttributeError(f"module 'pyblinker.utils' has no attribute {name!r}")

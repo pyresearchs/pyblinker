@@ -108,6 +108,24 @@ def sample_windows_from_metadata(
     return sample_windows
 
 
+def segment_to_samples(
+    onset_s: float,
+    duration_s: float,
+    sfreq: float,
+    n_times: int,
+) -> slice:
+    """Convert blink onset/duration in seconds to a sample slice."""
+
+    logger.debug("Entering segment_to_samples")
+    start = int(round(onset_s * sfreq))
+    stop = start + int(round(duration_s * sfreq))
+    start = max(start, 0)
+    stop = min(stop, n_times)
+    logger.debug("Blink window samples: start=%d stop=%d", start, stop)
+    logger.debug("Exiting segment_to_samples")
+    return slice(start, stop)
+
+
 def extract_blink_windows(
     metadata_row: pd.Series | Mapping[str, object],
     channel: str | None,
@@ -187,12 +205,10 @@ def extract_blink_windows(
     logger.debug("Exiting extract_blink_windows")
     return windows
 
-
-from ..blink_features.energy.helpers import segment_to_samples  # noqa: E402  # pylint: disable=wrong-import-position
-
 __all__ = [
     "onset_entry_to_blinks",
     "attach_blink_metadata",
     "sample_windows_from_metadata",
+    "segment_to_samples",
     "extract_blink_windows",
 ]

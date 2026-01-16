@@ -6,8 +6,9 @@ from typing import Sequence, Iterable, List
 import numpy as np
 import pandas as pd
 
-from pyblinker.blink_features._core_blink import CANONICAL_METRIC_STEMS
+from pyblinker.blink_features.morphology.core_metrics import MORPHOLOGY_METRIC_STEMS
 from pyblinker.blink_features.energy.helpers import _safe_stats
+from pyblinker.utils.modality import infer_modality
 
 
 def assert_numeric_or_nan(testcase, values: Iterable[float]) -> None:
@@ -25,6 +26,13 @@ def assert_df_has_columns(testcase, df: pd.DataFrame, columns: Sequence[str]) ->
 
 def morphology_column_names(channels: Sequence[str]) -> List[str]:
     """Return expected morphology feature columns for given channels."""
-    metrics = tuple(f"{stem}_base" for stem in CANONICAL_METRIC_STEMS) + ("duration",)
+    metrics = tuple(f"{stem}_base" for stem in MORPHOLOGY_METRIC_STEMS) + ("duration",)
     stats = tuple(_safe_stats([]).keys())
-    return [f"{m}_{s}_{ch}" for ch in channels for m in metrics for s in stats]
+    columns = []
+    for ch in channels:
+        modality = infer_modality(ch)
+        style = "base"
+        for metric in metrics:
+            for stat in stats:
+                columns.append(f"{modality}__{style}__morphology__{metric}_{stat}__{ch}")
+    return columns

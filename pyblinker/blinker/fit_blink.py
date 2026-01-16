@@ -2,12 +2,14 @@ from pyblinker.logging import get_logger
 
 import pandas as pd
 
-from .fit_range import compute_fit_range
-from .zero_crossing import left_right_zero_crossing
-from .base_left_right import create_left_right_base
-from ..fitutils.line_intersection import lines_intersection
-from ..utils.statistics_utils import get_max_blink
-from ..blink_features.waveform_features.half_height import get_half_height
+from pyblinker.segmentation.geometry import (
+    compute_fit_range,
+    create_left_right_base,
+    get_half_height,
+    get_max_blink,
+    left_right_zero_crossing,
+    lines_intersection,
+)
 
 
 logger = get_logger(__name__)
