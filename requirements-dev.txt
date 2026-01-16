@@ -13,6 +13,9 @@ tqdm
 mne
 pooch
 
+# IO
+h5py
+
 # Utilities
 gdown
 
