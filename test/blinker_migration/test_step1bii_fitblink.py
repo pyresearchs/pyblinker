@@ -95,10 +95,6 @@ class TestFitBlinks(unittest.TestCase):
         ]
         df_output = df_output[column_order]
 
-        # df_output.rename(columns={
-        #     'outer_start': 'leftOuter',
-        #     'outer_end': 'rightOuter',
-        # }, inplace=True)
 
         return df_output
     @staticmethod

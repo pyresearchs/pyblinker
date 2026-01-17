@@ -193,6 +193,7 @@ def _build_blink_landmark_frame(
     signal: np.ndarray,
     sfreq: float,
     n_times: int,
+    *,
     modality: str,
     styles: Sequence[str],
 ) -> pd.DataFrame:
@@ -278,6 +279,7 @@ def _apply_morphology_properties(
     blink_df: pd.DataFrame,
     signal: np.ndarray,
     sfreq: float,
+    *,
     modality: str,
 ) -> pd.DataFrame:
     """Populate morphology timing metrics on a per-blink DataFrame.
@@ -486,6 +488,7 @@ class MorphologyBlinkFeatureExtractor:
             raise ValueError("epochs.metadata must be provided")
 
     def _prepare_inputs(
+        *,
         self,
         picks: str | Sequence[str] | None,
         sfreq: float,
@@ -552,6 +555,7 @@ class MorphologyBlinkFeatureExtractor:
         for ch, mod in modality_map.items():
             grouped.setdefault(mod, []).append(ch)
         return grouped
+
 
     def _build_styles_by_modality(
         self,
