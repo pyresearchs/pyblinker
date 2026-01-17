@@ -176,7 +176,7 @@ def get_right_base(
         return m_neg_vel
 
     right_base_index = int(np.argmax(mask))
-    right_base = m_neg_vel + right_base_index
+    right_base = m_neg_vel + right_base_index + 1
     return right_base
 
 
@@ -245,30 +245,42 @@ def get_half_height(
 
     left_range = np.arange(l_base, m_frame + 1)
     left_vals = candidate_signal[left_range]
-    left_index = np.argmax(left_vals >= half_height_val)
-    left_base_half_height = l_base + left_index + 1
+    left_mask = left_vals >= half_height_val
+    if np.any(left_mask):
+        left_index = np.argmax(left_mask)
+        left_base_half_height = l_base + left_index + 1
+    else:
+        left_base_half_height = np.nan
 
     right_range = np.arange(m_frame, r_outer + 1)
-    try:
+    right_vals = candidate_signal[right_range]
+    right_mask = right_vals <= half_height_val
+    if np.any(right_mask):
         right_base_half_height = min(
             r_outer,
-            np.argmax(candidate_signal[right_range] <= half_height_val) + m_frame,
+            np.argmax(right_mask) + m_frame,
         )
-    except IndexError:
-        right_range = np.arange(m_frame, r_outer)
-        right_base_half_height = min(
-            r_outer,
-            np.argmax(candidate_signal[right_range] <= half_height_val) + m_frame,
-        )
+    else:
+        right_base_half_height = np.nan
 
     zero_half_val = 0.5 * max_val
     left_zero_range = np.arange(l_zero, m_frame + 1)
-    left_zero_index = np.argmax(candidate_signal[left_zero_range] >= zero_half_val)
-    left_zero_half_height = l_zero + left_zero_index + 1
+    left_zero_vals = candidate_signal[left_zero_range]
+    left_zero_mask = left_zero_vals >= zero_half_val
+    if np.any(left_zero_mask):
+        left_zero_index = np.argmax(left_zero_mask)
+        left_zero_half_height = l_zero + left_zero_index + 1
+    else:
+        left_zero_half_height = np.nan
 
     right_zero_range = np.arange(m_frame, r_zero + 1)
-    right_zero_index = np.argmax(candidate_signal[right_zero_range] <= zero_half_val)
-    right_zero_half_height = min(r_outer, m_frame + right_zero_index)
+    right_zero_vals = candidate_signal[right_zero_range]
+    right_zero_mask = right_zero_vals <= zero_half_val
+    if np.any(right_zero_mask):
+        right_zero_index = np.argmax(right_zero_mask)
+        right_zero_half_height = min(r_outer, m_frame + right_zero_index)
+    else:
+        right_zero_half_height = np.nan
 
     return (
         left_zero_half_height,

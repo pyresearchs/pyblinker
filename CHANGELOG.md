@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.0.71] - 2026-01-17
+
+### Fixed
+- Emit NaN half-height landmarks when thresholds are never crossed to match MATLAB fit behavior.
+
+## [0.0.70] - 2026-01-17
+
+### Fixed
+- Correct right-base index handling in FitBlinks to match MATLAB downstroke minima behavior.
+
 ## [0.0.69] - 2026-01-17
 
 ### Fixed
