@@ -38,21 +38,23 @@ def _find_left_zero_crossing(
     start_idx: int,
     m_frame: int,
 ) -> int | float:
-    """Search left-to-right for the last negative sample before ``m_frame``."""
+    """Match MATLAB's left-zero logic using the local minimum and <= 0 search."""
 
-    left_range = np.arange(start_idx, m_frame, dtype=int)
-    left_values = candidate_signal[left_range]
-    s_ind_left_zero = np.flatnonzero(left_values < 0)
+    left_range = np.arange(start_idx, m_frame + 1, dtype=int)
+    if left_range.size == 0:
+        return np.nan
+
+    min_index = int(np.argmin(candidate_signal[left_range]))
+    min_frame = int(left_range[min_index])
+
+    search_range = np.arange(min_frame, m_frame + 1, dtype=int)
+    s_ind_left_zero = np.flatnonzero(candidate_signal[search_range] <= 0)
 
     if s_ind_left_zero.size > 0:
-        return int(left_range[s_ind_left_zero[-1]])
+        return int(search_range[s_ind_left_zero[-1]])
 
-    full_left_range = np.arange(0, m_frame, dtype=int)
-    left_neg_idx = np.flatnonzero(candidate_signal[full_left_range] < 0)
-    if left_neg_idx.size > 0:
-        return int(full_left_range[left_neg_idx[-1]])
-
-    return np.nan
+    min_search_index = int(np.argmin(candidate_signal[search_range]))
+    return int(search_range[min_search_index])
 
 
 def _find_right_zero_crossing(
@@ -60,29 +62,23 @@ def _find_right_zero_crossing(
     m_frame: int,
     end_idx: int,
 ) -> int | float:
-    """Search rightward from ``m_frame`` for the first negative sample."""
+    """Match MATLAB's right-zero logic using the local minimum and <= 0 search."""
 
-    right_range = np.arange(m_frame, end_idx, dtype=int)
-    right_values = candidate_signal[right_range]
-    s_ind_right_zero = np.flatnonzero(right_values < 0)
-
-    if s_ind_right_zero.size > 0:
-        return int(right_range[s_ind_right_zero[0]])
-
-    try:
-        extreme_outer = np.arange(m_frame, candidate_signal.shape[0], dtype=int)
-    except TypeError:
-        logger.exception(
-            "Failed to extend search range to signal boundary; returning NaN",
-            extra={"max_blink": m_frame},
-        )
+    right_range = np.arange(m_frame, end_idx + 1, dtype=int)
+    if right_range.size == 0:
         return np.nan
 
-    s_ind_right_zero_ex = np.flatnonzero(candidate_signal[extreme_outer] < 0)
-    if s_ind_right_zero_ex.size > 0:
-        return int(extreme_outer[s_ind_right_zero_ex[0]])
+    min_index = int(np.argmin(candidate_signal[right_range]))
+    min_frame = int(right_range[min_index])
 
-    return np.nan
+    search_range = np.arange(m_frame, min_frame + 1, dtype=int)
+    s_ind_right_zero = np.flatnonzero(candidate_signal[search_range] <= 0)
+
+    if s_ind_right_zero.size > 0:
+        return int(search_range[s_ind_right_zero[0]])
+
+    min_search_index = int(np.argmin(candidate_signal[search_range]))
+    return int(search_range[min_search_index])
 
 
 def left_right_zero_crossing(
@@ -130,7 +126,11 @@ def get_left_base(blink_velocity, left_outer, max_pos_vel_frame):
     left_range = np.arange(l_outer, m_pos_vel + 1)
     reversed_velocity = np.flip(blink_velocity[left_range])
 
-    left_base_index = np.argmax(reversed_velocity <= 0)
+    mask = reversed_velocity <= 0
+    if not np.any(mask):
+        return m_pos_vel
+
+    left_base_index = int(np.argmax(mask))
     left_base = m_pos_vel - left_base_index - 1
     return left_base
 
@@ -153,8 +153,9 @@ def get_right_base(
         return None
 
     max_size = candidate_signal.size
-    end_idx = min(r_outer, max_size)
-    right_range = np.arange(m_neg_vel, end_idx)
+    max_velocity_index = max_size - 2
+    end_idx = min(r_outer, max_velocity_index)
+    right_range = np.arange(m_neg_vel, end_idx + 1)
 
     if right_range.size == 0:
         return None
@@ -170,8 +171,12 @@ def get_right_base(
             return None
 
     right_base_velocity = blink_velocity[right_range]
-    right_base_index = np.argmax(right_base_velocity >= 0)
-    right_base = m_neg_vel + right_base_index + 1
+    mask = right_base_velocity >= 0
+    if not np.any(mask):
+        return m_neg_vel
+
+    right_base_index = int(np.argmax(mask))
+    right_base = m_neg_vel + right_base_index
     return right_base
 
 
@@ -180,8 +185,6 @@ def create_left_right_base(candidate_signal, df):
 
     df = df.copy()
     blink_velocity = np.diff(candidate_signal, axis=0)
-
-    df.dropna(inplace=True)
 
     df[["max_pos_vel_frame", "max_neg_vel_frame"]] = df.apply(
         lambda row: max_pos_vel_frame(
@@ -194,8 +197,6 @@ def create_left_right_base(candidate_signal, df):
         result_type="expand",
     )
 
-    df = df[df["outer_start"] < df["max_pos_vel_frame"]].copy()
-
     df = df.assign(
         left_base=df.apply(
             lambda row: get_left_base(
@@ -206,11 +207,6 @@ def create_left_right_base(candidate_signal, df):
             axis=1,
         )
     )
-
-    df.dropna(inplace=True)
-
-    if df.empty:
-        raise ValueError("No valid blink frames after baseline computation")
 
     df = df.assign(
         right_base=df.apply(
@@ -446,12 +442,17 @@ def lines_intersection(
         right_x_intercept,
     ) = get_intersection(p_left, p_right, mu_left, mu_right)
 
-    left_slope, right_slope = get_line_intersection_slope(
-        x_intersect, y_intersect, left_x_intercept, right_x_intercept
-    )
-
-    aver_left_velocity = average_velocity(p_left, x_scale=mu_left[1])
-    aver_right_velocity = average_velocity(p_right, x_scale=mu_right[1])
+    if x_intersect == left_x_intercept or x_intersect == right_x_intercept:
+        left_slope = np.nan
+        right_slope = np.nan
+        aver_left_velocity = np.nan
+        aver_right_velocity = np.nan
+    else:
+        left_slope, right_slope = get_line_intersection_slope(
+            x_intersect, y_intersect, left_x_intercept, right_x_intercept
+        )
+        aver_left_velocity = average_velocity(p_left, x_scale=mu_left[1])
+        aver_right_velocity = average_velocity(p_right, x_scale=mu_right[1])
 
     return (
         left_slope,

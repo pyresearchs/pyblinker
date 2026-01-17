@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.0.69] - 2026-01-17
+
+### Fixed
+- Align FitBlinks indexing, baseline selection, and line-intersection handling with MATLAB to preserve blink counts and fit outputs.
+
 ## [0.0.68] - 2026-01-16
 
 ### Fixed

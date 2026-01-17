@@ -89,6 +89,18 @@ The blink position detection step was refactored into focused helper functions a
 *   **Tutorials**: None.
 *   **Unit Tests**: `test/blinker_pyblinker_comparison/compare_get_blink_position.py` (compares Python and MATLAB blink positions end-to-end).
 
+### FitBlinks Index and Filter Parity
+The blink-fitting step now mirrors MATLAB's index conventions for zero crossings, base frames, outer bounds, and line-intersection handling while preserving rows that MATLAB leaves populated with `NaN`. This keeps the blink count and fit outputs aligned with the reference implementation.
+
+**Related Code**
+*   `pyblinker/blinker/fit_blink.py`
+*   `pyblinker/segmentation/geometry.py`
+*   `pyblinker/fitutils/forking.py`
+
+**Verification (Tutorials & Tests)**
+*   **Tutorials**: None.
+*   **Unit Tests**: `test/blinker_pyblinker_comparison/compare_fitblink.py` (compares Python and MATLAB fit outputs end-to-end).
+
 ### Unit Tests
 *   **`test/blinker_migration/test_step1a.py`**: Validates candidate signal generation. It compares the raw signal vector used for detection against the MATLAB export.
 *   **`test/blinker_migration/test_step1bii_fitblink.py`**: Checks the shape fitting algorithm. It verifies that `fit_blink.py` produces the same $R^2$ values and slope parameters as the MATLAB `fitBlink` function.

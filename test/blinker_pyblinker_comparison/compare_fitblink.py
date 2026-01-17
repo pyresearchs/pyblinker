@@ -142,7 +142,6 @@ class TestFitBlinks(unittest.TestCase):
 			)
 
 		cls.df_mat = pd.DataFrame(mat_data["blinkFits"]).reset_index(drop=True)
-		v=1
 	# -------------------------------------------------------------------------
 	# Tests
 	# -------------------------------------------------------------------------
