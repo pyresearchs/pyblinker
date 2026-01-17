@@ -1,5 +1,35 @@
 # Changelog
 
+## [0.0.74] - 2026-01-17
+
+### Fixed
+- Keep FitBlinks y-intersect comparison values in signal units without indexing offsets.
+
+## [0.0.73] - 2026-01-17
+
+### Fixed
+- Adjust FitBlinks comparison indexing so y-intersect values remain in signal units.
+
+## [0.0.72] - 2026-01-17
+
+### Fixed
+- Align FitBlinks comparison indexing for intersection outputs without extra y-intersect offset.
+
+## [0.0.71] - 2026-01-17
+
+### Fixed
+- Emit NaN half-height landmarks when thresholds are never crossed to match MATLAB fit behavior.
+
+## [0.0.70] - 2026-01-17
+
+### Fixed
+- Correct right-base index handling in FitBlinks to match MATLAB downstroke minima behavior.
+
+## [0.0.69] - 2026-01-17
+
+### Fixed
+- Align FitBlinks indexing, baseline selection, and line-intersection handling with MATLAB to preserve blink counts and fit outputs.
+
 ## [0.0.68] - 2026-01-16
 
 ### Fixed
