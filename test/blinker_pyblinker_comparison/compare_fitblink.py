@@ -141,7 +141,34 @@ class TestFitBlinks(unittest.TestCase):
 			struct_as_record=False,
 			)
 
-		cls.df_mat = pd.DataFrame(mat_data["blinkFits"]).reset_index(drop=True)
+		df_mat = pd.DataFrame(mat_data["blinkFits"]).reset_index(drop=True)
+		matlab_to_python = {
+			"maxFrame": "max_blink",
+			"maxValue": "max_value",
+			"leftOuter": "outer_start",
+			"rightOuter": "outer_end",
+			"leftZero": "left_zero",
+			"rightZero": "right_zero",
+			"leftBase": "left_base",
+			"rightBase": "right_base",
+			"leftBaseHalfHeight": "left_base_half_height",
+			"rightBaseHalfHeight": "right_base_half_height",
+			"leftZeroHalfHeight": "left_zero_half_height",
+			"rightZeroHalfHeight": "right_zero_half_height",
+			"leftRange": "left_range",
+			"rightRange": "right_range",
+			"leftSlope": "left_slope",
+			"rightSlope": "right_slope",
+			"averLeftVelocity": "aver_left_velocity",
+			"averRightVelocity": "aver_right_velocity",
+			"leftR2": "leftR2",
+			"rightR2": "rightR2",
+			"xIntersect": "x_intersect",
+			"yIntersect": "y_intersect",
+			"leftXIntercept": "left_x_intercept",
+			"rightXIntercept": "right_x_intercept",
+		}
+		cls.df_mat = df_mat.rename(columns=matlab_to_python)[column_order]
 	# -------------------------------------------------------------------------
 	# Tests
 	# -------------------------------------------------------------------------
