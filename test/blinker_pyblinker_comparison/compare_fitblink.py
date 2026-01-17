@@ -183,7 +183,7 @@ class TestFitBlinks(unittest.TestCase):
 		pd.testing.assert_frame_equal(
 			self.df_py,
 			self.df_mat,
-			check_dtype=False,
+			check_dtype=True,
 			)
 
 
