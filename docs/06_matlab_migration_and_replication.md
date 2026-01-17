@@ -90,7 +90,7 @@ The blink position detection step was refactored into focused helper functions a
 *   **Unit Tests**: `test/blinker_pyblinker_comparison/compare_get_blink_position.py` (compares Python and MATLAB blink positions end-to-end).
 
 ### FitBlinks Index and Filter Parity
-The blink-fitting step now mirrors MATLAB's index conventions for zero crossings, base frames, outer bounds, and line-intersection handling while preserving rows that MATLAB leaves populated with `NaN`. This keeps the blink count and fit outputs aligned with the reference implementation, including the right-base indexing parity for downstroke minima and the half-height `NaN` handling when thresholds are never crossed.
+The blink-fitting step now mirrors MATLAB's index conventions for zero crossings, base frames, outer bounds, and line-intersection handling while preserving rows that MATLAB leaves populated with `NaN`. This keeps the blink count and fit outputs aligned with the reference implementation, including the right-base indexing parity for downstroke minima, the half-height `NaN` handling when thresholds are never crossed, and the MATLAB-style indexing adjustment of intersection outputs (with `y_intersect` kept in signal units).
 
 **Related Code**
 *   `pyblinker/blinker/fit_blink.py`

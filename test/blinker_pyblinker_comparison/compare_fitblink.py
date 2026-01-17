@@ -93,13 +93,12 @@ class TestFitBlinks(unittest.TestCase):
 				"left_base", "right_base",
 				"left_zero_half_height", "right_zero_half_height",
 				"left_base_half_height", "right_base_half_height",
-				"x_intersect", "y_intersect",
+				"x_intersect",
 				"right_x_intercept",
 				]
 		df_output[columns_to_increment] += 1
 
-		df_output[["y_intersect", "left_x_intercept"]] += 1
-		df_output["y_intersect"] -= 2
+		df_output["left_x_intercept"] += 1
 
 		df_output["left_range"] = df_output["left_range"].apply(
 			lambda x: [v + 1 for v in x]

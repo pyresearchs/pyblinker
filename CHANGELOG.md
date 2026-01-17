@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.0.74] - 2026-01-17
+
+### Fixed
+- Keep FitBlinks y-intersect comparison values in signal units without indexing offsets.
+
+## [0.0.73] - 2026-01-17
+
+### Fixed
+- Adjust FitBlinks comparison indexing so y-intersect values remain in signal units.
+
+## [0.0.72] - 2026-01-17
+
+### Fixed
+- Align FitBlinks comparison indexing for intersection outputs without extra y-intersect offset.
+
 ## [0.0.71] - 2026-01-17
 
 ### Fixed
