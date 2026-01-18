@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.1.0] - 2026-01-18
+
+### Added
+- Add MATLAB FitBlinks HTML reporting utilities to compare MATLAB output with Python-derived landmarks using consistent plotting and captions.
+
 ## [0.0.74] - 2026-01-17
 
 ### Fixed
