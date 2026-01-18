@@ -143,7 +143,7 @@ def _blink_window_from_row(row: pd.Series, *, n_samples: int) -> tuple[int, int]
 	if not left_candidates:
 		start = 0
 	else:
-		start = max(0, min(left_candidates))
+		start = max(0, min(left_candidates) - 10)
 
 	if not right_candidates:
 		end = min(n_samples - 1, start + 50)
@@ -243,7 +243,7 @@ def make_report(
 		candidate_signal: np.ndarray,
 		sfreq: float = 100.0,
 		report_title: str | None = None,
-		output_dir: Path | None = Path("reports"),
+		output_dir: Path | None = Path("tutorial_outputs"),
 		max_plots: int | None = None,
 		) -> mne.Report:
 	"""
@@ -285,7 +285,6 @@ def make_report(
 	title = report_title if report_title else report_name
 	report = mne.Report(title=title)
 
-	n_blinks = len(df)
 	rows = list(df.iterrows())
 	if max_plots is not None:
 		rows = rows[: int(max_plots)]
@@ -309,8 +308,16 @@ def make_report(
 			)
 		legend_ax.axis("off")
 
-		# waveform
-		ax.plot(x, y, lw=1.2, alpha=0.9, label="blink waveform")
+		# waveform: faint continuous line behind a scatter plot
+		ax.plot(x, y, lw=1.0, alpha=0.3, label="_nolegend_")
+		ax.scatter(
+			x,
+			y,
+			s=50,
+			alpha=0.8,
+			label="blink waveform",
+			zorder=3,
+			)
 
 		# styles for landmark markers
 		marker_style = {
@@ -387,12 +394,12 @@ def make_report(
 			# de-duplicate labels
 			seen = set()
 			uniq_h, uniq_l = [], []
-			for h, l in zip(handles, labels):
-				if l in seen:
+			for handle, label in zip(handles, labels):
+				if label in seen:
 					continue
-				seen.add(l)
-				uniq_h.append(h)
-				uniq_l.append(l)
+				seen.add(label)
+				uniq_h.append(handle)
+				uniq_l.append(label)
 
 			legend_ax.legend(
 				uniq_h,

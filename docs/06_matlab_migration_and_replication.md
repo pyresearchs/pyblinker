@@ -69,6 +69,19 @@ This migration helper now ensures the repository root is added to `sys.path` whe
 *   **Tutorials**: None (script is intended for direct migration replay checks).
 *   **Unit Tests**: `test/blinker_migration/T_seemless_blink_feature.py` (replays serialized blink properties to validate feature extraction parity).
 
+### FitBlinks Tutorial Path and Report Output Hygiene
+The FitBlinks comparison tutorial now resolves MATLAB `.mat` and FIF input files using repository-relative paths and writes both HTML reports into a dedicated `tutorial_outputs/` folder so the example runs without machine-specific absolute paths and keeps generated artifacts organized.
+
+The report plotting now renders the blink waveform as a scatter plot with a faint continuous line behind it and pads the blink window by 10 samples on the left and right so landmarks stand out while preserving a subtle reference trace.
+
+**Related Code**
+*   `tutorial/plot_compare_blinker_pyblinker.py`
+*   `tutorial/make_report.py`
+
+**Verification (Tutorials & Tests)**
+*   **Tutorials**: `tutorial/plot_compare_blinker_pyblinker.py` (compares Python FitBlinks outputs to MATLAB exports and generates reports).
+*   **Unit Tests**: None.
+
 ### Blink Position Separation Parity
 The blink position detection step now matches the MATLAB separation rule by treating blinks that are exactly at the minimum separation as valid, preventing MATLAB/Python drift in tightly clustered candidates.
 

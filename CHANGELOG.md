@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.1.3] - 2026-01-19
+
+### Changed
+- Render FitBlinks tutorial waveforms as scatter points with a faint line trace behind them and pad report windows on the left by 10 samples for clearer landmark visibility.
+
+## [0.1.1] - 2026-01-19
+
+### Fixed
+- Resolve FitBlinks tutorial input paths relative to the repository and write reports to the tutorial_outputs folder.
+
 ## [0.1.0] - 2026-01-18
 
 ### Added
