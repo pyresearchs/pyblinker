@@ -181,6 +181,7 @@ class BlinkProperties:
             self.df,
             self.srate,
             modality=self.modality,
+            signal_len=len(self.candidate_signal),
         )
 
     def blink_bounds(self, row: pd.Series, method: str) -> Tuple[int, int] | None:

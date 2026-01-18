@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.1.4] - 2026-01-20
+
+### Fixed
+- Align blink-property timing, shut-time defaults, and inter-blink velocity intervals with MATLAB to support row-by-row comparisons.
+
 ## [0.1.3] - 2026-01-19
 
 ### Changed
