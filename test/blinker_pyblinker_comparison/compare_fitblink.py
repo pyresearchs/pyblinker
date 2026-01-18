@@ -172,6 +172,7 @@ class TestFitBlinks(unittest.TestCase):
 	def test_dataframe_equality(self):
 		"""
 		Compare Python FitBlinks output with MATLAB reference output.
+		Both should return 359 blinks with identical properties.
 		"""
 		self.assertEqual(
 			len(self.df_py),

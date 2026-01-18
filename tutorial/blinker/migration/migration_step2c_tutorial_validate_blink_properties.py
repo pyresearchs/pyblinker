@@ -8,7 +8,7 @@ MATLAB reference export that ships with the test suite.
 
 Based on
 --------
-test/blinker_migration/test_step2_computeBlinkProperties.py
+test/blinker_migration/compare_BlinkProperties.py
 
 Inputs
 ------
