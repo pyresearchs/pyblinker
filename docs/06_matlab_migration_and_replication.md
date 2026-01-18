@@ -72,7 +72,7 @@ This migration helper now ensures the repository root is added to `sys.path` whe
 ### FitBlinks Tutorial Path and Report Output Hygiene
 The FitBlinks comparison tutorial now resolves MATLAB `.mat` and FIF input files using repository-relative paths and writes both HTML reports into a dedicated `tutorial_outputs/` folder so the example runs without machine-specific absolute paths and keeps generated artifacts organized.
 
-The report plotting now renders the blink waveform as a scatter plot with a faint continuous line behind it so landmarks stand out while preserving a subtle reference trace.
+The report plotting now renders the blink waveform as a scatter plot with a faint continuous line behind it and pads the blink window by 10 samples on the left and right so landmarks stand out while preserving a subtle reference trace.
 
 **Related Code**
 *   `tutorial/plot_compare_blinker_pyblinker.py`

@@ -143,7 +143,7 @@ def _blink_window_from_row(row: pd.Series, *, n_samples: int) -> tuple[int, int]
 	if not left_candidates:
 		start = 0
 	else:
-		start = max(0, min(left_candidates))
+		start = max(0, min(left_candidates) - 10)
 
 	if not right_candidates:
 		end = min(n_samples - 1, start + 50)
@@ -309,11 +309,11 @@ def make_report(
 		legend_ax.axis("off")
 
 		# waveform: faint continuous line behind a scatter plot
-		ax.plot(x, y, lw=1.0, alpha=0.15, label="_nolegend_")
+		ax.plot(x, y, lw=1.0, alpha=0.3, label="_nolegend_")
 		ax.scatter(
 			x,
 			y,
-			s=70,
+			s=50,
 			alpha=0.8,
 			label="blink waveform",
 			zorder=3,

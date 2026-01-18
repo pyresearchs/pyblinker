@@ -241,6 +241,7 @@ if __name__ == "__main__":
 	# NOTE: make_report() is assumed to already exist.
 	# Example usage requested:
 
+	df_py = df_py.head(10)
 	make_report(
 		df_py,
 		"plot_python_base",
