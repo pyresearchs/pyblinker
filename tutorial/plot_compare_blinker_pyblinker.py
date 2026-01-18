@@ -202,11 +202,15 @@ if __name__ == "__main__":
 	# -----------------------------
 	# Paths
 	# -----------------------------
-	base_path = Path(__file__).resolve().parents[0] / "migration_files"
-	# fif_path = Path("test/test_files/ear_eog_raw.fif")
-	# mat_path = base_path / "step1bii_data_output_process_FitBlinks_rpb.mat"
-	mat_path=r'C:\Users\balan\IdeaProjects\pyblinker\test\migration_files\step1bii_data_output_process_FitBlinks_rpb.mat'
-	fif_path=r"C:\Users\balan\IdeaProjects\pyblinker\test\test_files\ear_eog_raw.fif"
+	repo_root = Path(__file__).resolve().parents[1]
+	mat_path = (
+		repo_root
+		/ "test"
+		/ "migration_files"
+		/ "step1bii_data_output_process_FitBlinks_rpb.mat"
+		)
+	fif_path = repo_root / "test" / "test_files" / "ear_eog_raw.fif"
+	output_dir = Path(__file__).resolve().parent / "tutorial_outputs"
 	# -----------------------------
 	# Step 1) Load data + extract blink component
 	# -----------------------------
@@ -237,5 +241,15 @@ if __name__ == "__main__":
 	# NOTE: make_report() is assumed to already exist.
 	# Example usage requested:
 
-	make_report(df_py, "plot_python_base")
-	make_report(df_mat, "plot_matlab_base")
+	make_report(
+		df_py,
+		"plot_python_base",
+		candidate_signal=blink_comp,
+		output_dir=output_dir,
+		)
+	make_report(
+		df_mat,
+		"plot_matlab_base",
+		candidate_signal=blink_comp,
+		output_dir=output_dir,
+		)

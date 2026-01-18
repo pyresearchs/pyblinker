@@ -243,7 +243,7 @@ def make_report(
 		candidate_signal: np.ndarray,
 		sfreq: float = 100.0,
 		report_title: str | None = None,
-		output_dir: Path | None = Path("reports"),
+		output_dir: Path | None = Path("tutorial_outputs"),
 		max_plots: int | None = None,
 		) -> mne.Report:
 	"""
@@ -285,7 +285,6 @@ def make_report(
 	title = report_title if report_title else report_name
 	report = mne.Report(title=title)
 
-	n_blinks = len(df)
 	rows = list(df.iterrows())
 	if max_plots is not None:
 		rows = rows[: int(max_plots)]
@@ -387,12 +386,12 @@ def make_report(
 			# de-duplicate labels
 			seen = set()
 			uniq_h, uniq_l = [], []
-			for h, l in zip(handles, labels):
-				if l in seen:
+			for handle, label in zip(handles, labels):
+				if label in seen:
 					continue
-				seen.add(l)
-				uniq_h.append(h)
-				uniq_l.append(l)
+				seen.add(label)
+				uniq_h.append(handle)
+				uniq_l.append(label)
 
 			legend_ax.legend(
 				uniq_h,

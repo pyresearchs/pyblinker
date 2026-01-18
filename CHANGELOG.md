@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.1.1] - 2026-01-19
+
+### Fixed
+- Resolve FitBlinks tutorial input paths relative to the repository and write reports to the tutorial_outputs folder.
+
 ## [0.1.0] - 2026-01-18
 
 ### Added
