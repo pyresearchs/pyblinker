@@ -308,8 +308,16 @@ def make_report(
 			)
 		legend_ax.axis("off")
 
-		# waveform
-		ax.plot(x, y, lw=1.2, alpha=0.9, label="blink waveform")
+		# waveform: faint continuous line behind a scatter plot
+		ax.plot(x, y, lw=1.0, alpha=0.15, label="_nolegend_")
+		ax.scatter(
+			x,
+			y,
+			s=70,
+			alpha=0.8,
+			label="blink waveform",
+			zorder=3,
+			)
 
 		# styles for landmark markers
 		marker_style = {
