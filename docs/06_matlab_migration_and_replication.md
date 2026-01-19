@@ -114,6 +114,18 @@ The blink-fitting step now mirrors MATLAB's index conventions for zero crossings
 *   **Tutorials**: None.
 *   **Unit Tests**: `test/blinker_pyblinker_comparison/compare_fitblink.py` (compares Python and MATLAB fit outputs end-to-end).
 
+### Blink Properties Timing and Velocity Parity
+The blink property extraction now mirrors MATLAB's handling of inter-blink timing, zero/tent shut time defaults, and final-row `NaN` values so row-by-row comparisons align across the required blink-property columns.
+
+**Related Code**
+*   `pyblinker/blink_features/morphology/core_metrics.py`
+*   `pyblinker/blink_features/kinematics/core_metrics.py`
+*   `pyblinker/blink_features/waveform_features/extract_blink_properties.py`
+
+**Verification (Tutorials & Tests)**
+*   **Tutorials**: None.
+*   **Unit Tests**: `test/blinker_pyblinker_comparison/compare_BlinkProperties.py` (compares Python and MATLAB blink-property outputs).
+
 ### Unit Tests
 *   **`test/blinker_migration/test_step1a.py`**: Validates candidate signal generation. It compares the raw signal vector used for detection against the MATLAB export.
 *   **`test/blinker_migration/test_step1bii_fitblink.py`**: Checks the shape fitting algorithm. It verifies that `fit_blink.py` produces the same $R^2$ values and slope parameters as the MATLAB `fitBlink` function.

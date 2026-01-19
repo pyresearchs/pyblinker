@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.4] - 2026-01-20
+
+### Changed
+- Expand blink-property metric definitions and MATLAB-to-Python column mapping documentation.
+
+### Fixed
+- Align blink-property timing, shut-time defaults, and inter-blink velocity intervals with MATLAB to support row-by-row comparisons.
+
 ## [0.1.3] - 2026-01-19
 
 ### Changed

@@ -122,7 +122,7 @@ def compute_time_zero_shut(
             srate,
             shut_amp_fraction,
             key_prefix="Zero",
-            default_no_thresh=np.nan,
+            default_no_thresh=0,
         )
 
 
@@ -132,10 +132,17 @@ def _compute_time_shut_tent(
     srate: float,
     shut_amp_fraction: float,
 ) -> float:
-    left = int(row["left_x_intercept"])
-    right = int(row["right_x_intercept"]) + 1
+    left_raw = row["left_x_intercept"]
+    right_raw = row["right_x_intercept"]
+    if np.isnan(left_raw) or np.isnan(right_raw):
+        return np.nan
+
+    left = int(round(left_raw))
+    right = int(round(right_raw)) + 1
     max_val = row["max_value"]
     amp_threshold = shut_amp_fraction * max_val
+    if left < 0 or right > len(candidate_signal):
+        return np.nan
     data_slice = candidate_signal[left:right]
 
     cond_start = data_slice >= amp_threshold
@@ -144,7 +151,7 @@ def _compute_time_shut_tent(
 
     start_idx = np.argmax(cond_start)
     cond_end = data_slice[start_idx:-1] < amp_threshold
-    end_shut = np.argmax(cond_end) if cond_end.any() else np.nan
+    end_shut = np.argmax(cond_end) if cond_end.any() else 0
     return end_shut / srate
 
 
@@ -194,17 +201,39 @@ def compute_blink_peak_times(
     max_blinks = [int(value) for value in df["max_blink"].tolist()]
     signal_len = len(candidate_signal)
     for idx, row in df.iterrows():
-        df.at[idx, "peak_max_blink"] = row["max_value"]
+        invalid_tent = False
         if fitted:
-            df.at[idx, "peak_max_tent"] = row["y_intersect"]
-            df.at[idx, "peak_time_tent"] = row["x_intersect"] / srate
-        df.at[idx, "peak_time_blink"] = row["max_blink"] / srate
+            left_raw = row.get("left_x_intercept", np.nan)
+            right_raw = row.get("right_x_intercept", np.nan)
+            if np.isnan(left_raw) or np.isnan(right_raw):
+                invalid_tent = True
+            else:
+                left_idx = int(round(left_raw))
+                right_idx = int(round(right_raw))
+                if left_idx < 0 or right_idx >= signal_len:
+                    invalid_tent = True
 
-        next_peak = signal_len
+        if invalid_tent:
+            df.at[idx, "peak_max_blink"] = np.nan
+            df.at[idx, "peak_time_blink"] = np.nan
+            if fitted:
+                df.at[idx, "peak_max_tent"] = np.nan
+                df.at[idx, "peak_time_tent"] = np.nan
+        else:
+            df.at[idx, "peak_max_blink"] = row["max_value"]
+            if fitted:
+                df.at[idx, "peak_max_tent"] = row["y_intersect"]
+                df.at[idx, "peak_time_tent"] = (row["x_intersect"] + 1) / srate
+            df.at[idx, "peak_time_blink"] = (row["max_blink"] + 1) / srate
+
         row_pos = df.index.get_loc(idx)
-        if row_pos + 1 < len(max_blinks):
+        if invalid_tent:
+            df.at[idx, "inter_blink_max_amp"] = np.nan
+        elif row_pos + 1 < len(max_blinks):
             next_peak = max_blinks[row_pos + 1]
-        df.at[idx, "inter_blink_max_amp"] = (next_peak - row["max_blink"]) / srate
+            df.at[idx, "inter_blink_max_amp"] = (next_peak - row["max_blink"]) / srate
+        else:
+            df.at[idx, "inter_blink_max_amp"] = np.nan
 
 
 def compute_blink_morphology_properties(

@@ -59,29 +59,45 @@ Unless noted otherwise:
 
 *Frequency-domain aggregation change*: Channel selection, missing-channel validation, and sampling-frequency warnings for wavelet aggregation now live in a shared helper to keep the computation path consistent across callers.
 
-#### xxxx
-Below is the definition use in the paper https://www.frontiersin.org/journals/neuroscience/articles/10.3389/fnins.2017.00012/full
-leftZero is the last zero crossing before maxFrame
-If the signal does not cross zero between this blink and the previous blink, leftZero is the frame of the lowest amplitude between the blinks.
+#### MATLAB parity definitions for BlinkProperties
+Below are the feature definitions from the BLINKER paper and the MATLAB reference, mapped to Python column names. In MATLAB output tables, columns use **camelCase** (e.g., `durationBase`), while the Python outputs use **snake_case** (e.g., `duration_base`). The comparison tests map MATLAB to Python via these names when validating parity.
 
-rightZero is the first zero crossing after maxFrame
+**Landmark definitions (paper terminology)**
+* **`leftZero`**: last zero crossing before `maxFrame`. If the signal does not cross zero between this blink and the previous blink, `leftZero` is the frame of lowest amplitude between blinks.
+* **`rightZero`**: first zero crossing after `maxFrame`.
+* **`upStroke`**: interval between `leftZero` and `maxFrame`.
+* **`downStroke`**: interval between `maxFrame` and `rightZero`.
+* **`leftBase`**: first local minimum to the left of the maximum velocity frame in the upStroke.
+* **`rightBase`**: first local minimum to the right of the maximum velocity frame in the downStroke.
 
-The upStroke is the interval between leftZero and maxFrame, 
-and the downStroke is the interval between maxFrame and rightZero.
+**Blink property column mapping and calculations**
+Each entry lists the Python column, the MATLAB column, a concise definition, and the function that computes it.
 
-
-The leftBase is the first local minimum to the left of the maximum velocity frame in the upStroke.
-rightBase is the first local minimum to the right of the maximum velocity frame in the downStroke.
-
-
-half-zero duration: the width of the blink in seconds at half of the blink amplitude from the zero level
-half-base duration: the width at half of the blink amplitude measured from the leftBase of the blink.
-base duration: rightBase–leftBase 
-zero duration: is rightZero–leftZero
-tent duration: the difference between the intersections of the downStroke and upStroke linear fit lines with the zero line.
-
-positive amplitude velocity ratio (pAVR):the ratio of the maximum amplitude of the blink over the maximum velocity (rate of change) during the blink upStroke
-negative amplitude velocity ratio (nAVR): the ratio of the maximum amplitude of the blink over the maximum velocity found in the blink downStroke.
+* **`duration_base`** ↔ `durationBase`: `(rightBase - leftBase) / srate` (seconds). Implemented in `pyblinker/blink_features/morphology/core_metrics.py:compute_blink_durations`.
+* **`duration_zero`** ↔ `durationZero`: `(rightZero - leftZero) / srate` (seconds). Implemented in `pyblinker/blink_features/morphology/core_metrics.py:compute_blink_durations`.
+* **`duration_tent`** ↔ `durationTent`: `(rightXIntercept - leftXIntercept) / srate` (seconds). Implemented in `pyblinker/blink_features/morphology/core_metrics.py:compute_blink_durations`.
+* **`duration_half_base`** ↔ `durationHalfBase`: `(rightBaseHalfHeight - leftBaseHalfHeight + 1) / srate` (seconds). Implemented in `pyblinker/blink_features/morphology/core_metrics.py:compute_blink_durations`.
+* **`duration_half_zero`** ↔ `durationHalfZero`: `(rightZeroHalfHeight - leftZeroHalfHeight + 1) / srate` (seconds). Implemented in `pyblinker/blink_features/morphology/core_metrics.py:compute_blink_durations`.
+* **`inter_blink_max_amp`** ↔ `interBlinkMaxAmp`: `(next maxFrame - maxFrame) / srate` (seconds) for the next blink; last blink is `NaN`. Implemented in `pyblinker/blink_features/morphology/core_metrics.py:compute_blink_peak_times`.
+* **`inter_blink_max_vel_base`** ↔ `interBlinkMaxVelBase`: `(-peaks_pos_vel_base) / srate` (seconds), referencing the maximum upstroke velocity frame; last blink is `NaN`. Implemented in `pyblinker/blink_features/kinematics/core_metrics.py:compute_inter_blink_max_vel`.
+* **`inter_blink_max_vel_zero`** ↔ `interBlinkMaxVelZero`: `(-peaks_pos_vel_zero) / srate` (seconds), referencing the maximum upstroke velocity frame; last blink is `NaN`. Implemented in `pyblinker/blink_features/kinematics/core_metrics.py:compute_inter_blink_max_vel`.
+* **`neg_amp_vel_ratio_base`** ↔ `negAmpVelRatioBase`: `100 * abs(maxValue / min(velocity in maxFrame:rightBase)) / srate`. Implemented in `pyblinker/blink_features/kinematics/core_metrics.py:compute_amp_vel_ratio_base`.
+* **`pos_amp_vel_ratio_base`** ↔ `posAmpVelRatioBase`: `100 * abs(maxValue / max(velocity in leftBase:maxFrame)) / srate`. Implemented in `pyblinker/blink_features/kinematics/core_metrics.py:compute_amp_vel_ratio_base`.
+* **`neg_amp_vel_ratio_zero`** ↔ `negAmpVelRatioZero`: `100 * abs(maxValue / min(velocity in maxFrame:rightZero)) / srate`. Implemented in `pyblinker/blink_features/kinematics/core_metrics.py:compute_amp_vel_ratio_zero_to_max`.
+* **`pos_amp_vel_ratio_zero`** ↔ `posAmpVelRatioZero`: `100 * abs(maxValue / max(velocity in leftZero:maxFrame)) / srate`. Implemented in `pyblinker/blink_features/kinematics/core_metrics.py:compute_amp_vel_ratio_zero_to_max`.
+* **`neg_amp_vel_ratio_tent`** ↔ `negAmpVelRatioTent`: `100 * abs(maxValue / averRightVelocity) / srate`. Implemented in `pyblinker/blink_features/kinematics/core_metrics.py:compute_amp_vel_ratio_tent`.
+* **`pos_amp_vel_ratio_tent`** ↔ `posAmpVelRatioTent`: `100 * abs(maxValue / averLeftVelocity) / srate`. Implemented in `pyblinker/blink_features/kinematics/core_metrics.py:compute_amp_vel_ratio_tent`.
+* **`time_shut_base`** ↔ `timeShutBase`: duration above `shutAmpFraction * maxValue` between `leftBase` and `rightBase`. Implemented in `pyblinker/blink_features/morphology/core_metrics.py:compute_time_base_shut`.
+* **`time_shut_zero`** ↔ `timeShutZero`: duration above `shutAmpFraction * maxValue` between `leftZero` and `rightZero`. Implemented in `pyblinker/blink_features/morphology/core_metrics.py:compute_time_zero_shut`.
+* **`time_shut_tent`** ↔ `timeShutTent`: duration above `shutAmpFraction * maxValue` between `leftXIntercept` and `rightXIntercept`. Implemented in `pyblinker/blink_features/morphology/core_metrics.py:compute_time_base_shut`.
+* **`closing_time_zero`** ↔ `closingTimeZero`: `(maxFrame - leftZero) / srate`. Implemented in `pyblinker/blink_features/morphology/core_metrics.py:compute_time_zero_shut`.
+* **`reopening_time_zero`** ↔ `reopeningTimeZero`: `(rightZero - maxFrame) / srate`. Implemented in `pyblinker/blink_features/morphology/core_metrics.py:compute_time_zero_shut`.
+* **`closing_time_tent`** ↔ `closingTimeTent`: `(xIntersect - leftXIntercept) / srate`. Implemented in `pyblinker/blink_features/morphology/core_metrics.py:compute_time_base_shut`.
+* **`reopening_time_tent`** ↔ `reopeningTimeTent`: `(rightXIntercept - xIntersect) / srate`. Implemented in `pyblinker/blink_features/morphology/core_metrics.py:compute_time_base_shut`.
+* **`peak_time_blink`** ↔ `peakTimeBlink`: `(maxFrame + 1) / srate` (MATLAB 1-based frame). Implemented in `pyblinker/blink_features/morphology/core_metrics.py:compute_blink_peak_times`.
+* **`peak_time_tent`** ↔ `peakTimeTent`: `(xIntersect + 1) / srate` (MATLAB 1-based frame). Implemented in `pyblinker/blink_features/morphology/core_metrics.py:compute_blink_peak_times`.
+* **`peak_max_blink`** ↔ `peakMaxBlink`: `maxValue` (blink peak amplitude). Implemented in `pyblinker/blink_features/morphology/core_metrics.py:compute_blink_peak_times`.
+* **`peak_max_tent`** ↔ `peakMaxTent`: `yIntersect` (tent-fit peak amplitude). Implemented in `pyblinker/blink_features/morphology/core_metrics.py:compute_blink_peak_times`.
 
 
 *Related Code*:
