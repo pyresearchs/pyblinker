@@ -45,6 +45,10 @@ def get_blink_statistic(
     """Compute blink statistics for a DataFrame of blink fits.
     This is same as in extractBlinks.m under the for loop
     Calculate an amplitude criterion (frames in blink to those out) and Now calculate the cutoff ratios -- use default for the values
+    %% Calculate an amplitude criterion (frames in blink to those out)
+        % below is the same as in get_blink_statistic under pyblinker/utils/statistics_utils.py
+
+
     """
     correlation_threshold_bottom, correlation_threshold_top = z_thresholds[0]
     dfx = df.copy()
