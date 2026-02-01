@@ -1,3 +1,8 @@
+"""
+
+This test the output as in extractBlinks.m
+"""
+
 import unittest
 import numpy as np
 import pandas as pd

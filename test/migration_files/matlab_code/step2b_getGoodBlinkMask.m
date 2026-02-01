@@ -16,7 +16,7 @@ function step2b_getGoodBlinkMask()
     specifiedMedian= data.specifiedMedian;
     blinkFits= data.blinkFits;
     [goodBlinkMask, specifiedMedian, specifiedStd] = ...
-      get_good_blink_mask(blinkFits, specifiedMedian, specifiedStd, zThresholds);
+      getGoodBlinkMask(blinkFits, specifiedMedian, specifiedStd, zThresholds);
 
     data_output = load(output_file);
     

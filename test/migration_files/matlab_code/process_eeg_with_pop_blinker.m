@@ -137,10 +137,10 @@ function process_eeg_with_pop_blinker()
     % ---------------------------------------------------------------------
     EEG = pop_biosig(eeg_file_path);
     % find the channel whose label is '003'
-    idx = find(strcmp({EEG.chanlocs.labels}, '003')); % we know from our expirement, the representative is 003,
+    % idx = find(strcmp({EEG.chanlocs.labels}, '003')); % we know from our expirement, the representative is 003,
 
     % Find the indices for labels '003' and '005'
-    % idx = find(ismember({EEG.chanlocs.labels}, {'003','005'}));
+    idx = find(ismember({EEG.chanlocs.labels}, {'003','005'}));
 
     % keep only that channel
     EEG = pop_select(EEG, 'channel', idx);

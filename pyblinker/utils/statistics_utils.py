@@ -1,4 +1,6 @@
-"""Blink statistics helper functions."""
+"""Blink statistics helper functions.
+This module is similar to as in
+extractBlinkProperties.m"""
 
 from __future__ import annotations
 
@@ -40,8 +42,11 @@ def calculate_good_ratio(
 def get_blink_statistic(
     df: pd.DataFrame, z_thresholds: np.ndarray, signal: np.ndarray | None = None
 ) -> dict:
-    """Compute blink statistics for a DataFrame of blink fits."""
-
+    """Compute blink statistics for a DataFrame of blink fits.
+    This is same as in extractBlinks.m under the for loop
+    Calculate an amplitude criterion (frames in blink to those out) and Now calculate the cutoff ratios -- use default for the values
+    """
+    correlation_threshold_bottom, correlation_threshold_top = z_thresholds[0]
     dfx = df.copy()
     dfx[["left_zero", "right_zero"]] = dfx[["left_zero", "right_zero"]] - 1
 
@@ -58,7 +63,7 @@ def get_blink_statistic(
     outside_blink = (signal > 0) & ~blink_mask
     blink_amp_ratio = np.mean(signal[inside_blink]) / np.mean(signal[outside_blink])
 
-    correlation_threshold_bottom, correlation_threshold_top = z_thresholds[0]
+
     df_data = df[["leftR2", "rightR2", "max_value"]]
 
     good_mask_top = (df_data["leftR2"] >= correlation_threshold_top) & (
@@ -110,6 +115,7 @@ def get_good_blink_mask(
     z_thresholds: np.ndarray,
 ) -> Tuple[np.ndarray, pd.DataFrame]:
     """Return mask of good blinks and subset DataFrame based on thresholds."""
+    # Calculate an amplitude criterion (frames in blink to those out)
 
     blink_fits = blink_fits.dropna(subset=["leftR2", "rightR2", "max_value"])
 
