@@ -47,7 +47,7 @@ function step_a_get_blink_position()
 
     % Call the extraction function
     fprintf('Running extractBlinksVersionCompact...\n');
-    [blinks, params] = extractBlinks(candidateSignals, signalType, params);
+    [blinks, params] = extractBlinksVersionCompact(candidateSignals, signalType, params);
 
     % Extract blinkPositions
     % if isfield(blinks, 'signalData') && ~isempty(blinks.signalData) && isfield(blinks.signalData(1), 'blinkPositions')
