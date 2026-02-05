@@ -7,19 +7,19 @@ replication of MATLAB-based results.
 
 ## Overview
 The testing suite requires input data to be available in multiple formats (FIF, MAT)
-and specifically sampled at 20 Hz to match legacy processing pipelines. This script
-automates the creation of these derived files from the source raw data.
+and specifically sampled at a target frequency (e.g., 20 Hz) to match legacy processing pipelines. 
+This script automates the creation of these derived files from the source raw data.
 
 ## Workflow
 The script performs the following idempotent checks and operations:
 
-1.  **Resampled FIF Generation (20 Hz)**
-    -   **Check:** Does `test/test_files/ear_eog_resamp-20_raw.fif` exist?
+1.  **Resampled FIF Generation**
+    -   **Check:** Does `test/test_files/ear_eog_resamp-<sfreq>_raw.fif` exist?
     -   **Action:** If missing, loads the source file `test/test_files/ear_eog_raw.fif`,
-        resamples it to 20 Hz, and saves the new FIF file.
+        resamples it to the target frequency, and saves the new FIF file.
 
 2.  **Intermediate MATLAB (.mat) Generation**
-    -   **Check:** Does `test/test_files/ear_eog_resamp-20_raw.mat` exist?
+    -   **Check:** Does `test/test_files/ear_eog_resamp-<sfreq>_raw.mat` exist?
     -   **Action:** If missing, uses the `convert_fif_to_mat` utility (from sibling module
         `convert_input_fif_to_edf`) to convert the *resampled FIF* into a MATLAB file
         containing the single channel 'EEG-E8'.
@@ -65,12 +65,15 @@ logger = logging.getLogger(__name__)
 CURRENT_DIR = Path(__file__).resolve().parent
 TEST_FILES_DIR = CURRENT_DIR.parent / "test_files"
 
+# Configuration for the target sampling frequency
+TARGET_SFREQ = 100
+
 SOURCE_FIF = TEST_FILES_DIR / "ear_eog_raw.fif"
-RESAMPLED_FIF = TEST_FILES_DIR / "ear_eog_resamp-20_raw.fif"
-RESAMPLED_MAT = TEST_FILES_DIR / "ear_eog_resamp-20_raw.mat"
+RESAMPLED_FIF = TEST_FILES_DIR / f"ear_eog_resamp-{TARGET_SFREQ}_raw.fif"
+RESAMPLED_MAT = TEST_FILES_DIR / f"ear_eog_resamp-{TARGET_SFREQ}_raw.mat"
 
 
-def ensure_resampled_fif(source: Path, target: Path, target_sfreq: int = 20) -> None:
+def ensure_resampled_fif(source: Path, target: Path, target_sfreq: int) -> None:
     """
     Ensure the resampled FIF file exists.
 
@@ -83,8 +86,8 @@ def ensure_resampled_fif(source: Path, target: Path, target_sfreq: int = 20) -> 
         Path to the original raw FIF file.
     target : Path
         Path where the resampled FIF file should be saved.
-    target_sfreq : int, optional
-        Target sampling frequency in Hz (default is 20).
+    target_sfreq : int
+        Target sampling frequency in Hz.
 
     Raises
     ------
@@ -110,7 +113,7 @@ def ensure_resampled_fif(source: Path, target: Path, target_sfreq: int = 20) -> 
     logger.info("Created resampled FIF.")
 
 
-def ensure_mat_from_fif(mat_path: Path, source_fif: Path) -> None:
+def ensure_mat_from_fif(mat_path: Path, source_fif: Path, target_sfreq: int) -> None:
     """
     Ensure the MAT file exists, creating it from the resampled FIF file if needed.
 
@@ -120,6 +123,8 @@ def ensure_mat_from_fif(mat_path: Path, source_fif: Path) -> None:
         Path where the .mat file should be saved.
     source_fif : Path
         Path to the resampled FIF file used to generate the MAT file.
+    target_sfreq : int
+        Target sampling frequency in Hz used for parameter consistency.
 
     Raises
     ------
@@ -138,7 +143,7 @@ def ensure_mat_from_fif(mat_path: Path, source_fif: Path) -> None:
     convert_fif_to_mat(
         input_fif=str(source_fif),
         output_mat=str(mat_path),
-        srate=20, # Explicitly matching the resampled rate
+        srate=target_sfreq, # Explicitly matching the resampled rate
         channel_name="EEG-E8" # Default expected channel
     )
     logger.info("Created MAT file: %s", mat_path)
@@ -151,10 +156,10 @@ def main():
 
     try:
         # Step 1: Create resampled FIF
-        ensure_resampled_fif(SOURCE_FIF, RESAMPLED_FIF, target_sfreq=20)
+        ensure_resampled_fif(SOURCE_FIF, RESAMPLED_FIF, target_sfreq=TARGET_SFREQ)
 
         # Step 2: Create MAT from resampled FIF
-        ensure_mat_from_fif(RESAMPLED_MAT, RESAMPLED_FIF)
+        ensure_mat_from_fif(RESAMPLED_MAT, RESAMPLED_FIF, target_sfreq=TARGET_SFREQ)
         
         logger.info("Setup complete. All required files are present.")
         

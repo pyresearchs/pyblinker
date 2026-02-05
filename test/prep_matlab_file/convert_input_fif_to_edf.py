@@ -79,12 +79,52 @@ def convert_fif_to_mat(input_fif: str, output_mat: str | None = None,
         raise RuntimeError(f"Expected single channel after picking, got shape {data.shape}")
     blink_comp = np.asarray(data[0], dtype=np.float64)
 
+    # Replicate parameters from test/params_file.mat
+    params = {
+        'srate': float(srate),
+        'stdThreshold': float(std_threshold),
+        'subjectID': 'Subject1_Task1_Experiment1_Rep1',
+        'uniqueName': 'Unknown',
+        'experiment': 'Experiment1',
+        'task': 'Task1',
+        'startDate': '01-Jan-2026',
+        'startTime': '00:00:00',
+        'signalTypeIndicator': 'UseNumbers',
+        'signalNumbers': 1,
+        'signalLabels': np.array(['002'], dtype=object),
+        'excludeLabels': np.array(['exg5', 'exg6', 'exg7', 'exg8', 'vehicle position'], dtype=object),
+        'dumpBlinkerStructures': 0,
+        'showMaxDistribution': 1,
+        'dumpBlinkImages': 0,
+        'verbose': 1,
+        'dumpBlinkPositions': 0,
+        'fileName': '',
+        'blinkerSaveFile': r'C:\eeg_lab_matlab\eeglab2024.2\_blinks.mat',
+        'blinkerDumpDir': r'C:\eeg_lab_matlab\eeglab2024.2\blinkDump',
+        'lowCutoffHz': 1,
+        'highCutoffHz': 20,
+        'minGoodBlinks': 10,
+        'blinkAmpRange': np.array([3, 50]),
+        'goodRatioThreshold': 0.7,
+        'pAVRThreshold': 3,
+        'correlationThresholdTop': 0.98,
+        'correlationThresholdBottom': 0.9,
+        'correlationThresholdMiddle': 0.95,
+        'keepSignals': 0,
+        'shutAmpFraction': 0.9,
+        'zThresholds': np.array([[0.9, 2.], [0.98, 5.]]),
+        'ICSimilarityThreshold': 0.85,
+        'ICFOMThreshold': 1,
+        'numberMaxBins': 80
+    }
+
     # Prepare MATLAB dict
     mat_dict = {
         "blinkComp": blink_comp,
         "srate": float(srate),
         "stdThreshold": float(std_threshold),
         "channelName": channel_name,
+        "params": params
     }
 
     # Ensure output directory exists

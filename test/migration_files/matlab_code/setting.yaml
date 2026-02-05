@@ -1,0 +1,2 @@
+input_file: "C:\Users\balan\IdeaProjects\pyblinker\test\test_files\ear_eog_resamp-100_raw.mat"
+output_file: "C:\\Users\\balan\\IdeaProjects\\pyblinker\\test\\test_files\\step_a_blink_positions.mat"

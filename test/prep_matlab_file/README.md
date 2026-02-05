@@ -19,13 +19,15 @@ This directory contains utilities for generating intermediate MATLAB (`.mat`) fi
 
 ## Test Data Generation Workflow
 
-To ensure reproducible tests, we generate resampled (20 Hz) versions of the raw test data in FIF and MAT formats.
+To ensure reproducible tests, we generate resampled versions of the raw test data in FIF and MAT formats. The filenames dynamically reflect the target sampling frequency (e.g., 20 Hz).
 
 Running the setup script ensures the following chain of artifacts exists in `test/test_files/`:
 
 1.  **Source:** `ear_eog_raw.fif` (Original)
-2.  **Resampled FIF:** `ear_eog_resamp-20_raw.fif` (Derived from Source, resampled to 20Hz)
-3.  **Intermediate MAT:** `ear_eog_resamp-20_raw.mat` (Derived from Resampled FIF using `convert_fif_to_mat`)
+2.  **Resampled FIF:** `ear_eog_resamp-<sfreq>_raw.fif` (Derived from Source, resampled to `<sfreq>` Hz)
+3.  **Intermediate MAT:** `ear_eog_resamp-<sfreq>_raw.mat` (Derived from Resampled FIF using `convert_fif_to_mat`)
+
+*Default `<sfreq>` is 20 Hz.*
 
 ### How to Generate Files
 
