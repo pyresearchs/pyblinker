@@ -17,7 +17,7 @@ from pyblinker.blinker.get_blink_positions import get_blink_position
 # -----------------------------------------------------------------------------
 logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
-
+from test.blinker_pyblinker_comparison.utils import load_matlab_blink_positions
 
 # -----------------------------------------------------------------------------
 # Test class
@@ -31,7 +31,16 @@ class TestFitBlinks(unittest.TestCase):
 		"""
 		base_path = Path(__file__).resolve().parents[1] / "migration_files"
 		fif_path = Path("test/test_files/ear_eog_raw.fif")
+		mat_expected = Path("test/test_files/step_a_extract_blinks_resamp-100.mat")
 
+		# Load MATLAB positions (2 x N), convert to DataFrame with 0-based indices
+		# In MATLAB implementaion, we use the step_a_get_blink_position.m output as input into directly the blinkFits = fitBlinks(signalData(k).signal, signalData(k).blinkPositions); But for the purpose of Python validation, we will re-run the step of getting blink positions here.
+
+		arr = load_matlab_blink_positions(mat_expected)
+		df_mat = pd.DataFrame({
+				"start_blink": arr[0, :].astype(np.int64),
+				"end_blink": arr[1, :].astype(np.int64),
+				})
 		# ---------------------------------------------------------------------
 		# Load raw FIF data
 		# ---------------------------------------------------------------------
@@ -40,10 +49,7 @@ class TestFitBlinks(unittest.TestCase):
 			)
 
 		ch_name = "EEG-E8"
-		if ch_name not in raw.ch_names:
-			# Case-insensitive fallback
-			ch_map = {c.lower(): c for c in raw.ch_names}
-			ch_name = ch_map.get(ch_name.lower(), ch_name)
+
 
 		raw = raw.copy().pick_channels([ch_name])
 
