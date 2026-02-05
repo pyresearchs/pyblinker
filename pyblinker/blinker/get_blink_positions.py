@@ -108,7 +108,7 @@ def get_blink_position(
     if arr_end.size == 0:
         return pd.DataFrame({'start_blink': [], 'end_blink': []})
 
-    min_event_sep = params.get("min_event_sep", params["min_event_len"])
+    min_event_sep = params.get("min_event_sep", 0)
     arr_start, arr_end = _remove_close_blinks(
         arr_start, arr_end, sfreq=params["sfreq"], min_event_sep=min_event_sep
     )
