@@ -1,8 +1,6 @@
 # Convert a FIF file to MATLAB .mat containing only EEG-E8 channel
 # Saved variables: blinkComp (waveform), srate (=100), stdThreshold (=1.5)
 
-import argparse
-import sys
 from pathlib import Path
 
 import mne
@@ -15,25 +13,39 @@ def convert_fif_to_mat(input_fif: str, output_mat: str | None = None,
                        srate: int = 100,
                        std_threshold: float = 1.5) -> str:
     """
-    Convert a FIF file to a MATLAB .mat file with only one EEG channel.
+    Convert a raw FIF file to a MATLAB .mat file containing a single EEG channel.
+
+    This function loads a FIF file, extracts a specified channel, resamples it to
+    a target sampling rate, and saves it as a .mat file. The output .mat file
+    contains the following variables:
+        - blinkComp: The EEG data as a 1D array.
+        - srate: The sampling rate of the data.
+        - stdThreshold: A threshold value for blink detection.
+        - channelName: The name of the extracted channel.
 
     Parameters
     ----------
     input_fif : str
         Path to the input raw FIF file.
-    output_mat : str | None
-        Path to the output .mat file. If None, will be derived from input path.
-    channel_name : str
-        Channel name to extract (default: 'EEG-E8').
-    srate : int
-        Target sampling rate in Hz (default: 100).
-    std_threshold : float
-        Value saved in the .mat as 'stdThreshold' (default: 1.5).
+    output_mat : str | None, optional
+        Path to the output .mat file. If None, the output filename is derived
+        from the input filename and channel name.
+    channel_name : str, optional
+        The name of the channel to extract (default is "EEG-E8").
+    srate : int, optional
+        The target sampling rate in Hz (default is 100).
+    std_threshold : float, optional
+        The standard deviation threshold to be saved in the .mat file (default is 1.5).
 
     Returns
     -------
-    output_mat_path : str
-        Path to the written .mat file.
+    str
+        The absolute path to the generated .mat file.
+
+    Raises
+    ------
+    RuntimeError
+        If the specified channel is not found in the FIF file.
     """
     input_path = Path(input_fif)
     if output_mat is None:
@@ -85,43 +97,4 @@ def convert_fif_to_mat(input_fif: str, output_mat: str | None = None,
     savemat(str(out_path), mat_dict)
     return str(out_path)
 
-
-def main():
-    parser = argparse.ArgumentParser(description="Convert FIF to MATLAB .mat for EEG-E8")
-    parser.add_argument("input", nargs="?", help="Path to input FIF file")
-    parser.add_argument("--output", "-o", help="Output .mat path", default=None)
-    parser.add_argument("--channel", "-c", help="Channel name", default="EEG-E8")
-    parser.add_argument("--srate", "-r", type=int, help="Target sampling rate", default=100)
-    parser.add_argument("--std-threshold", "-t", type=float, help="stdThreshold value", default=1.5)
-    args = parser.parse_args()
-
-    # If no input arg provided, try reading the first line of this file (legacy pointer)
-    input_path = args.input
-    if not input_path:
-        try:
-            # Legacy behavior: the original file contained the relative path on the first line
-            with open(__file__, "r", encoding="utf-8") as f:
-                first_line = f.readline().strip()
-                if first_line and first_line.endswith(".fif"):
-                    input_path = first_line
-        except Exception:
-            input_path = None
-
-    if not input_path:
-        print("Error: no input FIF path provided.")
-        parser.print_help()
-        sys.exit(2)
-
-    output_path = convert_fif_to_mat(
-        input_fif=input_path,
-        output_mat=args.output,
-        channel_name=args.channel,
-        srate=args.srate,
-        std_threshold=args.std_threshold,
-    )
-    print(f"Wrote MATLAB file: {output_path}")
-
-
-if __name__ == "__main__":
-    main()
 
