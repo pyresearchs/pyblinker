@@ -1,3 +1,7 @@
+% We have to do the step b fit blink, because the output for
+% step_a_extract_blinks_eeg did not produce the output for fit blink. In
+% this case, we need the blink position that extracted from step_a as an
+% input into the step b.
 function step_b_fit_blink()
     % step_b_fit_blink
     % Reads configuration from setting.yaml, loads input data (candidateSignal and blinkPositions),
