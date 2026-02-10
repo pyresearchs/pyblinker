@@ -20,10 +20,7 @@ function step_a_get_blink_position()
     fprintf('Input:  %s\n', inputFile);
     fprintf('Output: %s\n', outputFile);
 
-    % Load the input data
-    if ~exist(inputFile, 'file')
-        error('Input file does not exist: %s', inputFile);
-    end
+
     data = load(inputFile);
 
     % Ensure that the required variables are present
@@ -47,15 +44,8 @@ function step_a_get_blink_position()
 
     % Call the extraction function
     fprintf('Running extractBlinksVersionCompact...\n');
-    [blinks, params] = extractBlinksVersionCompact(candidateSignals, signalType, params);
+    [blinks, params] = extractBlinks(candidateSignals, signalType, params);
 
-    % Extract blinkPositions
-    % if isfield(blinks, 'signalData') && ~isempty(blinks.signalData) && isfield(blinks.signalData(1), 'blinkPositions')
-    %     blinkPositions = blinks.signalData(1).blinkPositions;
-    % else
-    %     warning('No blinkPositions found in blinks output. Saving empty blinkPositions.');
-    %     blinkPositions = [];
-    % end
 
     % Save the output
     outputDir = fileparts(outputFile);
