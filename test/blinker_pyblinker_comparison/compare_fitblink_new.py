@@ -29,8 +29,7 @@ class TestFitBlinks(unittest.TestCase):
         Load test data, run FitBlinks, and load MATLAB reference output.
         """
         # Paths
-        # Note: We use the MAT file for the signal to ensure exact match with MATLAB reference,
-        # as the FIF file contains different (possibly unscaled) values.
+        # Note: We use the MAT file for the signal to ensure exact match with MATLAB reference, as the FIF file contains different (possibly unscaled) values.
         mat_signal_path = Path("test/test_files/ear_eog_resamp-100_raw.mat")
         mat_pos_path = Path("test/test_files/step_a_extract_blinks_resamp-100.mat")
         mat_fit_path = Path("test/test_files/step_b_fit_blink.mat")
