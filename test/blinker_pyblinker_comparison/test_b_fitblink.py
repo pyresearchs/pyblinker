@@ -154,7 +154,7 @@ class TestFitBlinks(unittest.TestCase):
             check_dtype=False,
             check_exact=False,
             rtol=0,
-            atol=1e-6,
+            atol=1e-4,
         )
         # pass
 

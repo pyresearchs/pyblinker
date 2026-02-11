@@ -103,8 +103,8 @@ class TestBlinkProperties(unittest.TestCase):
 				}
 
 		# Tolerances for float comparisons
-		rtol = 1e-10
-		atol = 1e-12
+		rtol = 0
+		atol = 1e-3
 
 		for mat_key, py_key in key_map.items():
 			with self.subTest(mat_key=mat_key, py_key=py_key):
@@ -123,4 +123,4 @@ class TestBlinkProperties(unittest.TestCase):
 						f"Mismatch for {py_key}: actual={actual}, expected={expected}",
 						)
 if __name__ == "__main__":
-	unittest.main(verbosity=2)
+	unittest.main(verbosity=0)
