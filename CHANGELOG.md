@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.9] - 2026-02-11
+
+### Fixed
+- Correct `get_blink_statistic` to report `number_blinks` from the full blink-fit table (matching MATLAB `extractBlinks`), while still excluding invalid rows for downstream quality/cutoff statistics.
+- This restores MATLAB-parity for blink statistics and makes the blinker comparison tests pass consistently when run individually or through the aggregate runner.
+
 ## [0.1.8] - 2026-02-11
 
 ### Fixed

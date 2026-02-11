@@ -51,6 +51,7 @@ def get_blink_statistic(
 
     """
     correlation_threshold_bottom, correlation_threshold_top = z_thresholds[0]
+    number_blinks = int(len(df))
     df_data = df[["left_zero", "right_zero", "leftR2", "rightR2", "max_value"]].copy()
 
     # MATLAB removes records with NaN for any of these fields before all later
@@ -97,7 +98,7 @@ def get_blink_statistic(
     # available. Keep deterministic, NaN outputs for missing statistics.
     if np.sum(good_mask_top) < 2:
         return {
-            "number_blinks": len(df_data),
+            "number_blinks": number_blinks,
             "number_good_blinks": int(np.sum(good_mask_bottom)),
             "blink_amp_ratio": blink_amp_ratio,
             "cutoff": np.nan,
@@ -130,7 +131,7 @@ def get_blink_statistic(
     number_good_blinks = int(np.sum(good_mask_bottom))
 
     return {
-        "number_blinks": len(df_data),
+        "number_blinks": number_blinks,
         "number_good_blinks": number_good_blinks,
         "blink_amp_ratio": blink_amp_ratio,
         "cutoff": cutoff,
