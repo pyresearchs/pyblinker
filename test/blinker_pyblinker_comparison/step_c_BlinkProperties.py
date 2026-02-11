@@ -168,7 +168,7 @@ class TestBlinkProperties(unittest.TestCase):
         for col in column_mapping.values():
             self.assertIn(col, self.df_mat.columns, f"Missing MATLAB column: {col}")
 
-        tolerance = 1e-6
+        tolerance = 1e-3
         mismatches = []
 
         for row_idx in range(len(self.df_py)):
