@@ -187,7 +187,7 @@ class TestBlinkProperties(unittest.TestCase):
             details = [
                 f"row={row} py_col={py_col} mat_col={mat_col} "
                 f"mat={mat_val} py={py_val}"
-                for row, py_col, mat_col, mat_val, py_val in mismatches[:10]
+                for row, py_col, mat_col, mat_val, py_val in mismatches
             ]
             raise AssertionError(
                 f"{len(mismatches)} mismatches found.\n" + "\n".join(details)
