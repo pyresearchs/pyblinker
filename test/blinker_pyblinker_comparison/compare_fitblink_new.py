@@ -11,16 +11,11 @@ from pyblinker.blinker.fit_blink import FitBlinks
 from test.blinker_pyblinker_comparison.utils import load_matlab_blink_positions
 
 from pyblinker.blinker.get_blink_positions import get_blink_position
-# -----------------------------------------------------------------------------
-# Logger configuration
-# -----------------------------------------------------------------------------
+
 logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
 
-# -----------------------------------------------------------------------------
-# Test class
-# -----------------------------------------------------------------------------
 class TestFitBlinks(unittest.TestCase):
 
     @classmethod
@@ -156,7 +151,7 @@ class TestFitBlinks(unittest.TestCase):
     def test_dataframe_equality(self):
         """
         # Compare Python FitBlinks output with MATLAB reference output.
-        # Both should return 359 blinks with identical properties.
+        # Both should return 355 blinks with identical properties.
         # """
         self.assertEqual(
             len(self.df_py),
@@ -164,7 +159,7 @@ class TestFitBlinks(unittest.TestCase):
             f"Different number of blinks: "
             f"py={len(self.df_py)} mat={len(self.df_mat)}",
         )
-        # TODO GOT SOME ISSUE
+        # TODO GOT SOME ISSUE python implementation of pyblinker
         # pd.testing.assert_frame_equal(
         #     self.df_py,
         #     self.df_mat,

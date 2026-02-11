@@ -1,10 +1,11 @@
+"Good to go"
 import unittest
 import pandas as pd
 import mne
 from pyblinker.blinker.get_blink_positions import get_blink_position
 import numpy as np
 from pathlib import Path
-from scipy.io import loadmat
+
 
 
 from test.blinker_pyblinker_comparison.utils import load_matlab_blink_positions
