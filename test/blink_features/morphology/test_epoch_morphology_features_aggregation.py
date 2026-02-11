@@ -30,8 +30,9 @@ class TestMorphologyAggregation(unittest.TestCase):
 
     def test_merge_blink_counts(self) -> None:
         """Joined DataFrame exposes why certain rows are NaN."""
-        picks = ["EAR-avg_ear"]
-        compute_epoch_morphology_features(self.epochs, picks=picks)
+        picks = ["EEG-E8"]
+        df=compute_epoch_morphology_features(self.epochs, picks=picks)
+        j=1
         # expected_cols = morphology_column_names(picks) + ["n_blinks"]
         # assert_df_has_columns(self, merged, expected_cols)
         # assert_numeric_or_nan(self, merged.iloc[0])
