@@ -59,7 +59,7 @@ if str(REPO_ROOT) not in sys.path:
 
 
 from pyblinker.blinker.get_blink_positions import get_blink_position  # noqa: E402
-from test.blinker_migration.debugging_tools import load_matlab_data  # noqa: E402
+from test.blinker_migration.obs.debugging_tools import load_matlab_data  # noqa: E402
 
 
 @dataclass

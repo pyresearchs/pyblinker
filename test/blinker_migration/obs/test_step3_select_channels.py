@@ -8,9 +8,9 @@ from pyblinker.blinker.get_representative_channel import (
     filter_good_ratio,
     select_max_good_blinks
 )
-from test.blinker_migration.debugging_tools import load_matlab_data
+from test.blinker_migration.obs.debugging_tools import load_matlab_data
 from pyblinker.blinker import default_setting
-from test.blinker_migration.pyblinker.utils.update_pkl_variables import RENAME_MAP
+from test.blinker_migration.obs.pyblinker.utils.update_pkl_variables import RENAME_MAP
 
 # Configure logger
 logging.basicConfig(level=logging.INFO)

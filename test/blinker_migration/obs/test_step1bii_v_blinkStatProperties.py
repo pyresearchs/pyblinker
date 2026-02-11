@@ -9,8 +9,8 @@ import pandas as pd
 from pathlib import Path
 
 from pyblinker.utils.statistics_utils import get_blink_statistic
-from test.blinker_migration.debugging_tools import load_matlab_data
-from test.blinker_migration.pyblinker.utils.update_pkl_variables import RENAME_MAP, rename_keys
+from test.blinker_migration.obs.debugging_tools import load_matlab_data
+from test.blinker_migration.obs.pyblinker.utils.update_pkl_variables import RENAME_MAP, rename_keys
 
 
 class TestBlinkStatistic(unittest.TestCase):

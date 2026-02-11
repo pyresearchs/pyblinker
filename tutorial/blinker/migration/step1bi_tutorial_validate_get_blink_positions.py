@@ -81,7 +81,7 @@ def _import_dependencies() -> tuple[Path, object, object]:
         sys.path.insert(0, str(repo_root))
 
     from pyblinker.blinker.get_blink_positions import get_blink_position as importer_get
-    from test.blinker_migration.debugging_tools import load_matlab_data as importer_load
+    from test.blinker_migration.obs.debugging_tools import load_matlab_data as importer_load
 
     return repo_root, importer_get, importer_load
 

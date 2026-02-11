@@ -4,9 +4,9 @@ import pandas as pd
 from pyblinker.blink_features.waveform_features.extract_blink_properties import (
     BlinkProperties,
 )
-from test.blinker_migration.debugging_tools import load_matlab_data
+from test.blinker_migration.obs.debugging_tools import load_matlab_data
 from pyblinker.blinker import default_setting
-from test.blinker_migration.pyblinker.utils.update_pkl_variables import RENAME_MAP
+from test.blinker_migration.obs.pyblinker.utils.update_pkl_variables import RENAME_MAP
 
 import logging
 from pathlib import Path

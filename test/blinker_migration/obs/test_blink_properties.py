@@ -79,7 +79,7 @@ from pathlib import Path
 from pyblinker.blink_features.waveform_features.extract_blink_properties import (
     BlinkProperties,
 )
-from test.blinker_migration.pyblinker.utils.update_pkl_variables import RENAME_MAP
+from test.blinker_migration.obs.pyblinker.utils.update_pkl_variables import RENAME_MAP
 
 
 @pytest.fixture(scope="module")

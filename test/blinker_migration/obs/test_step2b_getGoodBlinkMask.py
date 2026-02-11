@@ -1,9 +1,9 @@
 import unittest
 import numpy as np
 import pandas as pd
-from test.blinker_migration.debugging_tools import load_matlab_data
+from test.blinker_migration.obs.debugging_tools import load_matlab_data
 from pyblinker.utils.statistics_utils import get_good_blink_mask
-from test.blinker_migration.pyblinker.utils.update_pkl_variables import RENAME_MAP
+from test.blinker_migration.obs.pyblinker.utils.update_pkl_variables import RENAME_MAP
 from pathlib import Path
 
 
