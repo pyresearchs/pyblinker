@@ -132,72 +132,72 @@ class TestBlinkProperties(unittest.TestCase):
         Compare Python FitBlinks output with MATLAB reference output.
         Both should return 359 blinks with identical properties.
         """
-        pass
-        # self.assertEqual(
-        #     len(self.df_py),
-        #     len(self.df_mat),
-        #     f"Different number of blinks: "
-        #     f"py={len(self.df_py)} mat={len(self.df_mat)}",
-        # )
+        # pass
+        self.assertEqual(
+            len(self.df_py),
+            len(self.df_mat),
+            f"Different number of blinks: "
+            f"py={len(self.df_py)} mat={len(self.df_mat)}",
+        )
+
+        column_mapping = {
+            "duration_base": "durationBase",
+            "duration_zero": "durationZero",
+            "duration_tent": "durationTent",
+            "duration_half_base": "durationHalfBase",
+            "duration_half_zero": "durationHalfZero",
+            "inter_blink_max_amp": "interBlinkMaxAmp",
+            "inter_blink_max_vel_base": "interBlinkMaxVelBase",
+            "inter_blink_max_vel_zero": "interBlinkMaxVelZero",
+            "neg_amp_vel_ratio_base": "negAmpVelRatioBase",
+            "pos_amp_vel_ratio_base": "posAmpVelRatioBase",
+            "neg_amp_vel_ratio_zero": "negAmpVelRatioZero",
+            "pos_amp_vel_ratio_zero": "posAmpVelRatioZero",
+            "neg_amp_vel_ratio_tent": "negAmpVelRatioTent",
+            "pos_amp_vel_ratio_tent": "posAmpVelRatioTent",
+            "time_shut_base": "timeShutBase",
+            "time_shut_zero": "timeShutZero",
+            "time_shut_tent": "timeShutTent",
+            "closing_time_zero": "closingTimeZero",
+            "reopening_time_zero": "reopeningTimeZero",
+            "closing_time_tent": "closingTimeTent",
+            "reopening_time_tent": "reopeningTimeTent",
+            "peak_time_blink": "peakTimeBlink",
+            "peak_time_tent": "peakTimeTent",
+            "peak_max_blink": "peakMaxBlink",
+            "peak_max_tent": "peakMaxTent",
+        }
         #
-        # column_mapping = {
-        #     "duration_base": "durationBase",
-        #     "duration_zero": "durationZero",
-        #     "duration_tent": "durationTent",
-        #     "duration_half_base": "durationHalfBase",
-        #     "duration_half_zero": "durationHalfZero",
-        #     "inter_blink_max_amp": "interBlinkMaxAmp",
-        #     "inter_blink_max_vel_base": "interBlinkMaxVelBase",
-        #     "inter_blink_max_vel_zero": "interBlinkMaxVelZero",
-        #     "neg_amp_vel_ratio_base": "negAmpVelRatioBase",
-        #     "pos_amp_vel_ratio_base": "posAmpVelRatioBase",
-        #     "neg_amp_vel_ratio_zero": "negAmpVelRatioZero",
-        #     "pos_amp_vel_ratio_zero": "posAmpVelRatioZero",
-        #     "neg_amp_vel_ratio_tent": "negAmpVelRatioTent",
-        #     "pos_amp_vel_ratio_tent": "posAmpVelRatioTent",
-        #     "time_shut_base": "timeShutBase",
-        #     "time_shut_zero": "timeShutZero",
-        #     "time_shut_tent": "timeShutTent",
-        #     "closing_time_zero": "closingTimeZero",
-        #     "reopening_time_zero": "reopeningTimeZero",
-        #     "closing_time_tent": "closingTimeTent",
-        #     "reopening_time_tent": "reopeningTimeTent",
-        #     "peak_time_blink": "peakTimeBlink",
-        #     "peak_time_tent": "peakTimeTent",
-        #     "peak_max_blink": "peakMaxBlink",
-        #     "peak_max_tent": "peakMaxTent",
-        # }
-        #
-        # required_py_columns = list(column_mapping.keys())
-        # for col in required_py_columns:
-        #     self.assertIn(col, self.df_py.columns, f"Missing Python column: {col}")
-        #
-        # for col in column_mapping.values():
-        #     self.assertIn(col, self.df_mat.columns, f"Missing MATLAB column: {col}")
-        #
-        # tolerance = 1e-6
-        # mismatches = []
-        #
-        # for row_idx in range(len(self.df_py)):
-        #     for py_col, mat_col in column_mapping.items():
-        #         py_val = self.df_py.at[row_idx, py_col]
-        #         mat_val = self.df_mat.at[row_idx, mat_col]
-        #         if pd.isna(py_val) and pd.isna(mat_val):
-        #             continue
-        #         if pd.isna(py_val) != pd.isna(mat_val):
-        #             mismatches.append((row_idx, py_col, mat_col, mat_val, py_val))
-        #             continue
-        #         if not np.isclose(py_val, mat_val, atol=tolerance, rtol=0):
-        #             mismatches.append((row_idx, py_col, mat_col, mat_val, py_val))
-        #
-        # if mismatches:
-        #     details = [
-        #         f"row={row} py_col={py_col} mat_col={mat_col} "
-        #         f"mat={mat_val} py={py_val}"
-        #         for row, py_col, mat_col, mat_val, py_val in mismatches[:10]
-        #     ]
-        #     raise AssertionError(
-        #         f"{len(mismatches)} mismatches found.\n" + "\n".join(details)
-        #     )
+        required_py_columns = list(column_mapping.keys())
+        for col in required_py_columns:
+            self.assertIn(col, self.df_py.columns, f"Missing Python column: {col}")
+
+        for col in column_mapping.values():
+            self.assertIn(col, self.df_mat.columns, f"Missing MATLAB column: {col}")
+
+        tolerance = 1e-6
+        mismatches = []
+
+        for row_idx in range(len(self.df_py)):
+            for py_col, mat_col in column_mapping.items():
+                py_val = self.df_py.at[row_idx, py_col]
+                mat_val = self.df_mat.at[row_idx, mat_col]
+                if pd.isna(py_val) and pd.isna(mat_val):
+                    continue
+                if pd.isna(py_val) != pd.isna(mat_val):
+                    mismatches.append((row_idx, py_col, mat_col, mat_val, py_val))
+                    continue
+                if not np.isclose(py_val, mat_val, atol=tolerance, rtol=0):
+                    mismatches.append((row_idx, py_col, mat_col, mat_val, py_val))
+
+        if mismatches:
+            details = [
+                f"row={row} py_col={py_col} mat_col={mat_col} "
+                f"mat={mat_val} py={py_val}"
+                for row, py_col, mat_col, mat_val, py_val in mismatches[:10]
+            ]
+            raise AssertionError(
+                f"{len(mismatches)} mismatches found.\n" + "\n".join(details)
+            )
 if __name__ == "__main__":
     unittest.main(verbosity=2)
