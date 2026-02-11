@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.8] - 2026-02-11
+
+### Fixed
+- Align `get_blink_statistic` with MATLAB `extractBlinks` semantics by dropping invalid blink-fit rows before all downstream statistics and mask calculations.
+- Match MATLAB blink amplitude ratio masking behavior with inclusive zero-crossing ranges and robust handling of empty inside/outside positive-signal samples.
+- Return deterministic NaN-based statistics when fewer than two top-threshold blink fits are available, mirroring MATLAB early-exit behavior for cutoff statistics.
+
 ## [0.1.7] - 2026-02-11
 
 ### Fixed

@@ -51,24 +51,36 @@ def get_blink_statistic(
 
     """
     correlation_threshold_bottom, correlation_threshold_top = z_thresholds[0]
-    dfx = df.copy()
-    dfx[["left_zero", "right_zero"]] = dfx[["left_zero", "right_zero"]] - 1
+    df_data = df[["left_zero", "right_zero", "leftR2", "rightR2", "max_value"]].copy()
 
-    indices = np.arange(len(signal))
-    blink_mask = np.any(
-        [
-            (indices >= lz) & (indices <= rz)
-            for lz, rz in zip(dfx["left_zero"], dfx["right_zero"])
-        ],
-        axis=0,
-    ).astype(bool)
+    # MATLAB removes records with NaN for any of these fields before all later
+    # computations (blink mask, good/worst values, and robust statistics).
+    df_data = df_data.dropna(
+        subset=["left_zero", "right_zero", "leftR2", "rightR2", "max_value"]
+    )
 
-    inside_blink = (signal > 0) & blink_mask
-    outside_blink = (signal > 0) & ~blink_mask
-    blink_amp_ratio = np.mean(signal[inside_blink]) / np.mean(signal[outside_blink])
+    # The Python pipeline uses 0-based frame indices in blink fit outputs.
+    # Keep this indexing (do not shift) and mirror MATLAB's inclusive range test.
+    signal_values = np.asarray(signal, dtype=float) if signal is not None else np.array([])
+    blink_mask = np.zeros(signal_values.shape[0], dtype=bool)
+    for lz, rz in zip(df_data["left_zero"].to_numpy(), df_data["right_zero"].to_numpy()):
+        left = int(np.floor(lz))
+        right = int(np.floor(rz))
+        if right <= left:
+            continue
+        left = max(0, left)
+        right = min(signal_values.shape[0] - 1, right)
+        blink_mask[left : right + 1] = True
 
+    inside_blink = (signal_values > 0) & blink_mask
+    outside_blink = (signal_values > 0) & ~blink_mask
+    inside_mean = np.mean(signal_values[inside_blink]) if np.any(inside_blink) else np.nan
+    outside_mean = (
+        np.mean(signal_values[outside_blink]) if np.any(outside_blink) else np.nan
+    )
+    blink_amp_ratio = inside_mean / outside_mean
 
-    df_data = df[["leftR2", "rightR2", "max_value"]]
+    df_data = df_data[["leftR2", "rightR2", "max_value"]]
 
     good_mask_top = (df_data["leftR2"] >= correlation_threshold_top) & (
         df_data["rightR2"] >= correlation_threshold_top
@@ -81,13 +93,29 @@ def get_blink_statistic(
     worst_values = df_data.loc[~good_mask_bottom, "max_value"].to_numpy()
     good_values = df_data.loc[good_mask_bottom, "max_value"].to_numpy()
 
+    # MATLAB exits this candidate when less than two top-quality blink fits are
+    # available. Keep deterministic, NaN outputs for missing statistics.
+    if np.sum(good_mask_top) < 2:
+        return {
+            "number_blinks": len(df_data),
+            "number_good_blinks": int(np.sum(good_mask_bottom)),
+            "blink_amp_ratio": blink_amp_ratio,
+            "cutoff": np.nan,
+            "best_median": np.nan,
+            "best_robust_std": np.nan,
+            "good_ratio": np.nan,
+        }
+
     best_median = np.nanmedian(best_values)
     best_robust_std = SCALING_FACTOR * mad(best_values)
     worst_median = np.nanmedian(worst_values)
     worst_robust_std = SCALING_FACTOR * mad(worst_values)
 
-    cutoff = (best_median * worst_robust_std + worst_median * best_robust_std) / (
-        best_robust_std + worst_robust_std
+    denom = best_robust_std + worst_robust_std
+    cutoff = (
+        np.nan
+        if np.isnan(denom) or np.isclose(denom, 0.0)
+        else (best_median * worst_robust_std + worst_median * best_robust_std) / denom
     )
 
     all_x = calculate_within_range(
