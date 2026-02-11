@@ -214,3 +214,4 @@ output.xlsx.csv
 /test/migration_files/matlab_code/process_eeg_with_pop_blinker.asv
 /tutorial_outputs/eeg_epoch_landmarks.html
 /tutorial/tutorial_outputs/plot_matlab_base.html
+test/test_files/step_a_extract_blinks_ear_eog_raw.mat

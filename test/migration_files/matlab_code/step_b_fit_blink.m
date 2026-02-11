@@ -13,14 +13,15 @@ function step_b_fit_blink()
 
     % Add the current directory to path to ensure we can call sibling functions
     addpath(currentDir);
+    addpath(fullfile(currentDir, '..'));
 
     yamlFile = fullfile(currentDir, 'setting.yaml');
 
     % ---- Simple YAML read ----
     cfg = read_simple_yaml_kv(yamlFile, {'input_file_step_a_extract_blinks_eeg', 'output_file_step_a_extract_blinks_eeg', 'output_file_step_b_fitblink'});
-    inputFileSignal  = cfg.input_file_step_a_extract_blinks_eeg;
-    inputFileBlinks  = cfg.output_file_step_a_extract_blinks_eeg;
-    outputFile       = cfg.output_file_step_b_fitblink;
+    inputFileSignal  = fullfile(currentDir, cfg.input_file_step_a_extract_blinks_eeg);
+    inputFileBlinks  = fullfile(currentDir, cfg.output_file_step_a_extract_blinks_eeg);
+    outputFile       = fullfile(currentDir, cfg.output_file_step_b_fitblink);
 
     fprintf('Input Signal: %s\n', inputFileSignal);
     fprintf('Input Blinks: %s\n', inputFileBlinks);

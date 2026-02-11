@@ -13,13 +13,14 @@ function step_c_get_()
 
     % Add the current directory to path to ensure we can call sibling functions
     addpath(currentDir);
+    addpath(fullfile(currentDir, '..'));
 
     yamlFile = fullfile(currentDir, 'setting.yaml');
 
     % ---- Simple YAML read (supports: key: "value" or key: value) ----
     cfg = read_simple_yaml_kv(yamlFile, {'input_file_step_a_extract_blinks_eeg','output_file_step_c_blink_properties'});
-    inputFile  = cfg.input_file_step_a_extract_blinks_eeg;
-    outputFile = cfg.output_file_step_c_blink_properties;
+    inputFile  = fullfile(currentDir, cfg.input_file_step_a_extract_blinks_eeg);
+    outputFile = fullfile(currentDir, cfg.output_file_step_c_blink_properties);
 
     fprintf('Input:  %s\n', inputFile);
     fprintf('Output: %s\n', outputFile);

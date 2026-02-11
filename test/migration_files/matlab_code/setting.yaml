@@ -1,4 +1,4 @@
-input_file_step_a_extract_blinks_eeg: "C:\Users\balan\IdeaProjects\pyblinker\test\test_files\ear_eog_resamp-100_raw.mat"
-output_file_step_a_extract_blinks_eeg: "C:\Users\balan\IdeaProjects\pyblinker\test\test_files\step_a_extract_blinks_resamp-100.mat"
-output_file_step_b_fitblink: "C:\Users\balan\IdeaProjects\pyblinker\test\test_files\step_b_fit_blink.mat"
-output_file_step_c_blink_properties: "C:\Users\balan\IdeaProjects\pyblinker\test\test_files\step_c_blink_properties.mat"
+input_file_step_a_extract_blinks_eeg: "../../test_files/ear_eog_resamp-100_raw.mat"
+output_file_step_a_extract_blinks_eeg: "../../test_files/step_a_extract_blinks_resamp-100.mat"
+output_file_step_b_fitblink: "../../test_files/step_b_fit_blink.mat"
+output_file_step_c_blink_properties: "../../test_files/step_c_blink_properties.mat"
