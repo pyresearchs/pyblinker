@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.10] - 2026-02-11
+
+### Fixed
+- Tighten MATLAB parity in `get_blink_statistic` by converting zero-crossing blink boundaries with nearest-integer semantics (`rint`) before building the inclusive blink mask.
+- Strengthen comparison coverage by using `atol = 1e-4` in `test_a2_stat.py`, confirming stable statistics under a stricter tolerance.
+
+## [0.1.9] - 2026-02-11
+
+### Fixed
+- Correct `get_blink_statistic` to report `number_blinks` from the full blink-fit table (matching MATLAB `extractBlinks`), while still excluding invalid rows for downstream quality/cutoff statistics.
+- This restores MATLAB-parity for blink statistics and makes the blinker comparison tests pass consistently when run individually or through the aggregate runner.
+
 ## [0.1.8] - 2026-02-11
 
 ### Fixed

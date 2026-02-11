@@ -1,25 +1,15 @@
-import unittest
 import logging
+import unittest
 from pathlib import Path
 
-import numpy as np
-
 import mne
+import numpy as np
+from scipy.io import loadmat
 
 from pyblinker.blinker import default_setting
-
-import pandas as pd
-from tqdm import tqdm
-
-from pyblinker.logging import get_logger
-from pyblinker.utils.statistics_utils import get_good_blink_mask, get_blink_statistic
 from pyblinker.blinker.fit_blink import FitBlinks
-from pyblinker.blink_features.waveform_features.extract_blink_properties import (
-	BlinkProperties,
-	)
 from pyblinker.blinker.get_blink_positions import get_blink_position
-from pyblinker.blinker.get_representative_channel import channel_selection
-from scipy.io import loadmat
+from pyblinker.utils.statistics_utils import get_blink_statistic
 
 # Configure the logger
 logging.basicConfig(level=logging.INFO)
@@ -104,7 +94,7 @@ class TestBlinkProperties(unittest.TestCase):
 
 		# Tolerances for float comparisons
 		rtol = 0
-		atol = 1e-3
+		atol = 1e-4
 
 		for mat_key, py_key in key_map.items():
 			with self.subTest(mat_key=mat_key, py_key=py_key):
