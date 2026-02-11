@@ -1,4 +1,24 @@
-"""Scenario B: EEG-only kinematic pipeline coverage."""
+"""Scenario B: EEG-only kinematic pipeline coverage.
+
+In blinker, the kinematic  features includes the following
+"aver_left_velocity"
+			"aver_right_velocity",
+			 "neg_amp_vel_ratio_base":
+            "pos_amp_vel_ratio_base":
+            "neg_amp_vel_ratio_zero":
+            "pos_amp_vel_ratio_zero":
+            "neg_amp_vel_ratio_tent":
+            "pos_amp_vel_ratio_tent":
+
+and is computed using
+from pyblinker.blink_features.kinematics.core_metrics import (
+    compute_amp_vel_ratio_base,
+    compute_amp_vel_ratio_tent,
+    compute_amp_vel_ratio_zero_to_max,
+    compute_blink_velocity,
+    compute_inter_blink_max_vel,
+)
+            """
 
 from __future__ import annotations
 

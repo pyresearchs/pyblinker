@@ -20,6 +20,14 @@ _LEGACY_MORPHOLOGY_METRICS = (
 	# "peak_max_tent",				# TODO This metric is available in BLINKER but still not computed in pyblinker
 	# "inter_blink_max_vel_base",	# TODO This metric is available in BLINKER but still not computed in pyblinker
 	# "inter_blink_max_vel_zero",	# TODO This metric is available in BLINKER but still not computed in pyblinker
+
+	and is computed using
+	from pyblinker.blink_features.morphology.core_metrics import (
+    compute_blink_durations,
+    compute_blink_peak_times,
+    compute_time_base_shut,
+    compute_time_zero_shut,
+)
 	"""
 from __future__ import annotations
 
