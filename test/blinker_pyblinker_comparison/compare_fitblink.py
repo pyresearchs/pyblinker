@@ -154,11 +154,11 @@ class TestFitBlinks(unittest.TestCase):
             f"py={len(self.df_py)} mat={len(self.df_mat)}",
         )
         # TODO GOT SOME ISSUE python implementation of pyblinker
-        # pd.testing.assert_frame_equal(
-        #     self.df_py,
-        #     self.df_mat,
-        #     check_dtype=False,
-        # )
+        pd.testing.assert_frame_equal(
+            self.df_py,
+            self.df_mat,
+            check_dtype=False,
+        )
         # pass
 
 
