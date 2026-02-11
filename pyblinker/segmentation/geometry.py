@@ -130,8 +130,10 @@ def get_left_base(blink_velocity, left_outer, max_pos_vel_frame):
     if not np.any(mask):
         return m_pos_vel
 
-    left_base_index = int(np.argmax(mask))
-    left_base = m_pos_vel - left_base_index - 1
+    # MATLAB: leftBaseIndex = find(..., 'first'); leftBase = maxPosVelFrame - leftBaseIndex
+    # ``find`` is 1-based, so convert argmax result to 1-based before subtraction.
+    left_base_index = int(np.argmax(mask)) + 1
+    left_base = m_pos_vel - left_base_index
     return left_base
 
 
@@ -175,8 +177,9 @@ def get_right_base(
     if not np.any(mask):
         return m_neg_vel
 
-    right_base_index = int(np.argmax(mask))
-    right_base = m_neg_vel + right_base_index + 1
+    # MATLAB: rightBaseIndex = find(..., 'first'); rightBase = maxNegVelFrame + rightBaseIndex
+    right_base_index = int(np.argmax(mask)) + 1
+    right_base = m_neg_vel + right_base_index
     return right_base
 
 
@@ -248,7 +251,7 @@ def get_half_height(
     left_mask = left_vals >= half_height_val
     if np.any(left_mask):
         left_index = np.argmax(left_mask)
-        left_base_half_height = l_base + left_index + 1
+        left_base_half_height = l_base + left_index
     else:
         left_base_half_height = np.nan
 
@@ -269,7 +272,7 @@ def get_half_height(
     left_zero_mask = left_zero_vals >= zero_half_val
     if np.any(left_zero_mask):
         left_zero_index = np.argmax(left_zero_mask)
-        left_zero_half_height = l_zero + left_zero_index + 1
+        left_zero_half_height = l_zero + left_zero_index
     else:
         left_zero_half_height = np.nan
 

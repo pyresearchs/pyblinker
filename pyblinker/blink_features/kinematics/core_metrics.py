@@ -172,37 +172,25 @@ def compute_inter_blink_max_vel(
 ) -> None:
     """Compute inter-blink maximum velocity timing features."""
 
-    for idx, row in df.iterrows():
-        row_pos = df.index.get_loc(idx)
-        invalid_tent = False
-        if "left_x_intercept" in row and "right_x_intercept" in row:
-            left_raw = row["left_x_intercept"]
-            right_raw = row["right_x_intercept"]
-            if np.isnan(left_raw) or np.isnan(right_raw):
-                invalid_tent = True
-            elif signal_len is not None:
-                left_idx = int(round(left_raw))
-                right_idx = int(round(right_raw))
-                if left_idx < 0 or right_idx >= signal_len:
-                    invalid_tent = True
+    pos_base = df["peaks_pos_vel_base"].to_numpy(dtype=float)
+    pos_zero = (
+        df["peaks_pos_vel_zero"].to_numpy(dtype=float)
+        if "peaks_pos_vel_zero" in df.columns
+        else np.full(len(df), np.nan, dtype=float)
+    )
 
-        if row_pos == len(df) - 1 or invalid_tent:
+    for row_pos, idx in enumerate(df.index):
+        if row_pos == len(df) - 1:
             df.at[idx, "inter_blink_max_vel_base"] = np.nan
-        else:
-            df.at[idx, "inter_blink_max_vel_base"] = (
-                row["peaks_pos_vel_base"] * -1
-            ) / srate
-
-        if modality == "ear":
             df.at[idx, "inter_blink_max_vel_zero"] = np.nan
             continue
 
-        if row_pos == len(df) - 1 or invalid_tent:
+        df.at[idx, "inter_blink_max_vel_base"] = (pos_base[row_pos + 1] - pos_base[row_pos]) / srate
+
+        if modality == "ear":
             df.at[idx, "inter_blink_max_vel_zero"] = np.nan
         else:
-            df.at[idx, "inter_blink_max_vel_zero"] = (
-                row["peaks_pos_vel_zero"] * -1
-            ) / srate
+            df.at[idx, "inter_blink_max_vel_zero"] = (pos_zero[row_pos + 1] - pos_zero[row_pos]) / srate
 
 
 def compute_blink_kinematic_properties(
