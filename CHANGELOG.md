@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.6] - 2026-02-11
+
+### Fixed
+- Restore MATLAB-consistent left half-height landmark indexing in FitBlinks geometry (base and zero half-height frames).
+- Restore MATLAB-consistent inter-blink max-velocity fields used by BlinkProperties comparison outputs.
+- Guard amplitude-velocity ratio velocity-index bounds to avoid out-of-range indexing on short boundary blinks.
+
+
 ## [0.1.5] - 2026-02-11
 
 ### Changed

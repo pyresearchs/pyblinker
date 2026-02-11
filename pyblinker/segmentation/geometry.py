@@ -251,7 +251,7 @@ def get_half_height(
     left_mask = left_vals >= half_height_val
     if np.any(left_mask):
         left_index = np.argmax(left_mask)
-        left_base_half_height = l_base + left_index
+        left_base_half_height = l_base + left_index + 1
     else:
         left_base_half_height = np.nan
 
@@ -272,7 +272,7 @@ def get_half_height(
     left_zero_mask = left_zero_vals >= zero_half_val
     if np.any(left_zero_mask):
         left_zero_index = np.argmax(left_zero_mask)
-        left_zero_half_height = l_zero + left_zero_index
+        left_zero_half_height = l_zero + left_zero_index + 1
     else:
         left_zero_half_height = np.nan
 

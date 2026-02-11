@@ -54,6 +54,12 @@ def _compute_amp_vel_ratio_for_blink(
     max_blink_idx: int,
     aggregator: str = "max",
 ) -> tuple[float, int | None]:
+    max_vel_idx = blink_velocity.size - 1
+    start_idx = max(0, min(start_idx, max_vel_idx))
+    end_idx = max(0, min(end_idx, max_vel_idx))
+    if end_idx < start_idx:
+        return float("nan"), None
+
     indices = np.arange(start_idx, end_idx + 1, dtype=int)
     if indices.size == 0:
         return float("nan"), None
@@ -172,25 +178,28 @@ def compute_inter_blink_max_vel(
 ) -> None:
     """Compute inter-blink maximum velocity timing features."""
 
-    pos_base = df["peaks_pos_vel_base"].to_numpy(dtype=float)
-    pos_zero = (
-        df["peaks_pos_vel_zero"].to_numpy(dtype=float)
-        if "peaks_pos_vel_zero" in df.columns
-        else np.full(len(df), np.nan, dtype=float)
-    )
+    del signal_len  # kept for backward-compatible signature
 
-    for row_pos, idx in enumerate(df.index):
+    for idx in df.index:
+        row_pos = df.index.get_loc(idx)
+
         if row_pos == len(df) - 1:
             df.at[idx, "inter_blink_max_vel_base"] = np.nan
-            df.at[idx, "inter_blink_max_vel_zero"] = np.nan
-            continue
-
-        df.at[idx, "inter_blink_max_vel_base"] = (pos_base[row_pos + 1] - pos_base[row_pos]) / srate
+        else:
+            df.at[idx, "inter_blink_max_vel_base"] = (
+                df.at[idx, "peaks_pos_vel_base"] * -1
+            ) / srate
 
         if modality == "ear":
             df.at[idx, "inter_blink_max_vel_zero"] = np.nan
+            continue
+
+        if row_pos == len(df) - 1:
+            df.at[idx, "inter_blink_max_vel_zero"] = np.nan
         else:
-            df.at[idx, "inter_blink_max_vel_zero"] = (pos_zero[row_pos + 1] - pos_zero[row_pos]) / srate
+            df.at[idx, "inter_blink_max_vel_zero"] = (
+                df.at[idx, "peaks_pos_vel_zero"] * -1
+            ) / srate
 
 
 def compute_blink_kinematic_properties(
