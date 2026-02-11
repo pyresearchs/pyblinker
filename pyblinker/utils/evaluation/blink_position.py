@@ -93,7 +93,7 @@ def load_ground_truth_from_matlab(
     if not mat_output_path.exists():
         raise FileNotFoundError(f"MAT output file not found: {mat_output_path}")
 
-    from test.blinker_migration.debugging_tools import load_matlab_data
+    from test.blinker_migration.obs.debugging_tools import load_matlab_data
 
     input_data, output_data = load_matlab_data(str(mat_input_path), str(mat_output_path))
     blink_positions_mat = output_data["blinkPositions"]

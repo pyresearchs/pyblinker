@@ -100,11 +100,68 @@ def select_max_good_blinks(df):
         return df
 
 def channel_selection(channel_blink_stats, params):
+    """
+    In MATLAB, this occur under the function extractBlinks.m
+
+    %% Reduce the number of candidate signals based on the blink amp ratios
+    blinkAmpRatios = cellfun(@double, {signalData.blinkAmpRatio});
+    goodIndices = blinkAmpRatios >= params.blinkAmpRange(1) & ...
+                  blinkAmpRatios <= params.blinkAmpRange(2);
+    if sum(goodIndices) == 0 || isempty(goodIndices)
+        blinks.usedSignal = nan;
+        blinks.status = ['failure: ' blinks.status ...
+            '[Blink amplitude too low -- may be noise]'];
+        return;
+    end
+    signalData = signalData(goodIndices);
+
+    %% Find the ones that meet the minimum good blink threshold
+    usedSign = 1;
+    candidates = cellfun(@double, {signalData.numberGoodBlinks});
+    goodCandidates = candidates > params.minGoodBlinks;
+    if sum(goodCandidates) == 0
+        blinks.status = ['failure: ' blinks.status ...
+            '[fewer than ' num2str(params.minGoodBlinks) ' were found]'];
+        blinks.usedSignal = NaN;
+        return;
+    end
+    signalData = signalData(goodCandidates);
+
+    %% Now see if any candidates meet the good blink ratio criteria
+    goodRatios = cellfun(@double, {signalData.goodRatio});
+    ratioIndices = goodRatios >= params.goodRatioThreshold;
+    testData = signalData;
+    if sum(ratioIndices) == 0
+        usedSign = -1;
+        blinks.status = ['failure: ' blinks.status '[Good ratio too low]'];
+    elseif ~params.keepSignals
+        testData = testData(ratioIndices);
+    end
+
+    %% Now pick the one with the maximum number of good blinks
+    goodBlinks = cellfun(@double, {testData.numberGoodBlinks});
+    [~, maxIndex ] = max(goodBlinks);
+    if usedSign == 1
+        blinks.status = ['success: ' blinks.status];
+    end
+    blinks.usedSignal = usedSign*testData(maxIndex).signalNumber;
+    blinks.signalData = testData;
+
+    Reduce the number of candidate signals based on the blink amp ratios
+    Find the ones that meet the minimum good blink threshold
+    """
     # Apply the blink signal selection process
 
+    # Reduce the number of candidate signals based on the blink amp ratios
     channel_blink_stats = filter_blink_amplitude_ratios(channel_blink_stats, params)
+
+    # Find the ones that meet the minimum good blink threshold
     channel_blink_stats = filter_good_blinks(channel_blink_stats, params)
+
+    # Now see if any candidates meet the good blink ratio criteria
     channel_blink_stats = filter_good_ratio(channel_blink_stats, params)
+
+    # Now pick the one with the maximum number of good blinks
     signal_data_output = select_max_good_blinks(channel_blink_stats)
 
     # Columns to ignore

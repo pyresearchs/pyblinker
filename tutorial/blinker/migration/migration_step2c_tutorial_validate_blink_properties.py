@@ -8,7 +8,7 @@ MATLAB reference export that ships with the test suite.
 
 Based on
 --------
-test/blinker_migration/test_step2_computeBlinkProperties.py
+test/blinker_migration/test_c_BlinkProperties.py
 
 Inputs
 ------
@@ -88,8 +88,8 @@ from pyblinker.blink_features.waveform_features.extract_blink_properties import 
     BlinkProperties,
 )
 from pyblinker.blinker import default_setting  # noqa: E402
-from test.blinker_migration.debugging_tools import load_matlab_data  # noqa: E402
-from test.blinker_migration.pyblinker.utils.update_pkl_variables import (  # noqa: E402
+from test.blinker_migration.obs.debugging_tools import load_matlab_data  # noqa: E402
+from test.blinker_migration import (  # noqa: E402
     RENAME_MAP,
 )
 

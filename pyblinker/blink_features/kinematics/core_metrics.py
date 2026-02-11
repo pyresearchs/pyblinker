@@ -54,6 +54,12 @@ def _compute_amp_vel_ratio_for_blink(
     max_blink_idx: int,
     aggregator: str = "max",
 ) -> tuple[float, int | None]:
+    max_vel_idx = blink_velocity.size - 1
+    start_idx = max(0, min(start_idx, max_vel_idx))
+    end_idx = max(0, min(end_idx, max_vel_idx))
+    if end_idx < start_idx:
+        return float("nan"), None
+
     indices = np.arange(start_idx, end_idx + 1, dtype=int)
     if indices.size == 0:
         return float("nan"), None
@@ -163,15 +169,37 @@ def compute_amp_vel_ratio_tent(
         df.at[idx, "pos_amp_vel_ratio_tent"] = pos_ratio
 
 
-def compute_inter_blink_max_vel(df, srate: float, *, modality: str) -> None:
+def compute_inter_blink_max_vel(
+    df,
+    srate: float,
+    *,
+    modality: str,
+    signal_len: int | None = None,
+) -> None:
     """Compute inter-blink maximum velocity timing features."""
 
-    for idx, row in df.iterrows():
-        df.at[idx, "inter_blink_max_vel_base"] = (row["peaks_pos_vel_base"] * -1) / srate
+    del signal_len  # kept for backward-compatible signature
+
+    for idx in df.index:
+        row_pos = df.index.get_loc(idx)
+
+        if row_pos == len(df) - 1:
+            df.at[idx, "inter_blink_max_vel_base"] = np.nan
+        else:
+            df.at[idx, "inter_blink_max_vel_base"] = (
+                df.at[idx, "peaks_pos_vel_base"] * -1
+            ) / srate
+
         if modality == "ear":
             df.at[idx, "inter_blink_max_vel_zero"] = np.nan
+            continue
+
+        if row_pos == len(df) - 1:
+            df.at[idx, "inter_blink_max_vel_zero"] = np.nan
         else:
-            df.at[idx, "inter_blink_max_vel_zero"] = (row["peaks_pos_vel_zero"] * -1) / srate
+            df.at[idx, "inter_blink_max_vel_zero"] = (
+                df.at[idx, "peaks_pos_vel_zero"] * -1
+            ) / srate
 
 
 def compute_blink_kinematic_properties(
@@ -197,7 +225,12 @@ def compute_blink_kinematic_properties(
     compute_amp_vel_ratio_base(df, candidate_signal, blink_velocity, srate)
     if fitted:
         compute_amp_vel_ratio_tent(df, candidate_signal, srate)
-    compute_inter_blink_max_vel(df, srate, modality=modality_key)
+    compute_inter_blink_max_vel(
+        df,
+        srate,
+        modality=modality_key,
+        signal_len=len(candidate_signal),
+    )
     return df
 
 

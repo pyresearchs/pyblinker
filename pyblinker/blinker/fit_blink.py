@@ -1,5 +1,6 @@
 from pyblinker.logging import get_logger
 
+import numpy as np
 import pandas as pd
 
 from pyblinker.segmentation.geometry import (
@@ -141,7 +142,9 @@ class FitBlinks:
 
         # Shifts for outer start/end
         self.df["outer_start"] = self.df["max_blink"].shift(1, fill_value=0)
-        self.df["outer_end"] = self.df["max_blink"].shift(-1, fill_value=data_size)
+        self.df["outer_end"] = self.df["max_blink"].shift(
+            -1, fill_value=data_size - 1
+        )
 
         # Add columns for leftZero/rightZero
         self.df[["left_zero", "right_zero"]] = self.df.apply(
@@ -189,68 +192,87 @@ class FitBlinks:
             self.frame_blinks = pd.DataFrame(columns=all_cols)
             return
 
+        def _safe_half_height(row):
+            required = [
+                row.get("max_blink"),
+                row.get("left_zero"),
+                row.get("right_zero"),
+                row.get("left_base"),
+                row.get("outer_end"),
+            ]
+            if any(pd.isna(value) for value in required):
+                return (np.nan, np.nan, np.nan, np.nan)
+            try:
+                return get_half_height(
+                    self.candidate_signal,
+                    row["max_blink"],
+                    row["left_zero"],
+                    row["right_zero"],
+                    row["left_base"],
+                    row["outer_end"],
+                )
+            except (ValueError, IndexError, TypeError):
+                return (np.nan, np.nan, np.nan, np.nan)
+
+        def _safe_fit_range(row):
+            required = [
+                row.get("max_blink"),
+                row.get("left_zero"),
+                row.get("right_zero"),
+            ]
+            if any(pd.isna(value) for value in required):
+                return tuple(np.nan for _ in self.cols_fit_range)
+            try:
+                return compute_fit_range(
+                    self.candidate_signal,
+                    row["max_blink"],
+                    row["left_zero"],
+                    row["right_zero"],
+                    self.base_fraction,
+                    top_bottom=True,
+                )
+            except (ValueError, IndexError, TypeError):
+                return tuple(np.nan for _ in self.cols_fit_range)
+
         # Get half height
         self.frame_blinks[self.cols_half_height] = self.frame_blinks.apply(
-            lambda row: get_half_height(
-                self.candidate_signal,
-                row["max_blink"],
-                row["left_zero"],
-                row["right_zero"],
-                row["left_base"],
-                row["outer_end"],
-            ),
+            _safe_half_height,
             axis=1,
             result_type="expand",
         )
 
         # Compute fit ranges
         self.frame_blinks[self.cols_fit_range] = self.frame_blinks.apply(
-            lambda row: compute_fit_range(
-                self.candidate_signal,
-                row["max_blink"],
-                row["left_zero"],
-                row["right_zero"],
-                self.base_fraction,
-                top_bottom=True,
-            ),
+            _safe_fit_range,
             axis=1,
             result_type="expand",
         )
 
-        # Drop rows with NaN values
-        self.frame_blinks.dropna(inplace=True)
-        self.frame_blinks["nsize_x_left"] = self.frame_blinks["x_left"].apply(len)
-        self.frame_blinks["nsize_x_right"] = self.frame_blinks["x_right"].apply(len)
+        def _range_size(value):
+            if isinstance(value, (list, np.ndarray)):
+                return len(value)
+            return 0
 
-        # Keep only rows with nsize_x_left > 1 and nsize_x_right > 1
-        self.frame_blinks = self.frame_blinks[
-            (self.frame_blinks["nsize_x_left"] > 1)
-            & (self.frame_blinks["nsize_x_right"] > 1)
-        ].reset_index(drop=True)
+        self.frame_blinks["nsize_x_left"] = self.frame_blinks["x_left"].apply(_range_size)
+        self.frame_blinks["nsize_x_right"] = self.frame_blinks["x_right"].apply(_range_size)
 
-        # Filtering for valid fit ranges may remove all rows. Return an empty
-        # DataFrame with the expected schema so subsequent code does not raise
-        # a length mismatch error.
-        if self.frame_blinks.empty:
-            all_cols = (
-                list(self.df.columns)
-                + ["left_base", "right_base"]
-                + self.cols_half_height
-                + self.cols_fit_range
-                + ["nsize_x_left", "nsize_x_right"]
-                + self.cols_lines_intesection
+        # Calculate line intersections only for valid ranges
+        line_cols = self.cols_lines_intesection
+        line_values = pd.DataFrame(
+            np.nan, index=self.frame_blinks.index, columns=line_cols
+        )
+        valid_mask = (self.frame_blinks["nsize_x_left"] > 1) & (
+            self.frame_blinks["nsize_x_right"] > 1
+        )
+        if valid_mask.any():
+            line_values.loc[valid_mask] = self.frame_blinks.loc[valid_mask].apply(
+                lambda row: lines_intersection(
+                    signal=self.candidate_signal,
+                    x_right=row["x_right"],
+                    x_left=row["x_left"],
+                ),
+                axis=1,
+                result_type="expand",
             )
-            self.frame_blinks = pd.DataFrame(columns=all_cols)
-            return
 
-        # Calculate line intersections
-
-        self.frame_blinks[self.cols_lines_intesection] = self.frame_blinks.apply(
-            lambda row: lines_intersection(
-                signal=self.candidate_signal,
-                x_right=row["x_right"],
-                x_left=row["x_left"],
-            ),
-            axis=1,
-            result_type="expand",
-        )
+        self.frame_blinks[line_cols] = line_values

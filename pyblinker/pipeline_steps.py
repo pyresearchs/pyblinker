@@ -45,15 +45,17 @@ def process_channel_data(detector, channel: str, verbose: bool = True) -> None:
     fitblinks.dprocess()
     df = fitblinks.frame_blinks
 
-    # STEP 3: Extract blink statistics
+    # STEP 3: Extract blink statistics extractBlinkProperties.m
+	# Calculate an amplitude criterion (frames in blink to those out) and Now calculate the cutoff ratios -- use default for the values
     blink_stats = get_blink_statistic(
         df,
         detector.params["z_thresholds"],
         signal=detector.raw_data.get_data(picks=channel)[0],
     )
     blink_stats["ch"] = channel
+    # There is a step for << Reduce the number of candidate signals based on the blink amp ratios >>, but we move it to channel selection step.
 
-    # STEP 4: Get good blink mask
+    # STEP 4: Get good blink mask extractBlinkProperties.m
     _, df = get_good_blink_mask(
         df,
         blink_stats["best_median"],
@@ -72,22 +74,8 @@ def process_channel_data(detector, channel: str, verbose: bool = True) -> None:
         detector.params["sfreq"],
         detector.params,
     ).df
-    # df_out=df.copy()
-    # from pyblinker.utils.blinker_feature import save_blinkprops_pickle,load_blinkprops_pickle,replay_and_assert_blinkprops
-    # save_blinkprops_pickle(
-    #     "blinkprops_case01.pkl",
-    #     candidate_signal=detector.raw_data.get_data(picks=channel)[0],
-    #     df_in=df_in,
-    #     srate=detector.params["sfreq"],
-    #     params=detector.params,
-    #     fitted=True,
-    #     df_out=df_out,
-    # )
-    # later, after refactor
-    # fx = load_blinkprops_pickle("blinkprops_case01.pkl")
-    # replay_and_assert_blinkprops(fx, BlinkProperties)
 
-    # STEP 6: Apply pAVR restriction
+    # STEP 6: Apply pAVR restriction # Suggest to move up to df_out = df_out[~(condition_1 & condition_2)] into a specific function.
     condition_1 = df_out["pos_amp_vel_ratio_zero"] < detector.params["p_avr_threshold"]
     condition_2 = df_out["max_value"] < (
         blink_stats["best_median"] - blink_stats["best_robust_std"]

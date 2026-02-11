@@ -31,6 +31,11 @@ A typical `pyblinker` report (MNE-based) includes:
 * **Related Code**: `tutorial/03d_eeg_plotting_all_landmark_epochs.py`.
 * **Verification (Tutorials & Tests)**: `tutorial/03d_eeg_plotting_all_landmark_epochs.py`, `test/segmentation/test_eeg_refinement_outputs.py`.
 
+### MATLAB FitBlinks landmark reports
+* **Feature/Change**: Added a dedicated HTML report generator that renders per-blink FitBlinks landmarks from MATLAB output alongside Python-derived outputs using the same MATLAB input signal and blink-selection logic as the FitBlinks comparison script. Each blink is rendered with a two-column layout (plot + legend) and a caption that enumerates every FitBlinks landmark value.
+* **Related Code**: `pyblinker/outside_annotation/matlab_fitblink_report.py`.
+* **Verification (Tutorials & Tests)**: `test/outside_annotation/test_matlab_fitblink_report.py`.
+
 ## When to Generate Reports
 Reports can be generated at multiple stages:
 

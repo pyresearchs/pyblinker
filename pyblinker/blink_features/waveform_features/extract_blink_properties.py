@@ -78,16 +78,33 @@ class BlinkProperties:
         self.fitted = fitted
 
         self.df_res = []
+        self._run_property_pipeline()
+
+    def _run_property_pipeline(self) -> None:
+        """Execute MATLAB-style property extraction stages in order."""
+
         self.reset_index()
         self.set_blink_velocity()
+
+        self._compute_duration_stage()
+        self._compute_amp_velocity_stage()
+        self._compute_shut_time_stage()
+        self._compute_summary_time_stage()
+
+    def _compute_duration_stage(self) -> None:
         self.set_blink_duration()
 
+    def _compute_amp_velocity_stage(self) -> None:
         self.set_blink_amp_velocity_ratio_zero_to_max()
         self.amplitude_velocity_ratio_base()
-        if fitted:
+        if self.fitted:
             self.amplitude_velocity_ratio_tent()
+
+    def _compute_shut_time_stage(self) -> None:
         self.time_zero_shut()
         self.time_base_shut()
+
+    def _compute_summary_time_stage(self) -> None:
         self.extract_other_times()
 
     def reset_index(self):
@@ -181,6 +198,7 @@ class BlinkProperties:
             self.df,
             self.srate,
             modality=self.modality,
+            signal_len=len(self.candidate_signal),
         )
 
     def blink_bounds(self, row: pd.Series, method: str) -> Tuple[int, int] | None:

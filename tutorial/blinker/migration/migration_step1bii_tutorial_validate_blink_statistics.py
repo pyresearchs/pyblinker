@@ -63,8 +63,8 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from pyblinker.utils.statistics_utils import get_blink_statistic  # noqa: E402
-from test.blinker_migration.debugging_tools import load_matlab_data  # noqa: E402
-from test.blinker_migration.pyblinker.utils.update_pkl_variables import (  # noqa: E402
+from test.blinker_migration.obs.debugging_tools import load_matlab_data  # noqa: E402
+from test.blinker_migration import (  # noqa: E402
     RENAME_MAP,
     rename_keys,
 )

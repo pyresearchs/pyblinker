@@ -76,8 +76,8 @@ from pyblinker.utils.statistics_utils import (  # noqa: E402
     get_blink_statistic,
     get_good_blink_mask,
 )
-from test.blinker_migration.debugging_tools import load_matlab_data  # noqa: E402
-from test.blinker_migration.pyblinker.utils.update_pkl_variables import (  # noqa: E402
+from test.blinker_migration.obs.debugging_tools import load_matlab_data  # noqa: E402
+from test.blinker_migration import (  # noqa: E402
     RENAME_MAP,
 )
 

@@ -69,6 +69,63 @@ This migration helper now ensures the repository root is added to `sys.path` whe
 *   **Tutorials**: None (script is intended for direct migration replay checks).
 *   **Unit Tests**: `test/blinker_migration/T_seemless_blink_feature.py` (replays serialized blink properties to validate feature extraction parity).
 
+### FitBlinks Tutorial Path and Report Output Hygiene
+The FitBlinks comparison tutorial now resolves MATLAB `.mat` and FIF input files using repository-relative paths and writes both HTML reports into a dedicated `tutorial_outputs/` folder so the example runs without machine-specific absolute paths and keeps generated artifacts organized.
+
+The report plotting now renders the blink waveform as a scatter plot with a faint continuous line behind it and pads the blink window by 10 samples on the left and right so landmarks stand out while preserving a subtle reference trace.
+
+**Related Code**
+*   `tutorial/plot_compare_blinker_pyblinker.py`
+*   `tutorial/make_report.py`
+
+**Verification (Tutorials & Tests)**
+*   **Tutorials**: `tutorial/plot_compare_blinker_pyblinker.py` (compares Python FitBlinks outputs to MATLAB exports and generates reports).
+*   **Unit Tests**: None.
+
+### Blink Position Separation Parity
+The blink position detection step now matches the MATLAB separation rule by treating blinks that are exactly at the minimum separation as valid, preventing MATLAB/Python drift in tightly clustered candidates.
+
+**Related Code**
+*   `pyblinker/blinker/get_blink_positions.py`
+
+**Verification (Tutorials & Tests)**
+*   **Tutorials**: None.
+*   **Unit Tests**: `test/blinker_pyblinker_comparison/compare_get_blink_position.py` (compares Python and MATLAB blink positions end-to-end).
+
+### Vectorized Blink Position Detection
+The blink position detection step was refactored into focused helper functions and vectorized threshold crossings to improve efficiency while preserving MATLAB-equivalent behavior.
+
+**Related Code**
+*   `pyblinker/blinker/get_blink_positions.py`
+
+**Verification (Tutorials & Tests)**
+*   **Tutorials**: None.
+*   **Unit Tests**: `test/blinker_pyblinker_comparison/compare_get_blink_position.py` (compares Python and MATLAB blink positions end-to-end).
+
+### FitBlinks Index and Filter Parity
+The blink-fitting step now mirrors MATLAB's index conventions for zero crossings, base frames, outer bounds, and line-intersection handling while preserving rows that MATLAB leaves populated with `NaN`. This keeps the blink count and fit outputs aligned with the reference implementation, including the right-base indexing parity for downstroke minima, the half-height `NaN` handling when thresholds are never crossed, and the MATLAB-style indexing adjustment of intersection outputs (with `y_intersect` kept in signal units).
+
+**Related Code**
+*   `pyblinker/blinker/fit_blink.py`
+*   `pyblinker/segmentation/geometry.py`
+*   `pyblinker/fitutils/forking.py`
+
+**Verification (Tutorials & Tests)**
+*   **Tutorials**: None.
+*   **Unit Tests**: `test/blinker_pyblinker_comparison/compare_fitblink.py` (compares Python and MATLAB fit outputs end-to-end).
+
+### Blink Properties Timing and Velocity Parity
+The blink property extraction now mirrors MATLAB's handling of inter-blink timing, zero/tent shut time defaults, and final-row `NaN` values so row-by-row comparisons align across the required blink-property columns.
+
+**Related Code**
+*   `pyblinker/blink_features/morphology/core_metrics.py`
+*   `pyblinker/blink_features/kinematics/core_metrics.py`
+*   `pyblinker/blink_features/waveform_features/extract_blink_properties.py`
+
+**Verification (Tutorials & Tests)**
+*   **Tutorials**: None.
+*   **Unit Tests**: `test/blinker_pyblinker_comparison/compare_BlinkProperties.py` (compares Python and MATLAB blink-property outputs).
+
 ### Unit Tests
 *   **`test/blinker_migration/test_step1a.py`**: Validates candidate signal generation. It compares the raw signal vector used for detection against the MATLAB export.
 *   **`test/blinker_migration/test_step1bii_fitblink.py`**: Checks the shape fitting algorithm. It verifies that `fit_blink.py` produces the same $R^2$ values and slope parameters as the MATLAB `fitBlink` function.
