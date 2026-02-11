@@ -4,6 +4,7 @@ from pathlib import Path
 
 import mne
 import numpy as np
+import pandas as pd
 from scipy.io import loadmat
 
 from pyblinker.blinker import default_setting
@@ -83,34 +84,27 @@ class TestBlinkProperties(unittest.TestCase):
 	def test_key_equality(self):
 		# Map MATLAB keys -> Python keys
 		key_map = {
-				"numberBlinks": "number_blinks",
-				"numberGoodBlinks": "number_good_blinks",
-				"blinkAmpRatio": "blink_amp_ratio",
-				"cutoff": "cutoff",
-				"bestMedian": "best_median",
-				"bestRobustStd": "best_robust_std",
-				"goodRatio": "good_ratio",
-				}
+			"numberBlinks": "number_blinks",
+			"numberGoodBlinks": "number_good_blinks",
+			"blinkAmpRatio": "blink_amp_ratio",
+			"cutoff": "cutoff",
+			"bestMedian": "best_median",
+			"bestRobustStd": "best_robust_std",
+			"goodRatio": "good_ratio",
+		}
 
-		# Tolerances for float comparisons
-		rtol = 0
-		atol = 1e-4
+		# Create pandas DataFrames for comparison
+		df_expected = pd.DataFrame(
+			[{py_key: self.df_mat[mat_key] for mat_key, py_key in key_map.items()}]
+		)
+		df_actual = pd.DataFrame(
+			[{py_key: self.blink_stats[py_key] for py_key in key_map.values()}]
+		)
 
-		for mat_key, py_key in key_map.items():
-			with self.subTest(mat_key=mat_key, py_key=py_key):
-				self.assertIn(mat_key, self.df_mat, f"Missing MATLAB key: {mat_key}")
-				self.assertIn(py_key, self.blink_stats, f"Missing Python key: {py_key}")
+		# Ensure columns are in the same order
+		df_expected = df_expected[sorted(df_expected.columns)]
+		df_actual = df_actual[sorted(df_actual.columns)]
 
-				expected = self.df_mat[mat_key]
-				actual = self.blink_stats[py_key]
-
-				# Handle ints vs floats
-				if isinstance(expected, (int, np.integer)) and isinstance(actual, (int, np.integer)):
-					self.assertEqual(actual, expected)
-				else:
-					self.assertTrue(
-						np.isclose(float(actual), float(expected), rtol=rtol, atol=atol),
-						f"Mismatch for {py_key}: actual={actual}, expected={expected}",
-						)
+		pd.testing.assert_frame_equal(df_actual, df_expected, check_dtype=False, atol=1e-4)
 if __name__ == "__main__":
 	unittest.main(verbosity=0)
