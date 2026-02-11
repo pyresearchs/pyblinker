@@ -69,7 +69,8 @@ function step_c_get_()
         mkdir(outputDir);
     end
 
-    save(outputFile, 'blinkProperties', 'blinkFits', '-v7');
+    % save(outputFile, 'blinkProperties', 'blinkFits', '-v7');
+    save(outputFile, 'blinkProperties', '-v7');
     fprintf('Successfully saved blinkProperties and blinkFits to %s\n', outputFile);
 end
 

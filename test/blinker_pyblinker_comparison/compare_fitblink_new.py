@@ -42,14 +42,8 @@ class TestFitBlinks(unittest.TestCase):
         if blink_comp.ndim > 1:
             blink_comp = blink_comp[0]
 
-        # 2. Load MATLAB blink positions (0-indexed)
-        blink_positions = load_matlab_blink_positions(mat_pos_path)
-        
-        # # Create DataFrame for FitBlinks
-        # df_positions = pd.DataFrame({
-        #     "start_blink": blink_positions[0],
-        #     "end_blink": blink_positions[1]
-        # })
+
+
         params = dict(
             min_event_len=0.05,
             std_threshold=1.5,
