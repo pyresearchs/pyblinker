@@ -65,8 +65,10 @@ def get_blink_statistic(
     signal_values = np.asarray(signal, dtype=float) if signal is not None else np.array([])
     blink_mask = np.zeros(signal_values.shape[0], dtype=bool)
     for lz, rz in zip(df_data["left_zero"].to_numpy(), df_data["right_zero"].to_numpy()):
-        left = int(np.floor(lz))
-        right = int(np.floor(rz))
+        # MATLAB indexing accepts integer frame indices; use nearest integer
+        # to mirror float-to-index semantics for values stored as doubles.
+        left = int(np.rint(lz))
+        right = int(np.rint(rz))
         if right <= left:
             continue
         left = max(0, left)

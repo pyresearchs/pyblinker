@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.10] - 2026-02-11
+
+### Fixed
+- Tighten MATLAB parity in `get_blink_statistic` by converting zero-crossing blink boundaries with nearest-integer semantics (`rint`) before building the inclusive blink mask.
+- Strengthen comparison coverage by using `atol = 1e-4` in `test_a2_stat.py`, confirming stable statistics under a stricter tolerance.
+
 ## [0.1.9] - 2026-02-11
 
 ### Fixed
