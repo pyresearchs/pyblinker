@@ -8,8 +8,6 @@ from scipy.io import loadmat
 
 from pyblinker.blinker import default_setting
 from pyblinker.blinker.fit_blink import FitBlinks
-from test.blinker_pyblinker_comparison.utils import load_matlab_blink_positions
-
 from pyblinker.blinker.get_blink_positions import get_blink_position
 
 logging.basicConfig(level=logging.WARNING)
@@ -44,12 +42,8 @@ class TestFitBlinks(unittest.TestCase):
 
 
 
-        params = dict(
-            min_event_len=0.05,
-            std_threshold=1.5,
-            sfreq=100,
-            )
 
+        params = default_setting.DEFAULT_PARAMS.copy()
         df_positions = get_blink_position(
             params,
             blink_component=blink_comp,
@@ -57,11 +51,11 @@ class TestFitBlinks(unittest.TestCase):
             progress_bar=False,
             )
         # 3. Run FitBlinks
-        params_default = default_setting.DEFAULT_PARAMS.copy()
+        # params_default = default_setting.DEFAULT_PARAMS.copy()
         fitblinks = FitBlinks(
             candidate_signal=blink_comp,
             df=df_positions,
-            params=params_default,
+            params=params,
         )
         # dprocess computes max_blink, outer_start/end, left_zero, right_zero, and fit
         fitblinks.dprocess(run_fit=True)

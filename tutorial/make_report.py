@@ -110,9 +110,9 @@ def _blink_window_from_row(row: pd.Series, *, n_samples: int) -> tuple[int, int]
 	Requirement: pad +10 samples AFTER the last point of the selected blink region.
 
 	NOTE:
-	- Your authoritative window selection rule is in compare_fitblink.py.
+	- Your authoritative window selection rule is in step_b_fitblink.py.
 	- This default uses the earliest plausible left landmark and latest plausible right landmark.
-	  If compare_fitblink.py uses a different “choose-left-candidate” rule, replace this helper
+	  If step_b_fitblink.py uses a different “choose-left-candidate” rule, replace this helper
 	  with that exact logic.
 	"""
 	left_candidates = []

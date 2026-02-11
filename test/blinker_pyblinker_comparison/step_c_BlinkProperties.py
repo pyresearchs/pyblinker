@@ -64,13 +64,6 @@ class TestBlinkProperties(unittest.TestCase):
 
         blink_comp = raw.get_data()[0].astype(np.float64)
 
-        # Detect blink positions
-        # params = dict(
-        #     min_event_len=0.05,
-        #     std_threshold=1.5,
-        #     sfreq=100,
-        #     z_thresholds=np.array([[0.9, 0.98], [2.0, 5.0]])
-        # )
         params = default_setting.DEFAULT_PARAMS.copy()
 
         df_positions = get_blink_position(
