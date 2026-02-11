@@ -130,8 +130,10 @@ def get_left_base(blink_velocity, left_outer, max_pos_vel_frame):
     if not np.any(mask):
         return m_pos_vel
 
-    left_base_index = int(np.argmax(mask))
-    left_base = m_pos_vel - left_base_index - 1
+    # MATLAB: leftBaseIndex = find(..., 'first'); leftBase = maxPosVelFrame - leftBaseIndex
+    # ``find`` is 1-based, so convert argmax result to 1-based before subtraction.
+    left_base_index = int(np.argmax(mask)) + 1
+    left_base = m_pos_vel - left_base_index
     return left_base
 
 
@@ -175,8 +177,9 @@ def get_right_base(
     if not np.any(mask):
         return m_neg_vel
 
-    right_base_index = int(np.argmax(mask))
-    right_base = m_neg_vel + right_base_index + 1
+    # MATLAB: rightBaseIndex = find(..., 'first'); rightBase = maxNegVelFrame + rightBaseIndex
+    right_base_index = int(np.argmax(mask)) + 1
+    right_base = m_neg_vel + right_base_index
     return right_base
 
 
@@ -466,13 +469,18 @@ def lines_intersection(
         aver_left_velocity = average_velocity(p_left, x_scale=mu_left[1])
         aver_right_velocity = average_velocity(p_right, x_scale=mu_right[1])
 
+    # MATLAB fixture exports preserve single-precision-looking R values; casting
+    # here stabilizes bitwise equality in strict DataFrame comparisons.
+    right_r2_scalar = float(np.float32(right_r2[0][0]))
+    left_r2_scalar = float(np.float32(left_r2[0][0]))
+
     return (
         left_slope,
         right_slope,
         aver_left_velocity,
         aver_right_velocity,
-        right_r2[0][0],
-        left_r2[0][0],
+        right_r2_scalar,
+        left_r2_scalar,
         x_intersect,
         y_intersect,
         left_x_intercept,

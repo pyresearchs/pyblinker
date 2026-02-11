@@ -54,6 +54,12 @@ def _compute_amp_vel_ratio_for_blink(
     max_blink_idx: int,
     aggregator: str = "max",
 ) -> tuple[float, int | None]:
+    max_vel_idx = blink_velocity.size - 1
+    start_idx = max(0, min(start_idx, max_vel_idx))
+    end_idx = max(0, min(end_idx, max_vel_idx))
+    if end_idx < start_idx:
+        return float("nan"), None
+
     indices = np.arange(start_idx, end_idx + 1, dtype=int)
     if indices.size == 0:
         return float("nan"), None
@@ -172,36 +178,27 @@ def compute_inter_blink_max_vel(
 ) -> None:
     """Compute inter-blink maximum velocity timing features."""
 
-    for idx, row in df.iterrows():
-        row_pos = df.index.get_loc(idx)
-        invalid_tent = False
-        if "left_x_intercept" in row and "right_x_intercept" in row:
-            left_raw = row["left_x_intercept"]
-            right_raw = row["right_x_intercept"]
-            if np.isnan(left_raw) or np.isnan(right_raw):
-                invalid_tent = True
-            elif signal_len is not None:
-                left_idx = int(round(left_raw))
-                right_idx = int(round(right_raw))
-                if left_idx < 0 or right_idx >= signal_len:
-                    invalid_tent = True
+    del signal_len  # kept for backward-compatible signature
 
-        if row_pos == len(df) - 1 or invalid_tent:
+    for idx in df.index:
+        row_pos = df.index.get_loc(idx)
+
+        if row_pos == len(df) - 1:
             df.at[idx, "inter_blink_max_vel_base"] = np.nan
         else:
             df.at[idx, "inter_blink_max_vel_base"] = (
-                row["peaks_pos_vel_base"] * -1
+                df.at[idx, "peaks_pos_vel_base"] * -1
             ) / srate
 
         if modality == "ear":
             df.at[idx, "inter_blink_max_vel_zero"] = np.nan
             continue
 
-        if row_pos == len(df) - 1 or invalid_tent:
+        if row_pos == len(df) - 1:
             df.at[idx, "inter_blink_max_vel_zero"] = np.nan
         else:
             df.at[idx, "inter_blink_max_vel_zero"] = (
-                row["peaks_pos_vel_zero"] * -1
+                df.at[idx, "peaks_pos_vel_zero"] * -1
             ) / srate
 
 

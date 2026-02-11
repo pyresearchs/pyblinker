@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.1.7] - 2026-02-11
+
+### Fixed
+- Stabilize FitBlinks correlation outputs (`leftR2`, `rightR2`) for MATLAB comparison by normalizing returned R values to single-precision representation.
+- Relax strict floating-point equality in `step_b_fitblink.py` to MATLAB-appropriate absolute tolerance (`atol=1e-6`) to avoid false failures from numeric noise.
+
+
+## [0.1.6] - 2026-02-11
+
+### Fixed
+- Restore MATLAB-consistent left half-height landmark indexing in FitBlinks geometry (base and zero half-height frames).
+- Restore MATLAB-consistent inter-blink max-velocity fields used by BlinkProperties comparison outputs.
+- Guard amplitude-velocity ratio velocity-index bounds to avoid out-of-range indexing on short boundary blinks.
+
+
+## [0.1.5] - 2026-02-11
+
+### Changed
+- Refactor blink-position detection and blink-property extraction flows into MATLAB-aligned helper stages for clearer parity-oriented maintenance.
+
+### Fixed
+- Align blink start/end candidate scanning and minimum-separation masking with MATLAB `getBlinkPositions` semantics.
+- Correct baseline and half-height landmark indexing offsets used during FitBlinks geometry calculations to match MATLAB frame conventions.
+- Fix inter-blink maximum-velocity interval computation so BlinkProperties uses MATLAB-style successive-peak differences.
+
+
 ## [0.1.4] - 2026-01-20
 
 ### Changed
