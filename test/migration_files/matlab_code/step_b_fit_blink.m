@@ -17,10 +17,10 @@ function step_b_fit_blink()
     yamlFile = fullfile(currentDir, 'setting.yaml');
 
     % ---- Simple YAML read ----
-    cfg = read_simple_yaml_kv(yamlFile, {'input_file_step_a_blink_posi', 'output_file_step_blink_posi', 'output_file_fitblink'});
-    inputFileSignal  = cfg.input_file_step_a_blink_posi;
-    inputFileBlinks  = cfg.output_file_step_blink_posi;
-    outputFile       = cfg.output_file_fitblink;
+    cfg = read_simple_yaml_kv(yamlFile, {'input_file_step_a_extract_blinks_eeg', 'output_file_step_a_extract_blinks_eeg', 'output_file_step_b_fitblink'});
+    inputFileSignal  = cfg.input_file_step_a_extract_blinks_eeg;
+    inputFileBlinks  = cfg.output_file_step_a_extract_blinks_eeg;
+    outputFile       = cfg.output_file_step_b_fitblink;
 
     fprintf('Input Signal: %s\n', inputFileSignal);
     fprintf('Input Blinks: %s\n', inputFileBlinks);
@@ -74,6 +74,11 @@ function step_b_fit_blink()
     if isempty(blinkPositions)
         warning('Could not find blinkPositions in %s. Passing empty.', inputFileBlinks);
     end
+
+
+    assert(ismatrix(blinkPositions) && isequal(size(blinkPositions), [2 495]), ...
+        'Expected blink_posi to be 2x495, got %dx%d.', size(blinkPositions,1), size(blinkPositions,2));
+
 
     % 3. Call fitBlinks
     fprintf('Running fitBlinks...\n');

@@ -13,9 +13,9 @@ function step_a_get_blink_position()
     yamlFile = fullfile(currentDir, 'setting.yaml');
 
     % ---- Simple YAML read (supports: key: "value" or key: value) ----
-    cfg = read_simple_yaml_kv(yamlFile, {'input_file_step_a_blink_posi','output_file_step_blink_posi'});
-    inputFile  = cfg.input_file_step_a_blink_posi;
-    outputFile = cfg.output_file_step_blink_posi;
+    cfg = read_simple_yaml_kv(yamlFile, {'input_file_step_a_extract_blinks_eeg','output_file_step_a_extract_blinks_eeg'});
+    inputFile  = cfg.input_file_step_a_extract_blinks_eeg;
+    outputFile = cfg.output_file_step_a_extract_blinks_eeg;
 
     fprintf('Input:  %s\n', inputFile);
     fprintf('Output: %s\n', outputFile);
@@ -46,6 +46,12 @@ function step_a_get_blink_position()
     fprintf('Running extractBlinksVersionCompact...\n');
     [blinks, params] = extractBlinks(candidateSignals, signalType, params);
 
+    blink_posi=blinks.signalData.blinkPositions;
+    blink_posi = blinks.signalData.blinkPositions;
+
+    %% 
+    assert(ismatrix(blink_posi) && isequal(size(blink_posi), [2 495]), ...
+        'Expected blink_posi to be 2x495, got %dx%d.', size(blink_posi,1), size(blink_posi,2));
 
     % Save the output
     outputDir = fileparts(outputFile);
