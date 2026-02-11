@@ -1,4 +1,26 @@
-"""Integration of blink counts with morphology features."""
+"""Integration of blink counts with morphology features.
+In blinker, the morphology features includes the following
+_LEGACY_MORPHOLOGY_METRICS = (
+    "duration_zero",
+    "duration_base",
+    "duration_tent",
+    "duration_half_base",
+    "duration_half_zero",
+    "closing_time_zero",
+    "reopening_time_zero",
+    "time_shut_zero",
+    "time_shut_base",
+    "closing_time_tent",
+    "reopening_time_tent",
+    "time_shut_tent",
+    "inter_blink_max_amp",
+	# "peak_time_blink",  			# TODO This metric is available in BLINKER but still not computed in pyblinker
+	# "peak_time_tent",				# TODO This metric is available in BLINKER but still not computed in pyblinker
+	# "peak_max_blink",				# TODO This metric is available in BLINKER but still not computed in pyblinker
+	# "peak_max_tent",				# TODO This metric is available in BLINKER but still not computed in pyblinker
+	# "inter_blink_max_vel_base",	# TODO This metric is available in BLINKER but still not computed in pyblinker
+	# "inter_blink_max_vel_zero",	# TODO This metric is available in BLINKER but still not computed in pyblinker
+	"""
 from __future__ import annotations
 
 import unittest
