@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.7] - 2026-02-11
+
+### Fixed
+- Stabilize FitBlinks correlation outputs (`leftR2`, `rightR2`) for MATLAB comparison by normalizing returned R values to single-precision representation.
+- Relax strict floating-point equality in `step_b_fitblink.py` to MATLAB-appropriate absolute tolerance (`atol=1e-6`) to avoid false failures from numeric noise.
+
+
 ## [0.1.6] - 2026-02-11
 
 ### Fixed

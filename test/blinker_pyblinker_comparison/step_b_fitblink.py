@@ -152,6 +152,9 @@ class TestFitBlinks(unittest.TestCase):
             self.df_py,
             self.df_mat,
             check_dtype=False,
+            check_exact=False,
+            rtol=0,
+            atol=1e-6,
         )
         # pass
 
