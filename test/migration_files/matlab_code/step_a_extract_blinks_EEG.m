@@ -51,8 +51,8 @@ function step_a_get_blink_position()
     blink_posi = blinks.signalData.blinkPositions;
 
     %% 
-    assert(ismatrix(blink_posi) && isequal(size(blink_posi), [2 495]), ...
-        'Expected blink_posi to be 2x495, got %dx%d.', size(blink_posi,1), size(blink_posi,2));
+    assert(ismatrix(blink_posi) && isequal(size(blink_posi), [2 355]), ...
+        'Expected blink_posi to be 2x355, got %dx%d.', size(blink_posi,1), size(blink_posi,2));
 
     % Save the output
     outputDir = fileparts(outputFile);

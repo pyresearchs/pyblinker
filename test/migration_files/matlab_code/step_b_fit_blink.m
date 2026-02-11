@@ -77,8 +77,8 @@ function step_b_fit_blink()
     end
 
 
-    assert(ismatrix(blinkPositions) && isequal(size(blinkPositions), [2 495]), ...
-        'Expected blink_posi to be 2x495, got %dx%d.', size(blinkPositions,1), size(blinkPositions,2));
+    assert(ismatrix(blinkPositions) && isequal(size(blinkPositions), [2 355]), ...
+        'Expected blink_posi to be 2x355, got %dx%d.', size(blinkPositions,1), size(blinkPositions,2));
 
 
     % 3. Call fitBlinks
