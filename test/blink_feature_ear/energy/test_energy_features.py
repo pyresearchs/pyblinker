@@ -18,7 +18,7 @@ By this doing this, the feature calculation functions can remain agnostic to how
 """
 from __future__ import annotations
 
-# ruff: noqa: E402
+
 import unittest
 from pathlib import Path
 import sys
