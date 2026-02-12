@@ -23,6 +23,8 @@ _REQUIRED_KINEMATIC_METRICS = (
     "amp_vel_ratio_zero_to_max",
     "blink_velocity",
     "inter_blink_max_vel",
+    "inter_blink_max_vel_base",
+    "inter_blink_max_vel_zero",
     "aver_left_velocity",
     "aver_right_velocity",
     "neg_amp_vel_ratio_base",

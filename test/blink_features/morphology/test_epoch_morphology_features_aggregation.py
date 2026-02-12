@@ -15,27 +15,37 @@ from test.segment_config import build_segment_config
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 EEG_CHANNEL = "EEG-E8"
 
-_REQUIRED_LEGACY_MORPHOLOGY_METRICS = (
-    "duration_zero",
-    "duration_base",
-    "duration_tent",
-    "duration_half_base",
-    "duration_half_zero",
-    "closing_time_zero",
-    "reopening_time_zero",
-    "time_shut_zero",
-    "time_shut_base",
-    "closing_time_tent",
-    "reopening_time_tent",
-    "time_shut_tent",
-    "inter_blink_max_amp",
-    "peak_time_blink",
-    "peak_time_tent",
-    "peak_max_blink",
-    "peak_max_tent",
-    "inter_blink_max_vel_base",
-    "inter_blink_max_vel_zero",
-)
+_REQUIRED_LEGACY_MORPHOLOGY_METRICS = {
+    "zero": (
+        "duration_zero",
+        "closing_time_zero",
+        "reopening_time_zero",
+        "time_shut_zero",
+    ),
+    "base": (
+        "duration_base",
+        "time_shut_base",
+    ),
+    "tent": (
+        "duration_tent",
+        "closing_time_tent",
+        "reopening_time_tent",
+        "time_shut_tent",
+    ),
+    "half": (
+        "duration_half_base",
+        "duration_half_zero",
+    ),
+    "peak": (
+        "peak_time_blink",
+        "peak_time_tent",
+        "peak_max_blink",
+        "peak_max_tent",
+    ),
+    "inter_blink": (
+        "inter_blink_max_amp",
+    ),
+}
 
 
 class TestMorphologyAggregation(unittest.TestCase):
@@ -63,8 +73,9 @@ class TestMorphologyAggregation(unittest.TestCase):
             expected = f"eeg__{style}__morphology__duration_mean__{EEG_CHANNEL}"
             self.assertIn(expected, df.columns)
 
-        for metric in _REQUIRED_LEGACY_MORPHOLOGY_METRICS:
-            self.assertIn(metric, df.columns)
+        for metrics in _REQUIRED_LEGACY_MORPHOLOGY_METRICS.values():
+            for metric in metrics:
+                self.assertIn(metric, df.columns)
 
         self.assertGreater(df.notna().sum().sum(), 0)
 

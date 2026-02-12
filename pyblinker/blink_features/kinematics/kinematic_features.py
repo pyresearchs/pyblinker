@@ -41,6 +41,8 @@ _EXTENDED_KINEMATIC_METRICS = (
     "pos_amp_vel_ratio_zero",
     "neg_amp_vel_ratio_tent",
     "pos_amp_vel_ratio_tent",
+    "inter_blink_max_vel_base",
+    "inter_blink_max_vel_zero",
 )
 
 

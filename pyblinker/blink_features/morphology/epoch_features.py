@@ -16,12 +16,6 @@ from .core_metrics import (
     compute_time_zero_shut,
 )
 from .per_blink import compute_blink_waveform_metrics
-from ..kinematics.core_metrics import (
-    compute_amp_vel_ratio_base,
-    compute_amp_vel_ratio_zero_to_max,
-    compute_blink_velocity,
-    compute_inter_blink_max_vel,
-)
 from ..energy.helpers import _safe_stats, segment_to_samples
 from ..utils.aggregation import prepare_epoch_channel_data
 from ...utils.epoch_utils import resolve_channels
@@ -49,8 +43,6 @@ _LEGACY_MORPHOLOGY_METRICS = (
     "peak_max_blink",
     "peak_max_tent",
     "inter_blink_max_amp",
-    "inter_blink_max_vel_base",
-    "inter_blink_max_vel_zero",
 )
 _DURATION_STYLE_MAP = {
     "base": "duration_base",
@@ -321,8 +313,6 @@ def _apply_morphology_properties(
         "peak_time_tent",
         "peak_max_blink",
         "peak_max_tent",
-        "inter_blink_max_vel_base",
-        "inter_blink_max_vel_zero",
     ):
         if col not in blink_df.columns:
             blink_df[col] = np.nan
@@ -379,26 +369,12 @@ def _apply_morphology_properties(
     if peak_valid.any():
         peak_df = blink_df.loc[peak_valid, :].copy()
         compute_blink_peak_times(peak_df, signal, sfreq, fitted=True)
-        blink_velocity = compute_blink_velocity(signal)
-        if peak_df[["left_base", "right_base", "max_blink"]].notna().all(axis=1).any():
-            compute_amp_vel_ratio_base(peak_df, signal, blink_velocity, sfreq)
-        if peak_df[["left_zero", "right_zero", "max_blink"]].notna().all(axis=1).any():
-            compute_amp_vel_ratio_zero_to_max(
-                peak_df,
-                signal,
-                blink_velocity,
-                sfreq,
-                modality=modality,
-            )
-        compute_inter_blink_max_vel(peak_df, sfreq, modality=modality, signal_len=len(signal))
         copy_cols = [
             "inter_blink_max_amp",
             "peak_time_blink",
             "peak_time_tent",
             "peak_max_blink",
             "peak_max_tent",
-            "inter_blink_max_vel_base",
-            "inter_blink_max_vel_zero",
         ]
         copy_cols = [c for c in copy_cols if c in peak_df.columns]
         blink_df.loc[peak_valid, copy_cols] = peak_df[copy_cols]
