@@ -129,8 +129,10 @@ def _style_windows(
     metadata_row: Mapping[str, object],
     modality: str,
     style: str,
-) -> List[tuple[float, float]]:
-    """Extract blink windows for a modality/style pair."""
+    sfreq: float,
+    n_times: int,
+) -> List[tuple[int, int]]:
+    """Extract blink windows for a modality/style pair as sample-frame bounds."""
 
     landmark_style_keys = {
         "base": ("start__left_base", "end__right_base"),
@@ -144,17 +146,17 @@ def _style_windows(
         start_prefix, end_prefix = landmark_style_keys[style]
         starts = ensure_list(metadata_row.get(f"{start_prefix}__{modality}"))
         ends = ensure_list(metadata_row.get(f"{end_prefix}__{modality}"))
-        windows_from_frames: List[tuple[float, float]] = []
+        windows_from_frames: List[tuple[int, int]] = []
         for start_frame, end_frame in zip(starts, ends):
             if start_frame is None or end_frame is None:
                 continue
             if pd.isna(start_frame) or pd.isna(end_frame):
                 continue
-            start_frame = float(start_frame)
-            end_frame = float(end_frame)
-            if end_frame <= start_frame:
+            start_idx = max(int(round(float(start_frame))), 0)
+            end_idx = min(int(round(float(end_frame))), n_times)
+            if end_idx <= start_idx:
                 continue
-            windows_from_frames.append((start_frame, end_frame - start_frame))
+            windows_from_frames.append((start_idx, end_idx))
         if windows_from_frames:
             return windows_from_frames
 
@@ -170,13 +172,16 @@ def _style_windows(
         if metadata_row.get(duration_key) is not None
         else []
     )
-    windows: List[tuple[float, float]] = []
+    windows: List[tuple[int, int]] = []
     for onset, duration in zip(onsets, durations):
         if onset is None or duration is None:
             continue
         if pd.isna(onset) or pd.isna(duration):
             continue
-        windows.append((float(onset), float(duration)))
+        sl = segment_to_samples(float(onset), float(duration), sfreq, n_times)
+        if sl.stop <= sl.start:
+            continue
+        windows.append((int(sl.start), int(sl.stop)))
     return windows
 
 
@@ -199,21 +204,18 @@ def _pad_to_length(values: List[float], length: int) -> List[float]:
 
 def _peak_times_from_windows(
     signal: np.ndarray,
-    windows: Sequence[tuple[float, float]],
-    sfreq: float,
-    n_times: int,
+    windows: Sequence[tuple[int, int]],
 ) -> tuple[List[float], List[float]]:
     peak_indices: List[float] = []
     peak_values: List[float] = []
-    for onset_s, duration_s in windows:
-        sl = segment_to_samples(onset_s, duration_s, sfreq, n_times)
-        segment = signal[sl]
+    for start_frame, end_frame in windows:
+        segment = signal[start_frame:end_frame]
         if segment.size == 0:
             peak_indices.append(float("nan"))
             peak_values.append(float("nan"))
             continue
         peak_idx = int(np.argmax(segment))
-        peak_indices.append(float(sl.start + peak_idx))
+        peak_indices.append(float(start_frame + peak_idx))
         peak_values.append(float(segment[peak_idx]))
     return peak_indices, peak_values
 
@@ -262,7 +264,7 @@ def _build_blink_landmark_frame(
     if window_style is None and styles:
         window_style = styles[0]
     windows = (
-        _style_windows(metadata_row, modality, window_style)
+        _style_windows(metadata_row, modality, window_style, sfreq, n_times)
         if window_style is not None
         else []
     )
@@ -298,7 +300,7 @@ def _build_blink_landmark_frame(
         data["max_blink"] = peak_idx
         data["max_value"] = _pad_to_length(peak_values, n_blinks)
     else:
-        peak_idx, peak_values = _peak_times_from_windows(signal, windows, sfreq, n_times)
+        peak_idx, peak_values = _peak_times_from_windows(signal, windows)
         data["max_blink"] = _pad_to_length(peak_idx, n_blinks)
         data["max_value"] = _pad_to_length(peak_values, n_blinks)
 
@@ -884,9 +886,8 @@ class MorphologyBlinkFeatureExtractor:
 
         Pipeline (functions called)
         ---------------------------
-        1) windows = _style_windows(metadata_row, modality, style)
+        1) windows = _style_windows(metadata_row, modality, style, sfreq, n_times)
         2) per_metric_values = _compute_metrics_over_windows(...)
-            -> segment_to_samples(...)
             -> compute_blink_waveform_metrics(...)
         3) per_metric_values["duration"] = _duration_values_from_blink_df(...)
         4) _write_metric_stats_to_record(...)
@@ -918,7 +919,7 @@ class MorphologyBlinkFeatureExtractor:
         None
             This function does not return anything. It updates `record` in-place.
         """
-        windows = _style_windows(metadata_row, modality, style)
+        windows = _style_windows(metadata_row, modality, style, sfreq, n_times)
         metric_names = [f"{stem}_{style}" for stem in MORPHOLOGY_METRIC_STEMS]
 
         logger.debug(
@@ -955,7 +956,7 @@ class MorphologyBlinkFeatureExtractor:
     def _compute_metrics_over_windows(
         self,
         signal: np.ndarray,
-        windows: Sequence[Tuple[float, float]],
+        windows: Sequence[Tuple[int, int]],
         metric_names: Sequence[str],
         sfreq: float,
         n_times: int,
@@ -967,17 +968,16 @@ class MorphologyBlinkFeatureExtractor:
 
         Pipeline (functions called)
         ---------------------------
-        For every window (onset_s, duration_s):
-        1) sl = segment_to_samples(onset_s, duration_s, sfreq, n_times)
-        2) segment = signal[sl]
-        3) metrics = compute_blink_waveform_metrics(segment, sfreq, method=style, modality=modality)
+        For every window (start_frame, end_frame):
+        1) segment = signal[start_frame:end_frame]
+        2) metrics = compute_blink_waveform_metrics(segment, sfreq, method=style, modality=modality)
 
         Parameters
         ----------
         signal : array-like
             1D waveform array of shape (n_times,).
-        windows : list[tuple[float, float]]
-            List of windows as (onset_seconds, duration_seconds).
+        windows : list[tuple[int, int]]
+            List of windows as (start_frame, end_frame) sample bounds.
         metric_names : list[str]
             Metric keys expected from compute_blink_waveform_metrics().
         sfreq : float
@@ -997,16 +997,20 @@ class MorphologyBlinkFeatureExtractor:
         """
         out: Dict[str, List[float]] = {m: [] for m in metric_names}
 
-        for onset_s, duration_s in windows:
+        for start_frame, end_frame in windows:
             logger.debug(
-                "Window compute: modality=%s style=%s onset=%s duration=%s",
+                "Window compute: modality=%s style=%s start=%s end=%s",
                 modality,
                 style,
-                onset_s,
-                duration_s,
+                start_frame,
+                end_frame,
             )
-            sl = segment_to_samples(onset_s, duration_s, sfreq, n_times)
-            segment = signal[sl]
+            start_idx = max(int(start_frame), 0)
+            end_idx = min(int(end_frame), n_times)
+            if end_idx <= start_idx:
+                segment = np.array([], dtype=signal.dtype)
+            else:
+                segment = signal[start_idx:end_idx]
 
             metrics = compute_blink_waveform_metrics(
                 segment,

@@ -73,9 +73,9 @@ class TestMorphologyAggregation(unittest.TestCase):
             "duration__zero__eeg": [0.0, 0.0],
         }
 
-        windows = _style_windows(metadata_row, "eeg", "zero")
+        windows = _style_windows(metadata_row, "eeg", "zero", sfreq=256.0, n_times=2560)
 
-        self.assertEqual(windows, [(10.0, 6.0), (30.0, 10.0)])
+        self.assertEqual(windows, [(10, 16), (30, 40)])
 
     def test_epoch_output_contains_expected_morphology_features(self) -> None:
         """Epoch output includes expected style-aware and legacy morphology fields."""
