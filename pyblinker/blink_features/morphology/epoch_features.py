@@ -132,6 +132,32 @@ def _style_windows(
 ) -> List[tuple[float, float]]:
     """Extract blink windows for a modality/style pair."""
 
+    landmark_style_keys = {
+        "base": ("start__left_base", "end__right_base"),
+        "zero": ("start__left_zero", "end__right_zero"),
+        "tent": ("start__left_x_intercept", "end__right_x_intercept"),
+        "half_base": ("start__left_base_half_height", "end__right_base_half_height"),
+        "half_zero": ("start__left_zero_half_height", "end__right_zero_half_height"),
+    }
+
+    if style in landmark_style_keys:
+        start_prefix, end_prefix = landmark_style_keys[style]
+        starts = ensure_list(metadata_row.get(f"{start_prefix}__{modality}"))
+        ends = ensure_list(metadata_row.get(f"{end_prefix}__{modality}"))
+        windows_from_frames: List[tuple[float, float]] = []
+        for start_frame, end_frame in zip(starts, ends):
+            if start_frame is None or end_frame is None:
+                continue
+            if pd.isna(start_frame) or pd.isna(end_frame):
+                continue
+            start_frame = float(start_frame)
+            end_frame = float(end_frame)
+            if end_frame <= start_frame:
+                continue
+            windows_from_frames.append((start_frame, end_frame - start_frame))
+        if windows_from_frames:
+            return windows_from_frames
+
     onset_key = f"onset__{style}__{modality}"
     duration_key = f"duration__{style}__{modality}"
     onsets = (
@@ -298,6 +324,8 @@ def _apply_morphology_properties(
     if blink_df.empty:
         return blink_df
 
+    # Legacy morphology features are duration-derived metrics expected by
+    # the historical BlinkProperties output schema.
     compute_blink_durations(blink_df, sfreq, modality=modality, fitted=True)
 
     for col in (
@@ -787,6 +815,8 @@ class MorphologyBlinkFeatureExtractor:
         )
 
         blink_df = self._build_blink_df(
+            # Build per-blink landmark frame first; this is then enriched with
+            # legacy morphology features for backward-compatible EEG outputs.
             metadata_row=metadata_row,
             signal=signal,
             sfreq=sfreq,
