@@ -1,6 +1,19 @@
 # Changelog
 
+## [0.1.11] - 2026-02-12
+
+### Fixed
+- Fix morphology style-window extraction to prioritize frame-based landmark boundaries (`start__...`/`end__...`) over onset/duration metadata so per-window metrics no longer collapse to empty windows when duration fields are zero.
+- Update morphology per-window metric extraction to slice `signal[start_frame:end_frame]` directly from frame windows (without round-tripping through onset/duration conversion).
+- Add regression coverage ensuring `zero` style windows are built from landmark frame indices when present.
+
 ## [0.1.10] - 2026-02-11
+
+### Changed
+- Move inter-blink max velocity epoch assertions into kinematics coverage and keep morphology epoch extraction focused on morphology-only legacy fields.
+- Expand EEG-only kinematic and morphology aggregation tests to explicitly assert newly exposed kinematic sign-split ratios/side velocities and legacy morphology timing/peak/inter-blink fields.
+- Refactor epoch kinematic extraction to expose per-blink sign-split amplitude/velocity ratios and average side velocities via shared kinematics core-metric utilities.
+- Refactor epoch morphology extraction to expose peak time/max and inter-blink max-velocity legacy outputs using shared morphology/kinematics core-metric utilities for parity with BlinkProperties comparisons.
 
 ### Fixed
 - Tighten MATLAB parity in `get_blink_statistic` by converting zero-crossing blink boundaries with nearest-integer semantics (`rint`) before building the inclusive blink mask.
