@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.11] - 2026-02-12
+
+### Fixed
+- Fix morphology style-window extraction to prioritize frame-based landmark boundaries (`start__...`/`end__...`) over onset/duration metadata so per-window metrics no longer collapse to empty windows when duration fields are zero.
+- Update morphology per-window metric extraction to slice `signal[start_frame:end_frame]` directly from frame windows (without round-tripping through onset/duration conversion).
+- Add regression coverage ensuring `zero` style windows are built from landmark frame indices when present.
+
 ## [0.1.10] - 2026-02-11
 
 ### Changed

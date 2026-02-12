@@ -8,7 +8,7 @@ from pathlib import Path
 import mne
 
 from pyblinker.blink_features.morphology import compute_epoch_morphology_features
-from pyblinker.blink_features.morphology.epoch_features import _available_styles
+from pyblinker.blink_features.morphology.epoch_features import _available_styles, _style_windows
 from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
 from test.segment_config import build_segment_config
 
@@ -62,6 +62,20 @@ class TestMorphologyAggregation(unittest.TestCase):
             progress_bar=False,
             segmentation_type=segmentation_config,
         )
+
+
+    def test_style_windows_uses_landmark_frames_when_available(self) -> None:
+        """Window extraction should use landmark frame boundaries before onset/duration."""
+        metadata_row = {
+            "start__left_zero__eeg": [10, 30],
+            "end__right_zero__eeg": [16, 40],
+            "onset__zero__eeg": [1.0, 2.0],
+            "duration__zero__eeg": [0.0, 0.0],
+        }
+
+        windows = _style_windows(metadata_row, "eeg", "zero", sfreq=256.0, n_times=2560)
+
+        self.assertEqual(windows, [(10, 16), (30, 40)])
 
     def test_epoch_output_contains_expected_morphology_features(self) -> None:
         """Epoch output includes expected style-aware and legacy morphology fields."""
