@@ -225,6 +225,67 @@ def _populate_inter_blink_velocity(
     blink_df.loc[inter_valid, cols] = inter_df[cols]
 
 
+
+
+def _compute_metrics_over_windows(
+    *,
+    windows: Sequence[tuple[int, int]],
+    n_times: int,
+    channel_data: Mapping[str, Mapping[str, object]],
+    channel_name: str,
+    epoch_index: int,
+    sfreq: float,
+    style: str,
+    modality: str,
+    metrics_for_style: Sequence[str],
+) -> Dict[str, List[float]]:
+    """Compute per-window kinematic metrics for one epoch/channel/style."""
+
+    per_metric: Dict[str, List[float]] = {m: [] for m in metrics_for_style}
+    for start_idx, end_idx in windows:
+        if start_idx >= n_times:
+            continue
+        sl = slice(max(0, start_idx), min(end_idx, n_times))
+        segment = {
+            "raw": channel_data[channel_name]["raw"][epoch_index, sl],
+            "dx1": channel_data[channel_name]["dx1"][epoch_index, sl],
+            "dx2": channel_data[channel_name]["dx2"][epoch_index, sl],
+        }
+        metrics = compute_segment_kinematics(
+            segment,
+            sfreq,
+            method=style,
+            modality=modality,
+        )
+        for metric_name in metrics_for_style:
+            if metric_name in _EXTENDED_KINEMATIC_METRICS:
+                continue
+            per_metric[metric_name].append(metrics[metric_name])
+
+    return per_metric
+
+
+def _write_style_stats_into_record(
+    *,
+    record: Dict[str, float],
+    per_metric: Dict[str, List[float]],
+    blink_df: pd.DataFrame,
+    modality: str,
+    style: str,
+    channel_name: str,
+) -> None:
+    """Merge legacy extended metrics and write style statistics into an epoch record."""
+
+    for metric_name in _EXTENDED_KINEMATIC_METRICS:
+        if metric_name in blink_df.columns:
+            per_metric[metric_name] = blink_df[metric_name].tolist()
+
+    for metric_name, values in per_metric.items():
+        stats = _safe_stats(values)
+        for stat_name, value in stats.items():
+            column = f"{modality}__{style}__kinematic__{metric_name}_{stat_name}__{channel_name}"
+            record[column] = value
+
 def _infer_modality(channel_name: str, info: mne.Info) -> str:
     """Infer modality label (ear/eeg/eog) from channel metadata."""
 
@@ -408,36 +469,25 @@ class KinematicBlinkFeatureExtractor:
                             sfreq,
                             modality=modality,
                         )
-                        per_metric: Dict[str, List[float]] = {m: [] for m in metrics_for_style}
-                        for start_idx, end_idx in windows:
-                            if start_idx >= n_times:
-                                continue
-                            sl = slice(max(0, start_idx), min(end_idx, n_times))
-                            segment = {
-                                "raw": channel_data[ch]["raw"][ei, sl],
-                                "dx1": channel_data[ch]["dx1"][ei, sl],
-                                "dx2": channel_data[ch]["dx2"][ei, sl],
-                            }
-                            # if segment["raw"].size == 0:
-                            #     continue
-                            metrics = compute_segment_kinematics(
-                                segment,
-                                sfreq,
-                                method=style,
-                                modality=modality,
-                            )
-                            for m in metrics_for_style:
-                                if m in _EXTENDED_KINEMATIC_METRICS:
-                                    continue
-                                per_metric[m].append(metrics[m])
-                        for m in _EXTENDED_KINEMATIC_METRICS:
-                            if m in blink_df.columns:
-                                per_metric[m] = blink_df[m].tolist()
-                        for metric, values in per_metric.items():
-                            stats = _safe_stats(values)
-                            for stat_name, value in stats.items():
-                                column = f"{modality}__{style}__kinematic__{metric}_{stat_name}__{ch}"
-                                record[column] = value
+                        per_metric = _compute_metrics_over_windows(
+                            windows=windows,
+                            n_times=n_times,
+                            channel_data=channel_data,
+                            channel_name=ch,
+                            epoch_index=ei,
+                            sfreq=sfreq,
+                            style=style,
+                            modality=modality,
+                            metrics_for_style=metrics_for_style,
+                        )
+                        _write_style_stats_into_record(
+                            record=record,
+                            per_metric=per_metric,
+                            blink_df=blink_df,
+                            modality=modality,
+                            style=style,
+                            channel_name=ch,
+                        )
             records.append(record)
 
         df = pd.DataFrame.from_records(records, index=index, columns=columns)
