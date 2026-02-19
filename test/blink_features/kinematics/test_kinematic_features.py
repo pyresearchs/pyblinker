@@ -13,7 +13,7 @@ from pyblinker.blink_features.kinematics.core_metrics import (
     KINEMATIC_METRICS_NO_STYLE,
 )
 from pyblinker.blink_features.kinematics.per_blink import compute_segment_kinematics
-from pyblinker.blink_features.energy.helpers import segment_to_samples, _safe_stats
+from pyblinker.blink_features.energy.helpers import _safe_stats
 from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
 from pyblinker.blink_features.kinematics.kinematic_features import (
     KinematicBlinkFeatureExtractor,
@@ -93,8 +93,10 @@ class TestKinematicFeatures(unittest.TestCase):
         for style in styles:
             per_metric = {m: [] for m in metrics_by_style[style]}
             windows = _style_windows(meta, "eeg", style)
-            for onset, dur in windows:
-                sl = segment_to_samples(onset, dur, sfreq, n_times)
+            for start_idx, end_idx in windows:
+                if start_idx >= n_times:
+                    continue
+                sl = slice(max(0, start_idx), min(end_idx, n_times))
                 seg = {
                     "raw": channel_data[ch_names[0]]["raw"][0, sl],
                     "dx1": channel_data[ch_names[0]]["dx1"][0, sl],
@@ -111,6 +113,14 @@ class TestKinematicFeatures(unittest.TestCase):
 
         for key, val in manual.items():
             self.assertAlmostEqual(df.iloc[0][key], val, places=7)
+
+    def test_style_windows_use_frame_bounds(self) -> None:
+        """Style windows should be built from start/end frame metadata."""
+        metadata_row = {
+            "start__left_base__eeg": [10, 30],
+            "end__right_base__eeg": [20, 45],
+        }
+        self.assertEqual(_style_windows(metadata_row, "eeg", "base"), [(10, 20), (30, 45)])
 
     def test_method_suffix_and_modality_guard(self) -> None:
         """Per-blink metrics include method suffixes and respect modality rules."""

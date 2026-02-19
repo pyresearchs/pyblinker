@@ -1,5 +1,14 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+- Further refactor kinematic epoch aggregation by extracting window-level segment metric computation and style-stat writing into dedicated helpers in `pyblinker/blink_features/kinematics/kinematic_features.py`.
+- Refactor `pyblinker/blink_features/kinematics/kinematic_features.py` by splitting extended legacy kinematic calculations into dedicated helper functions to reduce nesting and improve readability/debugging.
+- Add an inline code comment before legacy kinematic computation in the epoch aggregation loop: `calculate the legacy kinematics features`.
+- Switch kinematic epoch window extraction and per-window slicing to use frame-based `start__...`/`end__...` metadata directly, avoiding onset/duration-to-sample conversion in this pipeline.
+- Update feature documentation to describe frame-window kinematic slicing and the helperized legacy kinematic flow.
+
 ## [0.1.11] - 2026-02-12
 
 ### Fixed

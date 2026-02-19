@@ -238,7 +238,7 @@ The core helpers are structured to compute metrics one blink at a time so per-bl
 
 ## Kinematic style-aware metadata and naming
 
-*Feature/change*: Kinematic aggregation now prepares per-channel waveform, first-derivative, and second-derivative data for each epoch and reads modality/style-specific onset and duration keys (e.g., `onset__th_interpolation__ear`, `duration__outer__eeg`). Columns are emitted using the pattern `<modality>__<style>__kinematic__<metric>__<channel>` (with statistics appended), aligning the kinematic schema with other feature families.
+*Feature/change*: Kinematic aggregation now prepares per-channel waveform, first-derivative, and second-derivative data for each epoch and reads modality/style-specific frame landmark bounds (e.g., `start__left_base__ear`, `end__right_base__eeg`). Columns are emitted using the pattern `<modality>__<style>__kinematic__<metric>__<channel>` (with statistics appended), aligning the kinematic schema with other feature families.
 
 *Related Code*:
 *   `pyblinker/blink_features/utils/aggregation.py` (per-channel `raw`, `dx1`, `dx2` arrays in `prepare_epoch_channel_data`)
@@ -248,6 +248,20 @@ The core helpers are structured to compute metrics one blink at a time so per-bl
 *Unit Tests*:
 *   `test/blink_features/kinematics/test_kinematic_features.py`: Verifies style-aware kinematic outputs and statistics.
 *   `test/blink_features/kinematics/test_optional_channels_and_configs.py`: Confirms channel-specific column naming across modality combinations.
+
+
+## Kinematic frame-window slicing and helper refactor
+
+*Feature/change*: Kinematic epoch aggregation now slices blink segments directly from frame-based start/end metadata and refactors extended legacy kinematic metric computation into dedicated helper functions for readability and debugging.
+
+*Related Code*:
+*   `pyblinker/blink_features/kinematics/kinematic_features.py` (frame-window extraction, helperized legacy kinematic calculations, and epoch-level segment slicing)
+
+*Tutorials*:
+*   None (internal refactor and window-source update; existing kinematic tutorials remain valid).
+
+*Unit Tests*:
+*   `test/blink_features/kinematics/test_kinematic_features.py`: Verifies frame-based style window extraction and manual per-window metric aggregation parity.
 
 ## Morphology epoch extractor refactor
 
