@@ -183,6 +183,22 @@ Automatic modality inference per channel prevents EEG defaults when processing E
 *   `test/blink_features/kinematics/test_kinematics_eog_only_config.py`
 *   `test/blink_features/kinematics/test_kinematics_ear_eeg_eog.py`
 
+## EAR-only kinematic epoch routing and style discovery
+
+*Feature/change*: The kinematic epoch extractor now supports EAR-only inputs produced by `extractor.compute(picks=EAR_CHANNEL)` by resolving non-EEG segmentation styles from metadata (`start__<style>__ear`/`end__<style>__ear`) and reusing the same 1D per-channel kinematic computation path used in EEG mode. EEG channel behavior and style semantics remain unchanged.
+
+*Related Code*:
+*   `pyblinker/blink_features/kinematics/kinematic_features.py` (generic style discovery, EAR window extraction, and compatibility aliases for legacy EAR interpolation column names)
+
+*Tutorials*:
+*   `tutorial/06a_ear_kinematics_feature_tutorial.py`
+*   `tutorial/06b_eeg_kinematics_feature_tutorial.py`
+
+*Unit Tests*:
+*   `test/blink_features/kinematics/test_kinematics_ear_only_config.py`: validates EAR-only extraction and expected output columns.
+*   `test/blink_features/kinematics/test_kinematics_eeg_only_config.py`: validates unchanged EEG-only output behavior.
+*   `test/blink_features/morphology/test_epoch_morphology_features_aggregation.py`: validates cross-family epoch aggregation compatibility after the kinematic refactor.
+
 ## Morphology and kinematics metric split
 
 *Feature/change*: Blink waveform analytics are now split into morphology-only and kinematic-only pipelines. Morphology metrics (area, symmetry, rise/fall timing, widths, amplitudes, and EAR baseline handling) are computed separately from kinematic metrics (velocity, acceleration, and slope), preventing cross-domain outputs when a pipeline only needs one family.
