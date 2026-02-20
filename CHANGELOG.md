@@ -11,6 +11,12 @@
 - Switch kinematic epoch window extraction and per-window slicing to use frame-based `start__...`/`end__...` metadata directly, avoiding onset/duration-to-sample conversion in this pipeline.
 - Update feature documentation to describe frame-window kinematic slicing and the helperized legacy kinematic flow.
 
+## [0.2.2] - 2026-02-20
+
+### Fixed
+- Prevent pytest from collecting the comparison-test path helper as a test by renaming `test_file_path(...)` to `get_test_file_path(...)` in `test/blinker_pyblinker_comparison/utils.py`.
+- Update all blinker-vs-pyblinker comparison tests to import and call `get_test_file_path(...)`, preserving both per-file pytest execution and aggregate unittest execution via `test/run_all_tests.py`.
+
 ## [0.2.1] - 2026-02-20
 
 ### Fixed

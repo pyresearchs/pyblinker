@@ -14,7 +14,7 @@ from pyblinker.blink_features.waveform_features.extract_blink_properties import 
 )
 from pyblinker.utils.statistics_utils import get_good_blink_mask, get_blink_statistic
 from scipy.io import loadmat
-from test.blinker_pyblinker_comparison.utils import test_file_path
+from test.blinker_pyblinker_comparison.utils import get_test_file_path
 
 # Configure the logger
 logging.basicConfig(level=logging.INFO)
@@ -28,7 +28,7 @@ class TestBlinkProperties(unittest.TestCase):
         Load test data, run FitBlinks, and compute BlinkProperties output.
         """
         base_path = Path(__file__).resolve().parents[1]
-        fif_path = test_file_path("ear_eog_raw.fif")
+        fif_path = get_test_file_path("ear_eog_raw.fif")
 
         mat_path = base_path / "test_files/step_c_blink_properties.mat"
         mat_data = loadmat(
