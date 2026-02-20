@@ -7,7 +7,7 @@ TEST_ROOT = Path(__file__).resolve().parents[1]
 TEST_FILES_DIR = TEST_ROOT / "test_files"
 
 
-def test_file_path(filename: str) -> Path:
+def get_test_file_path(filename: str) -> Path:
 	"""Return a path under ``test/test_files`` independent of current working dir."""
 	return TEST_FILES_DIR / filename
 

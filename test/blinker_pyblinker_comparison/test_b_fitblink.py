@@ -8,7 +8,7 @@ from scipy.io import loadmat
 from pyblinker.blinker import default_setting
 from pyblinker.blinker.fit_blink import FitBlinks
 from pyblinker.blinker.get_blink_positions import get_blink_position
-from test.blinker_pyblinker_comparison.utils import test_file_path
+from test.blinker_pyblinker_comparison.utils import get_test_file_path
 
 logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
@@ -23,12 +23,12 @@ class TestFitBlinks(unittest.TestCase):
         """
         # Paths
         # Note: We use the MAT file for the signal to ensure exact match with MATLAB reference, as the FIF file contains different (possibly unscaled) values.
-        mat_signal_path = test_file_path("ear_eog_resamp-100_raw.mat")
-        mat_pos_path = test_file_path("step_a_extract_blinks_resamp-100.mat")
-        mat_fit_path = test_file_path("step_b_fit_blink.mat")
+        mat_signal_path = get_test_file_path("ear_eog_resamp-100_raw.mat")
+        mat_pos_path = get_test_file_path("step_a_extract_blinks_resamp-100.mat")
+        mat_fit_path = get_test_file_path("step_b_fit_blink.mat")
         
         # Referenced in the task but not used for signal data due to value discrepancy
-        cls.fif_path = test_file_path("ear_eog_resamp-100_raw.fif")
+        cls.fif_path = get_test_file_path("ear_eog_resamp-100_raw.fif")
 
         assert mat_signal_path.exists(), f"Missing MAT signal file: {mat_signal_path}"
         assert mat_pos_path.exists(), f"Missing MATLAB positions file: {mat_pos_path}"
