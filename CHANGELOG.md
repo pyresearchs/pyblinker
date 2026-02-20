@@ -3,6 +3,8 @@
 ## [Unreleased]
 
 ### Changed
+- Refactor kinematic epoch extraction to discover generic modality styles from `start__<style>__<modality>`/`end__<style>__<modality>` metadata, enabling EAR-only kinematic windows while preserving EEG style handling.
+- Add EAR interpolation compatibility aliases for legacy kinematic column names used by downstream checks.
 - Further refactor kinematic epoch aggregation by extracting window-level segment metric computation and style-stat writing into dedicated helpers in `pyblinker/blink_features/kinematics/kinematic_features.py`.
 - Refactor `pyblinker/blink_features/kinematics/kinematic_features.py` by splitting extended legacy kinematic calculations into dedicated helper functions to reduce nesting and improve readability/debugging.
 - Add an inline code comment before legacy kinematic computation in the epoch aggregation loop: `calculate the legacy kinematics features`.
@@ -19,6 +21,8 @@
 ## [0.1.10] - 2026-02-11
 
 ### Changed
+- Refactor kinematic epoch extraction to discover generic modality styles from `start__<style>__<modality>`/`end__<style>__<modality>` metadata, enabling EAR-only kinematic windows while preserving EEG style handling.
+- Add EAR interpolation compatibility aliases for legacy kinematic column names used by downstream checks.
 - Move inter-blink max velocity epoch assertions into kinematics coverage and keep morphology epoch extraction focused on morphology-only legacy fields.
 - Expand EEG-only kinematic and morphology aggregation tests to explicitly assert newly exposed kinematic sign-split ratios/side velocities and legacy morphology timing/peak/inter-blink fields.
 - Refactor epoch kinematic extraction to expose per-blink sign-split amplitude/velocity ratios and average side velocities via shared kinematics core-metric utilities.
@@ -59,6 +63,8 @@
 ## [0.1.5] - 2026-02-11
 
 ### Changed
+- Refactor kinematic epoch extraction to discover generic modality styles from `start__<style>__<modality>`/`end__<style>__<modality>` metadata, enabling EAR-only kinematic windows while preserving EEG style handling.
+- Add EAR interpolation compatibility aliases for legacy kinematic column names used by downstream checks.
 - Refactor blink-position detection and blink-property extraction flows into MATLAB-aligned helper stages for clearer parity-oriented maintenance.
 
 ### Fixed
@@ -70,6 +76,8 @@
 ## [0.1.4] - 2026-01-20
 
 ### Changed
+- Refactor kinematic epoch extraction to discover generic modality styles from `start__<style>__<modality>`/`end__<style>__<modality>` metadata, enabling EAR-only kinematic windows while preserving EEG style handling.
+- Add EAR interpolation compatibility aliases for legacy kinematic column names used by downstream checks.
 - Expand blink-property metric definitions and MATLAB-to-Python column mapping documentation.
 
 ### Fixed
@@ -78,6 +86,8 @@
 ## [0.1.3] - 2026-01-19
 
 ### Changed
+- Refactor kinematic epoch extraction to discover generic modality styles from `start__<style>__<modality>`/`end__<style>__<modality>` metadata, enabling EAR-only kinematic windows while preserving EEG style handling.
+- Add EAR interpolation compatibility aliases for legacy kinematic column names used by downstream checks.
 - Render FitBlinks tutorial waveforms as scatter points with a faint line trace behind them and pad report windows on the left by 10 samples for clearer landmark visibility.
 
 ## [0.1.1] - 2026-01-19
@@ -126,11 +136,15 @@
 - Match MATLAB blink position separation handling by allowing candidates exactly at the minimum separation threshold.
 
 ### Changed
+- Refactor kinematic epoch extraction to discover generic modality styles from `start__<style>__<modality>`/`end__<style>__<modality>` metadata, enabling EAR-only kinematic windows while preserving EEG style handling.
+- Add EAR interpolation compatibility aliases for legacy kinematic column names used by downstream checks.
 - Refactor blink position detection into vectorized helpers for improved efficiency without altering behavior.
 
 ## [0.0.67] - 2026-01-15
 
 ### Changed
+- Refactor kinematic epoch extraction to discover generic modality styles from `start__<style>__<modality>`/`end__<style>__<modality>` metadata, enabling EAR-only kinematic windows while preserving EEG style handling.
+- Add EAR interpolation compatibility aliases for legacy kinematic column names used by downstream checks.
 - Compute morphology epoch metrics with shared core duration/shut-time helpers while emitting both legacy flat column names and fully-qualified style-aware names.
 - Replace lazy morphology package exports with explicit imports aligned to the kinematics package.
 - Add morphology aggregation logging and clarify core metric responsibilities in documentation strings.

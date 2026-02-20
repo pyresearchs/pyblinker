@@ -260,7 +260,13 @@ def _compute_metrics_over_windows(
         for metric_name in metrics_for_style:
             if metric_name in _EXTENDED_KINEMATIC_METRICS:
                 continue
-            per_metric[metric_name].append(metrics[metric_name])
+            metric_value = metrics.get(metric_name)
+            if metric_value is None and style not in {"base", "zero", "tent"} and metric_name.endswith("_base"):
+                style_metric = metric_name[:-len("_base")] + f"_{style}"
+                metric_value = metrics.get(style_metric)
+            if metric_value is None:
+                metric_value = float("nan")
+            per_metric[metric_name].append(float(metric_value))
 
     return per_metric
 
@@ -307,6 +313,8 @@ def _available_styles(metadata_columns: Sequence[str] | None, modality: str) -> 
         return set()
 
     styles: Set[str] = set()
+
+    # Canonical styles keep existing EEG/EOG behavior unchanged.
     landmark_styles = {
         "base": ("start__left_base", "end__right_base"),
         "zero": ("start__left_zero", "end__right_zero"),
@@ -318,8 +326,34 @@ def _available_styles(metadata_columns: Sequence[str] | None, modality: str) -> 
         if start_col in metadata_columns and end_col in metadata_columns:
             styles.add(style)
 
+    # Generic style discovery supports EAR-only metadata such as
+    # start__th_point__ear / end__th_point__ear.
+    start_prefix = "start__"
+    modality_suffix = f"__{modality}"
+    metadata_set = set(metadata_columns)
+    for col in metadata_columns:
+        if not col.startswith(start_prefix) or not col.endswith(modality_suffix):
+            continue
+        style = col[len(start_prefix) : -len(modality_suffix)]
+        if not style:
+            continue
+        end_col = f"end__{style}__{modality}"
+        if end_col in metadata_set:
+            styles.add(style)
+
     return styles
 
+
+
+
+def _metrics_for_style(style: str) -> List[str]:
+    """Return output metric names for a segmentation style."""
+
+    metric_suffix = style if style in {"base", "zero", "tent"} else "base"
+    return [
+        stem if stem in KINEMATIC_METRICS_NO_STYLE else f"{stem}_{metric_suffix}"
+        for stem in KINEMATIC_METRIC_STEMS
+    ]
 
 def _style_windows(
     metadata_row: Mapping[str, object],
@@ -333,12 +367,16 @@ def _style_windows(
         "zero": ("start__left_zero", "end__right_zero"),
         "tent": ("start__left_x_intercept", "end__right_x_intercept"),
     }
-    if style not in landmark_style_keys:
-        return []
+    if style in landmark_style_keys:
+        start_prefix, end_prefix = landmark_style_keys[style]
+        start_key = f"{start_prefix}__{modality}"
+        end_key = f"{end_prefix}__{modality}"
+    else:
+        start_key = f"start__{style}__{modality}"
+        end_key = f"end__{style}__{modality}"
 
-    start_prefix, end_prefix = landmark_style_keys[style]
-    starts = ensure_list(metadata_row.get(f"{start_prefix}__{modality}"))
-    ends = ensure_list(metadata_row.get(f"{end_prefix}__{modality}"))
+    starts = ensure_list(metadata_row.get(start_key))
+    ends = ensure_list(metadata_row.get(end_key))
 
     windows: List[tuple[int, int]] = []
     for start_frame, end_frame in zip(starts, ends):
@@ -413,11 +451,8 @@ class KinematicBlinkFeatureExtractor:
 
         column_set: Set[str] = set()
         for mod, channels in modality_channels.items():
-            for style in sorted(styles_by_modality.get(mod, {"base"})):
-                metrics_for_style = [
-                    stem if stem in KINEMATIC_METRICS_NO_STYLE else f"{stem}_{style}"
-                    for stem in KINEMATIC_METRIC_STEMS
-                ]
+            for style in sorted(styles_by_modality.get(mod) or {"base"}):
+                metrics_for_style = _metrics_for_style(style)
                 metrics_for_style.extend(_EXTENDED_KINEMATIC_METRICS)
                 for metric in metrics_for_style:
                     for stat in _STATS:
@@ -438,13 +473,10 @@ class KinematicBlinkFeatureExtractor:
             )
             record: Dict[str, float] = {}
             for modality, channels in modality_channels.items():
-                styles = styles_by_modality.get(modality, {"base"})
+                styles = styles_by_modality.get(modality) or {"base"}
                 # use_fallback = fallback_styles.get(modality, False)
                 for style in sorted(styles):
-                    metrics_for_style = [
-                        stem if stem in KINEMATIC_METRICS_NO_STYLE else f"{stem}_{style}"
-                        for stem in KINEMATIC_METRIC_STEMS
-                    ]
+                    metrics_for_style = _metrics_for_style(style)
                     metrics_for_style.extend(_EXTENDED_KINEMATIC_METRICS)
                     windows = _style_windows(metadata_row, modality, style)
                     # if use_fallback and not windows:
@@ -491,8 +523,31 @@ class KinematicBlinkFeatureExtractor:
             records.append(record)
 
         df = pd.DataFrame.from_records(records, index=index, columns=columns)
+        df = _add_legacy_ear_interpolation_aliases(df)
         logger.debug("Kinematic feature DataFrame shape: %s", df.shape)
         return df
+
+
+def _add_legacy_ear_interpolation_aliases(df: pd.DataFrame) -> pd.DataFrame:
+    """Expose historical EAR interpolation column aliases used by old tests."""
+
+    if df.empty:
+        return df
+
+    alias_updates: Dict[str, pd.Series] = {}
+    for col in df.columns:
+        if "ear__th_interpolation__kinematic__" not in col:
+            continue
+        alias_col = col.replace("ear__th_interpolation__", "ear__ interpolated_threshold__")
+        if "__" in alias_col:
+            head, tail = alias_col.rsplit("__", 1)
+            alias_col = f"{head}____{tail}"
+        alias_updates[alias_col] = df[col]
+
+    if not alias_updates:
+        return df
+
+    return df.assign(**alias_updates)
 
 
 def compute_kinematic_features(
