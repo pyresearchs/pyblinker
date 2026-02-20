@@ -11,6 +11,21 @@
 - Switch kinematic epoch window extraction and per-window slicing to use frame-based `start__...`/`end__...` metadata directly, avoiding onset/duration-to-sample conversion in this pipeline.
 - Update feature documentation to describe frame-window kinematic slicing and the helperized legacy kinematic flow.
 
+## [0.2.1] - 2026-02-20
+
+### Fixed
+- Make `test/blinker_pyblinker_comparison` path handling discovery-safe by resolving test fixture files relative to the test package instead of the process working directory.
+- Clean up comparison test imports and shared path utilities so the comparison tests execute consistently both via `python -m unittest <module>` and through `python test/run_all_tests.py`.
+
+## [0.2.0] - 2026-02-20
+
+### Added
+- Add a dedicated `test/README.md` documenting supported single-module and batch test commands, with `python -m unittest <dotted.module>` as the recommended single-test workflow.
+
+### Changed
+- Rebuild `test/run_all_tests.py` to restore runnable discovery, enforce deterministic ordering by test id, and print clear per-module plus per-test execution progress in CI-friendly output.
+- Keep batch discovery rooted at `test/` with repository root as `top_level_dir`, and ensure repository-root import path setup is applied consistently before discovery/runs.
+
 ## [0.1.11] - 2026-02-12
 
 ### Fixed

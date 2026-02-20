@@ -29,3 +29,20 @@ This directory contains detailed documentation for the `pyblinker` package. The 
     *   Origin of the test files included in the repository.
 *   **[Test Data Usage](93_test_data_usage.md)**
     *   Map of test files to the scripts and tests that use them.
+
+## Recent change: Test runner workflow clarity
+
+### The Feature/Change
+- Added a deterministic, discovery-based batch runner output flow so `python test/run_all_tests.py` now prints a clear per-module banner and per-test identifier while executing tests.
+- Standardized and documented the supported single-module commands, with `python -m unittest <dotted.module>` as the recommended approach.
+
+### Related Code
+- `test/run_all_tests.py`
+- `test/README.md`
+
+### Verification (Tutorials & Tests)
+- Tutorials: Not applicable (test-infrastructure-only change).
+- Unit tests exercised for this workflow:
+  - `test/blink_features/kinematics/test_kinematics_ear_only_config.py`
+  - `test/blink_features/kinematics/test_kinematics_eeg_only_config.py`
+  - `test/blink_features/morphology/test_epoch_morphology_features_aggregation.py`

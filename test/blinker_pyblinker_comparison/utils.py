@@ -1,10 +1,15 @@
-import unittest
-import pandas as pd
-import mne
-from pyblinker.blinker.get_blink_positions import get_blink_position
 import numpy as np
 from pathlib import Path
 from scipy.io import loadmat
+
+
+TEST_ROOT = Path(__file__).resolve().parents[1]
+TEST_FILES_DIR = TEST_ROOT / "test_files"
+
+
+def test_file_path(filename: str) -> Path:
+	"""Return a path under ``test/test_files`` independent of current working dir."""
+	return TEST_FILES_DIR / filename
 
 
 
