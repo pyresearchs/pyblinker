@@ -16,6 +16,7 @@ from .core_metrics import (
     compute_time_zero_shut,
 )
 from .per_blink import compute_blink_waveform_metrics
+from .._blink_metrics_shared import ALL_METHODS
 from ..energy.helpers import _safe_stats, segment_to_samples
 from ..utils.aggregation import prepare_epoch_channel_data
 from ...utils.epoch_utils import resolve_channels
@@ -122,6 +123,19 @@ def _available_styles(metadata_columns: Sequence[str] | None, modality: str) -> 
         if start_key in metadata_columns and end_key in metadata_columns:
             styles.add(style)
 
+    # Generic start/end style discovery supports EAR-only metadata such as
+    # start__th_point__ear / end__th_point__ear.
+    start_prefix = "start__"
+    metadata_set = set(metadata_columns)
+    for col in metadata_columns:
+        if not col.startswith(start_prefix) or not col.endswith(suffix):
+            continue
+        style = col[len(start_prefix) : -len(suffix)]
+        if not style:
+            continue
+        if f"end__{style}__{modality}" in metadata_set:
+            styles.add(style)
+
     return styles
 
 
@@ -159,6 +173,23 @@ def _style_windows(
             windows_from_frames.append((start_idx, end_idx))
         if windows_from_frames:
             return windows_from_frames
+
+    # Generic start/end frame windows for custom styles (e.g., th_point).
+    starts = ensure_list(metadata_row.get(f"start__{style}__{modality}"))
+    ends = ensure_list(metadata_row.get(f"end__{style}__{modality}"))
+    windows_from_generic_frames: List[tuple[int, int]] = []
+    for start_frame, end_frame in zip(starts, ends):
+        if start_frame is None or end_frame is None:
+            continue
+        if pd.isna(start_frame) or pd.isna(end_frame):
+            continue
+        start_idx = max(int(round(float(start_frame))), 0)
+        end_idx = min(int(round(float(end_frame))), n_times)
+        if end_idx <= start_idx:
+            continue
+        windows_from_generic_frames.append((start_idx, end_idx))
+    if windows_from_generic_frames:
+        return windows_from_generic_frames
 
     onset_key = f"onset__{style}__{modality}"
     duration_key = f"duration__{style}__{modality}"
@@ -520,6 +551,7 @@ class MorphologyBlinkFeatureExtractor:
             records.append(record)
 
         df = pd.DataFrame.from_records(records, index=index, columns=columns)
+        df = _add_legacy_ear_channel_aliases(df)
         logger.debug("Morphology feature DataFrame shape: %s", df.shape)
         return df
 
@@ -570,6 +602,14 @@ class MorphologyBlinkFeatureExtractor:
             Number of samples per epoch.
         """
         ch_names = resolve_channels(self.epochs, picks, default=_default_morphology_channels)
+        if not ch_names:
+            available = ", ".join(self.epochs.ch_names)
+            raise ValueError(
+                "Unable to resolve a morphology signal channel. "
+                f"Available channels: [{available}]. "
+                "Expected at least one EEG/EOG/EAR channel. "
+                "Specify channel picks explicitly, e.g. picks=['EEG-E8'] or picks=['EAR-avg_ear']."
+            )
         return prepare_epoch_channel_data(
             epochs=self.epochs,
             picks=ch_names,
@@ -649,7 +689,7 @@ class MorphologyBlinkFeatureExtractor:
         column_set: Set[str] = set()
 
         for mod, channels in modality_channels.items():
-            styles = sorted(styles_by_modality.get(mod, {"base"}))
+            styles = sorted(styles_by_modality.get(mod) or {"base"})
             for style in styles:
                 metric_names = self._metrics_for_style(style)
                 for metric in metric_names:
@@ -666,9 +706,14 @@ class MorphologyBlinkFeatureExtractor:
 
     def _metrics_for_style(self, style: str) -> List[str]:
         """Return list of metrics for a given style (including duration)."""
-        metric_names = [f"{stem}_{style}" for stem in MORPHOLOGY_METRIC_STEMS]
+        metric_suffix = style if style in ALL_METHODS else "base"
+        metric_names = [f"{stem}_{metric_suffix}" for stem in MORPHOLOGY_METRIC_STEMS]
         metric_names.append("duration")
         return metric_names
+
+    def _metric_method_for_style(self, style: str) -> str:
+        """Map metadata style names to waveform metric methods."""
+        return style if style in ALL_METHODS else "base"
 
     # ------------------------------------------------------------------
     # Core computation (epoch/modality/channel/style)
@@ -726,7 +771,7 @@ class MorphologyBlinkFeatureExtractor:
         record: Dict[str, float] = {}
 
         for modality, channels in modality_channels.items():
-            styles = sorted(styles_by_modality.get(modality, {"base"}))
+            styles = sorted(styles_by_modality.get(modality) or {"base"})
             logger.debug(
                 "Epoch %d: modality=%s styles=%s channels=%s",
                 epoch_index + 1,
@@ -920,7 +965,8 @@ class MorphologyBlinkFeatureExtractor:
             This function does not return anything. It updates `record` in-place.
         """
         windows = _style_windows(metadata_row, modality, style, sfreq, n_times)
-        metric_names = [f"{stem}_{style}" for stem in MORPHOLOGY_METRIC_STEMS]
+        metric_method = self._metric_method_for_style(style)
+        metric_names = [f"{stem}_{metric_method}" for stem in MORPHOLOGY_METRIC_STEMS]
 
         logger.debug(
             "Style compute: modality=%s style=%s channel=%s windows=%d",
@@ -937,7 +983,7 @@ class MorphologyBlinkFeatureExtractor:
             sfreq=sfreq,
             n_times=n_times,
             modality=modality,
-            style=style,
+            style=metric_method,
         )
 
         per_metric_values["duration"] = self._duration_values_from_blink_df(
@@ -1075,6 +1121,30 @@ def compute_morphology_features(
 
     extractor = MorphologyBlinkFeatureExtractor(epochs=epochs)
     return extractor.compute(picks=picks)
+
+
+def _add_legacy_ear_channel_aliases(df: pd.DataFrame) -> pd.DataFrame:
+    """Expose uppercase EAR channel aliases used by historical tests."""
+
+    if df.empty:
+        return df
+
+    alias_updates: Dict[str, pd.Series] = {}
+    for col in df.columns:
+        if not col.startswith("ear__"):
+            continue
+        if "__" not in col:
+            continue
+        head, channel = col.rsplit("__", 1)
+        alias_channel = channel.upper()
+        if alias_channel == channel:
+            continue
+        alias_col = f"{head}__{alias_channel}"
+        alias_updates[alias_col] = df[col]
+
+    if not alias_updates:
+        return df
+    return df.assign(**alias_updates)
 
 
 def compute_epoch_morphology_features(
