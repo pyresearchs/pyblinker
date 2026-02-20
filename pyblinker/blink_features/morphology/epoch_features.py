@@ -69,14 +69,27 @@ def _infer_modality(channel_name: str, info: mne.Info) -> str:
 
 
 def _default_morphology_channels(epochs: mne.Epochs) -> List[str]:
-    """Select default EAR/EOG channels when ``picks`` are unspecified."""
+    """Select default morphology channels with deterministic EEG/EAR/EOG precedence."""
 
-    ch_names = [
-        ch for ch in epochs.ch_names if "EOG" in ch.upper() or "EAR" in ch.upper()
-    ]
-    if not ch_names:
-        raise ValueError("No default EAR/EOG channels found")
-    return ch_names
+    ch_types = {
+        ch: _infer_modality(ch, epochs.info)
+        for ch in epochs.ch_names
+    }
+
+    eeg_channels = [ch for ch in epochs.ch_names if ch_types[ch] == "eeg"]
+    if eeg_channels:
+        return eeg_channels
+
+    ear_channels = [ch for ch in epochs.ch_names if ch_types[ch] == "ear"]
+    if ear_channels:
+        return ear_channels
+
+    eog_channels = [ch for ch in epochs.ch_names if ch_types[ch] == "eog"]
+    if eog_channels:
+        preferred = [ch for ch in eog_channels if "vert" in ch.lower()]
+        return preferred or [eog_channels[0]]
+
+    raise ValueError("No default EEG/EAR/EOG channels found")
 
 
 def _available_styles(metadata_columns: Sequence[str] | None, modality: str) -> Set[str]:
@@ -650,10 +663,19 @@ class MorphologyBlinkFeatureExtractor:
     ) -> Dict[str, Set[str]]:
         """Determine available waveform styles per modality based on metadata."""
         styles_by_modality: Dict[str, Set[str]] = {}
+        eeg_styles = _available_styles(metadata_cols, "eeg")
         for mod in modalities:
             styles = _available_styles(metadata_cols, mod)
+            if mod == "eog" and eeg_styles:
+                styles = styles | eeg_styles
             styles_by_modality[mod] = styles
         return styles_by_modality
+
+    def _should_emit_legacy_metrics(self, modality_channels: Dict[str, List[str]]) -> bool:
+        """Emit legacy morphology metrics for EEG, or EOG when EEG is absent."""
+        if modality_channels.get("eeg"):
+            return True
+        return bool(modality_channels.get("eog"))
 
     def _build_output_columns(
         self,
@@ -699,7 +721,9 @@ class MorphologyBlinkFeatureExtractor:
                                 f"{mod}__{style}__morphology__{metric}_{stat}__{ch}"
                             )
 
-            if mod == "eeg" and channels:
+            if channels and (
+                mod == "eeg" or (mod == "eog" and not modality_channels.get("eeg"))
+            ):
                 column_set.update(_LEGACY_MORPHOLOGY_METRICS)
 
         return sorted(column_set)
@@ -793,6 +817,10 @@ class MorphologyBlinkFeatureExtractor:
                     sfreq=sfreq,
                     n_times=n_times,
                     styles=styles,
+                    include_legacy_metrics=(
+                        self._should_emit_legacy_metrics(modality_channels)
+                        and modality in {"eeg", "eog"}
+                    ),
                 )
 
         return record
@@ -809,6 +837,7 @@ class MorphologyBlinkFeatureExtractor:
         sfreq: float,
         n_times: int,
         styles: Sequence[str],
+        include_legacy_metrics: bool,
     ) -> None:
         """
         Compute morphology features for one (epoch, modality, channel).
@@ -885,7 +914,7 @@ class MorphologyBlinkFeatureExtractor:
                 blink_df=blink_df,
             )
 
-        if modality == "eeg" and channel_index_in_modality == 0:
+        if include_legacy_metrics and channel_index_in_modality == 0:
             self._add_legacy_metrics_if_available(record, blink_df)
 
     def _build_blink_df(

@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Refactor morphology epoch feature extraction to resolve EOG-only channel/style inputs, including EEG-style metadata fallback for EOG windows and legacy morphology metric emission when EEG channels are absent.
 - Refactor morphology epoch feature extraction to support EAR-only metadata styles (for example `th_point` and `th_interpolation`) by resolving generic `start__<style>__<modality>`/`end__<style>__<modality>` frame windows and mapping custom styles to the base morphology metric key space.
 - Add EAR morphology output compatibility aliases that expose uppercase channel-suffix columns (for example `__EAR-AVG_EAR`) expected by existing EAR-only tests, while preserving existing EEG column names and legacy EEG-only metrics.
 
