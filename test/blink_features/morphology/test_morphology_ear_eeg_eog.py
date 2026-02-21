@@ -12,7 +12,7 @@ from pyblinker.blink_features.kinematics.kinematic_features import (
     KinematicBlinkFeatureExtractor,
 )
 from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
-from pyblinker.blink_features.morphology.epoch_features import _available_styles, _style_windows
+from pyblinker.blink_features.morphology.epoch_features import _available_styles
 from pyblinker.blink_features.morphology import compute_epoch_morphology_features
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 EAR_CHANNEL = "EAR-avg_ear"
@@ -51,6 +51,22 @@ _REQUIRED_LEGACY_MORPHOLOGY_METRICS = {
                 "inter_blink_max_amp",
                 ),
         }
+
+segment_config = {
+		"ear": {
+				"channel": EAR_CHANNEL,
+				"seg_type": "threshold_interpolation",
+				"threshold": 0.260,
+				"annotation_time_unit": "seconds",
+				"max_extension": 0.35,
+				"extension_step": 0.05,
+				"padding": 0.05,
+				"extend_before": True,
+				"extend_after": True,
+				},
+		"eeg": {"channel": EEG_CHANNEL, "seg_type": "base"},
+		"eog": {"channel": EOG_CHANNEL, "seg_type": "base"},
+		}
 class TestFullModalityKinematicPipeline(unittest.TestCase):
     """EAR+EEG+EOG kinematic pipeline coverage."""
 
@@ -71,23 +87,9 @@ class TestFullModalityKinematicPipeline(unittest.TestCase):
             cls.expected_columns = [
                 line.strip() for line in f.readlines() if line.strip()
             ]
-            raw = mne.io.read_raw_fif(cls.raw_path, preload=True, verbose=False)
+        raw = mne.io.read_raw_fif(cls.raw_path, preload=True, verbose=False)
 
-        segment_config = {
-                "ear": {
-                        "channel": EAR_CHANNEL,
-                        "seg_type": "threshold_interpolation",
-                        "threshold": 0.260,
-                        "annotation_time_unit": "seconds",
-                        "max_extension": 0.35,
-                        "extension_step": 0.05,
-                        "padding": 0.05,
-                        "extend_before": True,
-                        "extend_after": True,
-                        },
-                "eeg": {"channel": EEG_CHANNEL, "seg_type": "base"},
-                "eog": {"channel": EOG_CHANNEL, "seg_type": "base"},
-                }
+
 
         cls.epochs = slice_raw_into_mne_epochs_refine_annot(
             raw,
@@ -101,6 +103,7 @@ class TestFullModalityKinematicPipeline(unittest.TestCase):
         cls.df = compute_epoch_morphology_features(epochs=cls.epochs,picks=[EAR_CHANNEL, EEG_CHANNEL, EOG_CHANNEL])
 
     def test_eeg(self) -> None:
+		# pass
 
         styles = _available_styles(tuple(self.epochs.metadata.columns), "eeg")
         self.assertTrue(styles)
@@ -118,7 +121,7 @@ class TestFullModalityKinematicPipeline(unittest.TestCase):
         self.assertTrue(styles)
 
         for style in styles:
-            expected = f"eog__{style}__morphology__amp_vel_ratio_base_mean__{EOG_CHANNEL}"
+            expected = f"eog__{style}__morphology__duration_mean__{EOG_CHANNEL}"
             self.assertIn(expected, self.df.columns)
 
     def test_ear(self) -> None:
