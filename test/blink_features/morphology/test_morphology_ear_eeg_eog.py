@@ -1,4 +1,4 @@
-"""Full-modality kinematics coverage (EAR + EEG + EOG)."""
+"""Full-modality morphology coverage (EAR + EEG + EOG)."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from pyblinker.blink_features.kinematics.kinematic_features import (
 )
 from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
 from pyblinker.blink_features.morphology.epoch_features import _available_styles, _style_windows
-
+from pyblinker.blink_features.morphology import compute_epoch_morphology_features
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 EAR_CHANNEL = "EAR-avg_ear"
 EEG_CHANNEL = "EEG-E8"
@@ -97,8 +97,8 @@ class TestFullModalityKinematicPipeline(unittest.TestCase):
             segmentation_type=segment_config,
             )
 
-        extractor = KinematicBlinkFeatureExtractor(epochs=cls.epochs)
-        cls.df = extractor.compute(picks=[EAR_CHANNEL, EEG_CHANNEL, EOG_CHANNEL])
+        # extractor = KinematicBlinkFeatureExtractor(epochs=cls.epochs)
+        cls.df = compute_epoch_morphology_features(epochs=cls.epochs,picks=[EAR_CHANNEL, EEG_CHANNEL, EOG_CHANNEL])
 
     def test_eeg(self) -> None:
 
@@ -118,7 +118,7 @@ class TestFullModalityKinematicPipeline(unittest.TestCase):
         self.assertTrue(styles)
 
         for style in styles:
-            expected = f"eog__{style}__kinematic__amp_vel_ratio_base_mean__{EOG_CHANNEL}"
+            expected = f"eog__{style}__morphology__amp_vel_ratio_base_mean__{EOG_CHANNEL}"
             self.assertIn(expected, self.df.columns)
 
     def test_ear(self) -> None:
