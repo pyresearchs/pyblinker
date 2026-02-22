@@ -12,6 +12,12 @@
 ### Fixed
 - Emit an actionable runtime warning when required legacy morphology columns are missing from `blink_df`, including the missing column names and guidance to review `_REQUIRED_LEGACY_MORPHOLOGY_METRICS`.
 
+## [0.3.1] - 2026-02-22
+
+### Fixed
+- Complete the EEG morphology Excel regression test by comparing value-by-value against `test/blink_features/morphology/expected_output_new_naming.xlsx`, including explicit handling for duplicated/mislabeled `peak_time_tent` fixture headers.
+- Add `openpyxl` to `requirements-dev.txt` so Excel-based regression tests run reliably in development and CI environments.
+
 ## [0.3.0] - 2026-02-22
 
 ### Added
