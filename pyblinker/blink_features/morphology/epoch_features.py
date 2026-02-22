@@ -889,10 +889,10 @@ class MorphologyBlinkFeatureExtractor:
             channel_name,
             modality,
         )
-
         blink_df = self._build_blink_df(
-            # Build per-blink landmark frame first; this is then enriched with
-            # legacy morphology features for backward-compatible EEG outputs.
+            # Build per-blink landmark frame first; this is then calculate legacy morphology features for given an EEG input. This is a backward-compatible with the MATLAB implementation of BLINKER
+			#
+			# . See the test/blink_features/morphology/test_morphology_eeg_only_config.py for list of outputed features when only EEG is present.
             metadata_row=metadata_row,
             signal=signal,
             sfreq=sfreq,
@@ -926,7 +926,42 @@ class MorphologyBlinkFeatureExtractor:
         modality: str,
         styles: Sequence[str],
     ) -> pd.DataFrame:
-        """Build and enrich the blink landmark dataframe."""
+        """Build and enrich the blink landmark dataframe.
+        This function will return
+        _REQUIRED_LEGACY_MORPHOLOGY_METRICS = {
+		"zero": (
+			"duration_zero",
+			"closing_time_zero",
+			"reopening_time_zero",
+			"time_shut_zero",
+		),
+		"base": (
+			"duration_base",
+			"time_shut_base",
+		),
+		"tent": (
+			"duration_tent",
+			"closing_time_tent",
+			"reopening_time_tent",
+			"time_shut_tent",
+		),
+		"half": (
+			"duration_half_base",
+			"duration_half_zero",
+		),
+		"peak": (
+			"peak_time_blink",
+			"peak_time_tent",
+			"peak_max_blink",
+			"peak_max_tent",
+		),
+		"inter_blink": (
+			"inter_blink_max_amp",
+		),
+	}
+
+
+	"""
         blink_df = _build_blink_landmark_frame(
             metadata_row,
             signal,
@@ -1143,13 +1178,7 @@ class MorphologyBlinkFeatureExtractor:
                 )["mean"]
 
 
-def compute_morphology_features(
-    epochs: mne.Epochs, picks: str | Sequence[str] | None = None
-) -> pd.DataFrame:
-    """Compute blink morphology features for each epoch and channel."""
 
-    extractor = MorphologyBlinkFeatureExtractor(epochs=epochs)
-    return extractor.compute(picks=picks)
 
 
 def _add_legacy_ear_channel_aliases(df: pd.DataFrame) -> pd.DataFrame:
@@ -1175,6 +1204,13 @@ def _add_legacy_ear_channel_aliases(df: pd.DataFrame) -> pd.DataFrame:
         return df
     return df.assign(**alias_updates)
 
+def compute_morphology_features(
+		epochs: mne.Epochs, picks: str | Sequence[str] | None = None
+		) -> pd.DataFrame:
+	"""Compute blink morphology features for each epoch and channel."""
+
+	extractor = MorphologyBlinkFeatureExtractor(epochs=epochs)
+	return extractor.compute(picks=picks)
 
 def compute_epoch_morphology_features(
     epochs: mne.Epochs, picks: str | Sequence[str] | None = None

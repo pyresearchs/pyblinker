@@ -16,36 +16,104 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 EEG_CHANNEL = "EEG-E8"
 
 _REQUIRED_LEGACY_MORPHOLOGY_METRICS = {
-    "zero": (
-        "duration_zero",
-        "closing_time_zero",
-        "reopening_time_zero",
-        "time_shut_zero",
-    ),
-    "base": (
-        "duration_base",
-        "time_shut_base",
-    ),
-    "tent": (
-        "duration_tent",
-        "closing_time_tent",
-        "reopening_time_tent",
-        "time_shut_tent",
-    ),
-    "half": (
-        "duration_half_base",
-        "duration_half_zero",
-    ),
-    "peak": (
-        "peak_time_blink",
-        "peak_time_tent",
-        "peak_max_blink",
-        "peak_max_tent",
-    ),
-    "inter_blink": (
-        "inter_blink_max_amp",
-    ),
-}
+		"zero": {
+				"duration_zero": [
+						"eeg__zero__morphology__duration_zero_mean__EEG-E8",
+						"eeg__zero__morphology__duration_zero_std__EEG-E8",
+						"eeg__zero__morphology__duration_zero_cv__EEG-E8",
+						],
+				"closing_time_zero": [
+						"eeg__zero__morphology__closing_time_zero_mean__EEG-E8",
+						"eeg__zero__morphology__closing_time_zero_std__EEG-E8",
+						"eeg__zero__morphology__closing_time_zero_cv__EEG-E8",
+						],
+				"reopening_time_zero": [
+						"eeg__zero__morphology__reopening_time_zero_mean__EEG-E8",
+						"eeg__zero__morphology__reopening_time_zero_std__EEG-E8",
+						"eeg__zero__morphology__reopening_time_zero_cv__EEG-E8",
+						],
+				"time_shut_zero": [
+						"eeg__zero__morphology__time_shut_zero_mean__EEG-E8",
+						"eeg__zero__morphology__time_shut_zero_std__EEG-E8",
+						"eeg__zero__morphology__time_shut_zero_cv__EEG-E8",
+						],
+				},
+		"base": {
+				"duration_base": [
+						"eeg__base__morphology__duration_base_mean__EEG-E8",
+						"eeg__base__morphology__duration_base_std__EEG-E8",
+						"eeg__base__morphology__duration_base_cv__EEG-E8",
+						],
+				"time_shut_base": [
+						"eeg__base__morphology__time_shut_base_mean__EEG-E8",
+						"eeg__base__morphology__time_shut_base_std__EEG-E8",
+						"eeg__base__morphology__time_shut_base_cv__EEG-E8",
+						],
+				},
+		"tent": {
+				"duration_tent": [
+						"eeg__tent__morphology__duration_tent_mean__EEG-E8",
+						"eeg__tent__morphology__duration_tent_std__EEG-E8",
+						"eeg__tent__morphology__duration_tent_cv__EEG-E8",
+						],
+				"closing_time_tent": [
+						"eeg__tent__morphology__closing_time_tent_mean__EEG-E8",
+						"eeg__tent__morphology__closing_time_tent_std__EEG-E8",
+						"eeg__tent__morphology__closing_time_tent_cv__EEG-E8",
+						],
+				"reopening_time_tent": [
+						"eeg__tent__morphology__reopening_time_tent_mean__EEG-E8",
+						"eeg__tent__morphology__reopening_time_tent_std__EEG-E8",
+						"eeg__tent__morphology__reopening_time_tent_cv__EEG-E8",
+						],
+				"time_shut_tent": [
+						"eeg__tent__morphology__time_shut_tent_mean__EEG-E8",
+						"eeg__tent__morphology__time_shut_tent_std__EEG-E8",
+						"eeg__tent__morphology__time_shut_tent_cv__EEG-E8",
+						],
+				},
+		"half": {
+				"duration_half_base": [
+						"eeg__half__morphology__duration_half_base_mean__EEG-E8",
+						"eeg__half__morphology__duration_half_base_std__EEG-E8",
+						"eeg__half__morphology__duration_half_base_cv__EEG-E8",
+						],
+				"duration_half_zero": [
+						"eeg__half__morphology__duration_half_zero_mean__EEG-E8",
+						"eeg__half__morphology__duration_half_zero_std__EEG-E8",
+						"eeg__half__morphology__duration_half_zero_cv__EEG-E8",
+						],
+				},
+		"peak": {
+				"peak_time_blink": [
+						"eeg__peak__morphology__peak_time_blink_mean__EEG-E8",
+						"eeg__peak__morphology__peak_time_blink_std__EEG-E8",
+						"eeg__peak__morphology__peak_time_blink_cv__EEG-E8",
+						],
+				"peak_time_tent": [
+						"eeg__peak__morphology__peak_time_tent_mean__EEG-E8",
+						"eeg__peak__morphology__peak_time_tent_std__EEG-E8",
+						"eeg__peak__morphology__peak_time_tent_cv__EEG-E8",
+						],
+				"peak_max_blink": [
+						"eeg__peak__morphology__peak_max_blink_mean__EEG-E8",
+						"eeg__peak__morphology__peak_max_blink_std__EEG-E8",
+						"eeg__peak__morphology__peak_max_blink_cv__EEG-E8",
+						],
+				"peak_max_tent": [
+						"eeg__peak__morphology__peak_max_tent_mean__EEG-E8",
+						"eeg__peak__morphology__peak_max_tent_std__EEG-E8",
+						"eeg__peak__morphology__peak_max_tent_cv__EEG-E8",
+						],
+				},
+		"inter_blink": {
+				"inter_blink_max_amp": [
+						"eeg__inter_blink__morphology__inter_blink_max_amp_mean__EEG-E8",
+						"eeg__inter_blink__morphology__inter_blink_max_amp_std__EEG-E8",
+						"eeg__inter_blink__morphology__inter_blink_max_amp_cv__EEG-E8",
+						],
+				},
+		}
 
 
 class TestMorphologyAggregation(unittest.TestCase):
@@ -87,12 +155,17 @@ class TestMorphologyAggregation(unittest.TestCase):
             expected = f"eeg__{style}__morphology__duration_mean__{EEG_CHANNEL}"
             self.assertIn(expected, df.columns)
 
-        for metrics in _REQUIRED_LEGACY_MORPHOLOGY_METRICS.values():
-            for metric in metrics:
-                self.assertIn(metric, df.columns)
+        for style in _REQUIRED_LEGACY_MORPHOLOGY_METRICS.values():
+            for metric in style.values():
+                for stat_name in metric:
+                    self.assertIn(stat_name, df.columns)
 
         self.assertGreater(df.notna().sum().sum(), 0)
 
+	def test_compare_with_excel_input(self) -> None:
+		"""Test that morphology features can be computed from epochs with metadata from Excel input."""
+		pass
+		# excel_path = "expected_output_new_naming.xlsx"
 
 if __name__ == "__main__":
     unittest.main()
