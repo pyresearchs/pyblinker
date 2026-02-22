@@ -6,6 +6,8 @@ import unittest
 from pathlib import Path
 
 import mne
+import numpy as np
+import pandas as pd
 
 from pyblinker.blink_features.morphology import compute_epoch_morphology_features
 from pyblinker.blink_features.morphology.epoch_features import _available_styles, _style_windows
@@ -162,10 +164,37 @@ class TestMorphologyAggregation(unittest.TestCase):
 
         self.assertGreater(df.notna().sum().sum(), 0)
 
-	def test_compare_with_excel_input(self) -> None:
-		"""Test that morphology features can be computed from epochs with metadata from Excel input."""
-		pass
-		# excel_path = "expected_output_new_naming.xlsx"
+    def test_compare_with_excel_input(self) -> None:
+        """Compare legacy-mean morphology outputs against Excel fixture values."""
+        df = compute_epoch_morphology_features(self.epochs, picks=[EEG_CHANNEL])
+
+        fixture_path = (
+            PROJECT_ROOT
+            / "test"
+            / "blink_features"
+            / "morphology"
+            / "expected_output_new_naming.xlsx"
+        )
+        expected_df = pd.read_excel(fixture_path)
+        expected_df = expected_df.drop(columns=["Unnamed: 0"], errors="ignore")
+
+        self.assertEqual(len(df), len(expected_df))
+
+        column_overrides = {
+            "eeg__peak__morphology__peak_time_tent_mean__EEG-E8": "eeg__peak__morphology__peak_max_tent_mean__EEG-E8",
+            "eeg__peak__morphology__peak_time_tent_mean__EEG-E8.1": "eeg__peak__morphology__peak_time_tent_mean__EEG-E8",
+        }
+
+        for expected_col in expected_df.columns:
+            output_col = column_overrides.get(expected_col, expected_col.split(".", 1)[0])
+            self.assertIn(output_col, df.columns)
+
+            expected_values = expected_df[expected_col].to_numpy(dtype=float)
+            actual_values = df[output_col].to_numpy(dtype=float)
+            self.assertTrue(
+                np.allclose(actual_values, expected_values, atol=1e-8, equal_nan=True),
+                msg=f"Column mismatch: fixture={expected_col} output={output_col}",
+            )
 
 if __name__ == "__main__":
     unittest.main()

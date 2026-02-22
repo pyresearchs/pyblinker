@@ -341,3 +341,19 @@ The core helpers are structured to compute metrics one blink at a time so per-bl
     These validate the Wavelet decomposition (D1-D4 bands) across EAR, EEG, EOG, and combined modalities, ensuring the correct wavelet family (`db4`) is used and that the energy summation is correct. The EEG-only suite also checks that channel-level energies are aggregated per modality rather than averaging signals across channels.
 *   **`test/blink_features/open_eye/test_open_eye_features.py`**:
     Tests features derived from the "non-blink" periods, such as PERCLOS (percentage of time eyes are closed) and baseline drift.
+
+## Morphology legacy aggregation: mean/std/cv and new naming
+
+*Feature/change*: The epoch morphology pipeline now keeps legacy per-blink morphology computations unchanged, but expands epoch-level legacy aggregation from mean-only to `mean`, `std`, and `cv` using the shared `_safe_stats` conventions. Legacy aggregated outputs are emitted with the new morphology naming scheme (`{modality}__{style}__morphology__{metric}_{stat}__{channel}`), and the extractor raises a targeted runtime warning when required legacy columns are missing from `blink_df` so `_REQUIRED_LEGACY_MORPHOLOGY_METRICS` mismatches are easier to diagnose.
+
+*Related Code*:
+*   `pyblinker/blink_features/morphology/epoch_features.py`
+*   `pyblinker/blink_features/energy/helpers.py`
+
+*Tutorials*:
+*   `tutorial/verify_blink_properties_consistency.py` (closest existing parity-oriented walkthrough; no new tutorial added).
+
+*Unit Tests*:
+*   `test/blink_features/morphology/test_morphology_eeg_only_config.py`
+*   `test/blink_features/morphology/test_morphology_eog_only_config.py`
+*   `test/blink_features/morphology/test_morphology_ear_eeg_eog.py`
