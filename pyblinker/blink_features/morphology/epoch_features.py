@@ -1,6 +1,7 @@
 """Aggregate blink morphology features from :class:`mne.Epochs`."""
 from __future__ import annotations
 
+import warnings
 from typing import Dict, List, Mapping, Sequence, Set, Tuple
 
 import mne
@@ -45,6 +46,25 @@ _LEGACY_MORPHOLOGY_METRICS = (
     "peak_max_tent",
     "inter_blink_max_amp",
 )
+_LEGACY_METRIC_STYLE_MAP = {
+    "duration_zero": "zero",
+    "closing_time_zero": "zero",
+    "reopening_time_zero": "zero",
+    "time_shut_zero": "zero",
+    "duration_base": "base",
+    "time_shut_base": "base",
+    "duration_tent": "tent",
+    "closing_time_tent": "tent",
+    "reopening_time_tent": "tent",
+    "time_shut_tent": "tent",
+    "duration_half_base": "half",
+    "duration_half_zero": "half",
+    "peak_time_blink": "peak",
+    "peak_time_tent": "peak",
+    "peak_max_blink": "peak",
+    "peak_max_tent": "peak",
+    "inter_blink_max_amp": "inter_blink",
+}
 _DURATION_STYLE_MAP = {
     "base": "duration_base",
     "zero": "duration_zero",
@@ -52,6 +72,18 @@ _DURATION_STYLE_MAP = {
     "half_base": "duration_half_base",
     "half_zero": "duration_half_zero",
 }
+_REQUIRED_LEGACY_MORPHOLOGY_METRICS = frozenset(_LEGACY_METRIC_STYLE_MAP)
+
+
+def _legacy_metric_column_name(
+    *,
+    modality: str,
+    metric: str,
+    stat_name: str,
+    channel_name: str,
+) -> str:
+    style = _LEGACY_METRIC_STYLE_MAP[metric]
+    return f"{modality}__{style}__morphology__{metric}_{stat_name}__{channel_name}"
 
 
 def _infer_modality(channel_name: str, info: mne.Info) -> str:
@@ -724,7 +756,17 @@ class MorphologyBlinkFeatureExtractor:
             if channels and (
                 mod == "eeg" or (mod == "eog" and not modality_channels.get("eeg"))
             ):
-                column_set.update(_LEGACY_MORPHOLOGY_METRICS)
+                primary_channel = channels[0]
+                for legacy_metric in _LEGACY_MORPHOLOGY_METRICS:
+                    for stat_name in _STATS:
+                        column_set.add(
+                            _legacy_metric_column_name(
+                                modality=mod,
+                                metric=legacy_metric,
+                                stat_name=stat_name,
+                                channel_name=primary_channel,
+                            )
+                        )
 
         return sorted(column_set)
 
@@ -915,7 +957,12 @@ class MorphologyBlinkFeatureExtractor:
             )
 
         if include_legacy_metrics and channel_index_in_modality == 0:
-            self._add_legacy_metrics_if_available(record, blink_df)
+            self._add_legacy_metrics_if_available(
+                record,
+                blink_df,
+                modality=modality,
+                channel_name=channel_name,
+            )
 
     def _build_blink_df(
         self,
@@ -1166,16 +1213,40 @@ class MorphologyBlinkFeatureExtractor:
         self,
         record: Dict[str, float],
         blink_df: pd.DataFrame,
+        modality: str,
+        channel_name: str,
     ) -> None:
-        """Preserve legacy EEG morphology metrics behavior."""
+        """Preserve legacy morphology metrics behavior with mean/std/cv stats."""
         if blink_df.empty:
             return
 
+        missing_required = sorted(
+            metric
+            for metric in _REQUIRED_LEGACY_MORPHOLOGY_METRICS
+            if metric not in blink_df.columns
+        )
+        if missing_required:
+            warnings.warn(
+                "Missing required legacy morphology columns in blink_df "
+                f"for {modality}/{channel_name}: {missing_required}. "
+                "Review _REQUIRED_LEGACY_MORPHOLOGY_METRICS because the "
+                "required list may be out of sync.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+
         for legacy_metric in _LEGACY_MORPHOLOGY_METRICS:
             if legacy_metric in blink_df.columns:
-                record[legacy_metric] = _safe_stats(
-                    blink_df[legacy_metric].tolist()
-                )["mean"]
+                stats = _safe_stats(blink_df[legacy_metric].tolist())
+                for stat_name, stat_value in stats.items():
+                    record[
+                        _legacy_metric_column_name(
+                            modality=modality,
+                            metric=legacy_metric,
+                            stat_name=stat_name,
+                            channel_name=channel_name,
+                        )
+                    ] = stat_value
 
 
 

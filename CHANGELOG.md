@@ -2,19 +2,27 @@
 
 ## [Unreleased]
 
-### Fixed
-- Refactor morphology epoch feature extraction to resolve EOG-only channel/style inputs, including EEG-style metadata fallback for EOG windows and legacy morphology metric emission when EEG channels are absent.
-- Refactor morphology epoch feature extraction to support EAR-only metadata styles (for example `th_point` and `th_interpolation`) by resolving generic `start__<style>__<modality>`/`end__<style>__<modality>` frame windows and mapping custom styles to the base morphology metric key space.
-- Add EAR morphology output compatibility aliases that expose uppercase channel-suffix columns (for example `__EAR-AVG_EAR`) expected by existing EAR-only tests, while preserving existing EEG column names and legacy EEG-only metrics.
+### Added
+- Extend epoch-level legacy morphology aggregation to compute `mean`, `std`, and `cv` for each legacy metric via the shared `_safe_stats` convention.
 
 ### Changed
-- Refactor kinematic epoch extraction to discover generic modality styles from `start__<style>__<modality>`/`end__<style>__<modality>` metadata, enabling EAR-only kinematic windows while preserving EEG style handling.
-- Add EAR interpolation compatibility aliases for legacy kinematic column names used by downstream checks.
-- Further refactor kinematic epoch aggregation by extracting window-level segment metric computation and style-stat writing into dedicated helpers in `pyblinker/blink_features/kinematics/kinematic_features.py`.
-- Refactor `pyblinker/blink_features/kinematics/kinematic_features.py` by splitting extended legacy kinematic calculations into dedicated helper functions to reduce nesting and improve readability/debugging.
-- Add an inline code comment before legacy kinematic computation in the epoch aggregation loop: `calculate the legacy kinematics features`.
-- Switch kinematic epoch window extraction and per-window slicing to use frame-based `start__...`/`end__...` metadata directly, avoiding onset/duration-to-sample conversion in this pipeline.
-- Update feature documentation to describe frame-window kinematic slicing and the helperized legacy kinematic flow.
+- Rename aggregated legacy morphology outputs to the new fully qualified naming format (`{modality}__{style}__morphology__{metric}_{stat}__{channel}`) for EEG/EOG legacy metric exports.
+- Update morphology integration tests to assert the new legacy naming convention with mean/std/cv variants in full-modality and EEG-only coverage.
+
+### Fixed
+- Emit an actionable runtime warning when required legacy morphology columns are missing from `blink_df`, including the missing column names and guidance to review `_REQUIRED_LEGACY_MORPHOLOGY_METRICS`.
+
+## [0.3.0] - 2026-02-22
+
+### Added
+- Extend epoch-level legacy morphology aggregation to compute `mean`, `std`, and `cv` for each legacy metric via the shared `_safe_stats` convention.
+
+### Changed
+- Rename aggregated legacy morphology outputs to the new fully qualified naming format (`{modality}__{style}__morphology__{metric}_{stat}__{channel}`) for EEG/EOG legacy metric exports.
+- Update morphology integration tests to assert the new legacy naming convention with mean/std/cv variants in full-modality and EEG-only coverage.
+
+### Fixed
+- Emit an actionable runtime warning when required legacy morphology columns are missing from `blink_df`, including the missing column names and guidance to review `_REQUIRED_LEGACY_MORPHOLOGY_METRICS`.
 
 ## [0.2.2] - 2026-02-20
 

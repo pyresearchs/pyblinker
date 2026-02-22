@@ -6,11 +6,6 @@ import unittest
 from pathlib import Path
 
 import mne
-import pandas as pd
-
-from pyblinker.blink_features.kinematics.kinematic_features import (
-    KinematicBlinkFeatureExtractor,
-)
 from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
 from pyblinker.blink_features.morphology.epoch_features import _available_styles
 from pyblinker.blink_features.morphology import compute_epoch_morphology_features
@@ -21,35 +16,103 @@ EOG_CHANNEL = "EOG-EEG-eog_vert_left"
 required_columns=['ear__th_point__morphology__amp_peak_abs_base_cv__EAR-AVG_EAR', 'ear__th_point__morphology__amp_peak_abs_base_mean__EAR-AVG_EAR', 'ear__th_point__morphology__amp_peak_abs_base_std__EAR-AVG_EAR', 'ear__th_point__morphology__amp_peak_signed_base_cv__EAR-AVG_EAR', 'ear__th_point__morphology__amp_peak_signed_base_mean__EAR-AVG_EAR', 'ear__th_point__morphology__amp_peak_signed_base_std__EAR-AVG_EAR', 'ear__th_point__morphology__amp_peak_to_trough_base_cv__EAR-AVG_EAR', 'ear__th_point__morphology__amp_peak_to_trough_base_mean__EAR-AVG_EAR', 'ear__th_point__morphology__amp_peak_to_trough_base_std__EAR-AVG_EAR', 'ear__th_point__morphology__amp_trough_signed_base_cv__EAR-AVG_EAR', 'ear__th_point__morphology__amp_trough_signed_base_mean__EAR-AVG_EAR', 'ear__th_point__morphology__amp_trough_signed_base_std__EAR-AVG_EAR', 'ear__th_point__morphology__area_abs_total_rect_base_cv__EAR-AVG_EAR', 'ear__th_point__morphology__area_abs_total_rect_base_mean__EAR-AVG_EAR', 'ear__th_point__morphology__area_abs_total_rect_base_std__EAR-AVG_EAR', 'ear__th_point__morphology__area_abs_total_trapz_base_cv__EAR-AVG_EAR', 'ear__th_point__morphology__area_abs_total_trapz_base_mean__EAR-AVG_EAR', 'ear__th_point__morphology__area_abs_total_trapz_base_std__EAR-AVG_EAR', 'ear__th_point__morphology__duration_cv__EAR-AVG_EAR', 'ear__th_point__morphology__duration_mean__EAR-AVG_EAR', 'ear__th_point__morphology__duration_std__EAR-AVG_EAR', 'ear__th_point__morphology__fall_time_10_90_base_cv__EAR-AVG_EAR', 'ear__th_point__morphology__fall_time_10_90_base_mean__EAR-AVG_EAR', 'ear__th_point__morphology__fall_time_10_90_base_std__EAR-AVG_EAR', 'ear__th_point__morphology__fall_time_peak_base_cv__EAR-AVG_EAR', 'ear__th_point__morphology__fall_time_peak_base_mean__EAR-AVG_EAR', 'ear__th_point__morphology__fall_time_peak_base_std__EAR-AVG_EAR', 'ear__th_point__morphology__half_width_base_cv__EAR-AVG_EAR', 'ear__th_point__morphology__half_width_base_mean__EAR-AVG_EAR', 'ear__th_point__morphology__half_width_base_std__EAR-AVG_EAR', 'ear__th_point__morphology__rise_time_10_90_base_cv__EAR-AVG_EAR', 'ear__th_point__morphology__rise_time_10_90_base_mean__EAR-AVG_EAR', 'ear__th_point__morphology__rise_time_10_90_base_std__EAR-AVG_EAR', 'ear__th_point__morphology__rise_time_peak_base_cv__EAR-AVG_EAR', 'ear__th_point__morphology__rise_time_peak_base_mean__EAR-AVG_EAR', 'ear__th_point__morphology__rise_time_peak_base_std__EAR-AVG_EAR', 'ear__th_point__morphology__symmetry_rect_base_cv__EAR-AVG_EAR', 'ear__th_point__morphology__symmetry_rect_base_mean__EAR-AVG_EAR', 'ear__th_point__morphology__symmetry_rect_base_std__EAR-AVG_EAR', 'ear__th_point__morphology__symmetry_trapz_base_cv__EAR-AVG_EAR', 'ear__th_point__morphology__symmetry_trapz_base_mean__EAR-AVG_EAR', 'ear__th_point__morphology__symmetry_trapz_base_std__EAR-AVG_EAR', ]
 
 _REQUIRED_LEGACY_MORPHOLOGY_METRICS = {
-        "zero": (
-                "duration_zero",
-                "closing_time_zero",
-                "reopening_time_zero",
-                "time_shut_zero",
-                ),
-        "base": (
-                "duration_base",
-                "time_shut_base",
-                ),
-        "tent": (
-                "duration_tent",
-                "closing_time_tent",
-                "reopening_time_tent",
-                "time_shut_tent",
-                ),
-        "half": (
-                "duration_half_base",
-                "duration_half_zero",
-                ),
-        "peak": (
-                "peak_time_blink",
-                "peak_time_tent",
-                "peak_max_blink",
-                "peak_max_tent",
-                ),
-        "inter_blink": (
-                "inter_blink_max_amp",
-                ),
+        "zero": {
+                "duration_zero": [
+                        "eeg__zero__morphology__duration_zero_mean__EEG-E8",
+                        "eeg__zero__morphology__duration_zero_std__EEG-E8",
+                        "eeg__zero__morphology__duration_zero_cv__EEG-E8",
+                        ],
+                "closing_time_zero": [
+                        "eeg__zero__morphology__closing_time_zero_mean__EEG-E8",
+                        "eeg__zero__morphology__closing_time_zero_std__EEG-E8",
+                        "eeg__zero__morphology__closing_time_zero_cv__EEG-E8",
+                        ],
+                "reopening_time_zero": [
+                        "eeg__zero__morphology__reopening_time_zero_mean__EEG-E8",
+                        "eeg__zero__morphology__reopening_time_zero_std__EEG-E8",
+                        "eeg__zero__morphology__reopening_time_zero_cv__EEG-E8",
+                        ],
+                "time_shut_zero": [
+                        "eeg__zero__morphology__time_shut_zero_mean__EEG-E8",
+                        "eeg__zero__morphology__time_shut_zero_std__EEG-E8",
+                        "eeg__zero__morphology__time_shut_zero_cv__EEG-E8",
+                        ],
+                },
+        "base": {
+                "duration_base": [
+                        "eeg__base__morphology__duration_base_mean__EEG-E8",
+                        "eeg__base__morphology__duration_base_std__EEG-E8",
+                        "eeg__base__morphology__duration_base_cv__EEG-E8",
+                        ],
+                "time_shut_base": [
+                        "eeg__base__morphology__time_shut_base_mean__EEG-E8",
+                        "eeg__base__morphology__time_shut_base_std__EEG-E8",
+                        "eeg__base__morphology__time_shut_base_cv__EEG-E8",
+                        ],
+                },
+        "tent": {
+                "duration_tent": [
+                        "eeg__tent__morphology__duration_tent_mean__EEG-E8",
+                        "eeg__tent__morphology__duration_tent_std__EEG-E8",
+                        "eeg__tent__morphology__duration_tent_cv__EEG-E8",
+                        ],
+                "closing_time_tent": [
+                        "eeg__tent__morphology__closing_time_tent_mean__EEG-E8",
+                        "eeg__tent__morphology__closing_time_tent_std__EEG-E8",
+                        "eeg__tent__morphology__closing_time_tent_cv__EEG-E8",
+                        ],
+                "reopening_time_tent": [
+                        "eeg__tent__morphology__reopening_time_tent_mean__EEG-E8",
+                        "eeg__tent__morphology__reopening_time_tent_std__EEG-E8",
+                        "eeg__tent__morphology__reopening_time_tent_cv__EEG-E8",
+                        ],
+                "time_shut_tent": [
+                        "eeg__tent__morphology__time_shut_tent_mean__EEG-E8",
+                        "eeg__tent__morphology__time_shut_tent_std__EEG-E8",
+                        "eeg__tent__morphology__time_shut_tent_cv__EEG-E8",
+                        ],
+                },
+        "half": {
+                "duration_half_base": [
+                        "eeg__half__morphology__duration_half_base_mean__EEG-E8",
+                        "eeg__half__morphology__duration_half_base_std__EEG-E8",
+                        "eeg__half__morphology__duration_half_base_cv__EEG-E8",
+                        ],
+                "duration_half_zero": [
+                        "eeg__half__morphology__duration_half_zero_mean__EEG-E8",
+                        "eeg__half__morphology__duration_half_zero_std__EEG-E8",
+                        "eeg__half__morphology__duration_half_zero_cv__EEG-E8",
+                        ],
+                },
+        "peak": {
+                "peak_time_blink": [
+                        "eeg__peak__morphology__peak_time_blink_mean__EEG-E8",
+                        "eeg__peak__morphology__peak_time_blink_std__EEG-E8",
+                        "eeg__peak__morphology__peak_time_blink_cv__EEG-E8",
+                        ],
+                "peak_time_tent": [
+                        "eeg__peak__morphology__peak_time_tent_mean__EEG-E8",
+                        "eeg__peak__morphology__peak_time_tent_std__EEG-E8",
+                        "eeg__peak__morphology__peak_time_tent_cv__EEG-E8",
+                        ],
+                "peak_max_blink": [
+                        "eeg__peak__morphology__peak_max_blink_mean__EEG-E8",
+                        "eeg__peak__morphology__peak_max_blink_std__EEG-E8",
+                        "eeg__peak__morphology__peak_max_blink_cv__EEG-E8",
+                        ],
+                "peak_max_tent": [
+                        "eeg__peak__morphology__peak_max_tent_mean__EEG-E8",
+                        "eeg__peak__morphology__peak_max_tent_std__EEG-E8",
+                        "eeg__peak__morphology__peak_max_tent_cv__EEG-E8",
+                        ],
+                },
+        "inter_blink": {
+                "inter_blink_max_amp": [
+                        "eeg__inter_blink__morphology__inter_blink_max_amp_mean__EEG-E8",
+                        "eeg__inter_blink__morphology__inter_blink_max_amp_std__EEG-E8",
+                        "eeg__inter_blink__morphology__inter_blink_max_amp_cv__EEG-E8",
+                        ],
+                },
         }
 
 segment_config = {
@@ -103,7 +166,6 @@ class TestFullModalityKinematicPipeline(unittest.TestCase):
         cls.df = compute_epoch_morphology_features(epochs=cls.epochs,picks=[EAR_CHANNEL, EEG_CHANNEL, EOG_CHANNEL])
 
     def test_eeg(self) -> None:
-		# pass
 
         styles = _available_styles(tuple(self.epochs.metadata.columns), "eeg")
         self.assertTrue(styles)
@@ -112,9 +174,10 @@ class TestFullModalityKinematicPipeline(unittest.TestCase):
             expected = f"eeg__{style}__morphology__duration_mean__{EEG_CHANNEL}"
             self.assertIn(expected, self.df.columns)
 
-        for metrics in _REQUIRED_LEGACY_MORPHOLOGY_METRICS.values():
-            for metric in metrics:
-                self.assertIn(metric, self.df.columns)
+        for style in _REQUIRED_LEGACY_MORPHOLOGY_METRICS.values():
+            for metric in style.values():
+                for stat_name in metric:
+                    self.assertIn(stat_name, self.df.columns)
 
     def test_eog(self) -> None:
         styles = _available_styles(tuple(self.epochs.metadata.columns), "eog")

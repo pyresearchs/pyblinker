@@ -162,10 +162,9 @@ class TestMorphologyAggregation(unittest.TestCase):
 
         self.assertGreater(df.notna().sum().sum(), 0)
 
-	def test_compare_with_excel_input(self) -> None:
-		"""Test that morphology features can be computed from epochs with metadata from Excel input."""
-		pass
-		# excel_path = "expected_output_new_naming.xlsx"
+    def test_compare_with_excel_input(self) -> None:
+        """Placeholder for Excel-based morphology output verification."""
+        pass
 
 if __name__ == "__main__":
     unittest.main()
