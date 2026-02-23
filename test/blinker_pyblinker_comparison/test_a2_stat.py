@@ -45,7 +45,7 @@ class TestBlinkProperties(unittest.TestCase):
 			ch_map = {c.lower(): c for c in raw.ch_names}
 			ch_name = ch_map.get(ch_name.lower(), ch_name)
 
-		raw = raw.copy().pick_channels([ch_name])
+		raw = raw.copy().pick([ch_name])
 
 		if int(round(raw.info.get("sfreq", 100))) != 100:
 			raw.resample(100)

@@ -14,6 +14,11 @@
 ### Fixed
 - Emit an actionable runtime warning when required legacy morphology columns are missing from `blink_df`, including the missing column names and guidance to review `_REQUIRED_LEGACY_MORPHOLOGY_METRICS`.
 
+## [0.3.2] - 2026-02-23
+
+### Fixed
+- Replace deprecated MNE `pick_channels(...)` usage with `pick(...)` in blinker-vs-pyblinker comparison tests to remove legacy warning noise during unittest execution (including `test_b_fitblink`).
+
 ## [0.3.1] - 2026-02-22
 
 ### Fixed

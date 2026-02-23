@@ -32,7 +32,7 @@ class TestCompareGetBlinkPosition(unittest.TestCase):
             lower_map = {c.lower(): c for c in raw.ch_names}
             ch_name = lower_map.get("eeg-e8", ch_name)
         
-        raw = raw.copy().pick_channels([ch_name])
+        raw = raw.copy().pick([ch_name])
         sfreq = 100
         if int(round(raw.info.get("sfreq", sfreq))) != sfreq:
             raw.resample(sfreq)
