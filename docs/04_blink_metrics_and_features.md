@@ -53,11 +53,11 @@ Unless noted otherwise:
 *   **`blink_line_length`**: Waveform complexity/fractal dimension.
 
 #### B. Frequency Domain
-*   **`wavelet_energy_d1..d4`** (per modality): Energy in discrete wavelet bands, computed separately for each modality and labeled as ``wavelet_energy_d{level}_{modality}`` (e.g., ``wavelet_energy_d2_ear``, ``wavelet_energy_d3_eeg``). Blinks are typically low-frequency (D3-D4); high-frequency energy (D1) suggests muscle noise.
-    *   Implementation: `pyblinker/blink_features/frequency_domain/aggregate.py` computes wavelet energies per channel and then aggregates them by modality without averaging channels together.
-    *   Unit tests: `test/blink_features/frequency_domain/test_frequency_domain_blink_features_ear_eeg_eog.py` verifies EAR/EEG/EOG outputs contain modality-specific wavelet energy columns.
+*   **`wavelet_energy_d1..d4`**: Energy in discrete wavelet bands, summarized per epoch with `mean`/`std`/`cv` over blink segments and exported as style-aware columns (e.g., `eeg__zero__energy__wavelet_energy_d2_mean__EEG-E8`, `ear__th_point__energy__wavelet_energy_d3_std__EAR-AVG_EAR`). Blinks are typically low-frequency (D3-D4); high-frequency energy (D1) suggests muscle noise.
+    *   Implementation: `pyblinker/blink_features/frequency_domain/aggregate.py` computes wavelet energies on frame-aligned segmentation windows. EEG/EOG use style landmarks (`zero`/`base`/`tent` and `half`/`peak` aliases), while EAR uses threshold interpolation windows (`th_interpolation` mapped to `th_point` output style).
+    *   Unit tests: `test/blink_features/frequency_domain/test_frequency_domain_blink_features_eeg_only.py` and `test/blink_features/frequency_domain/test_frequency_domain_blink_features_ear_only.py` validate required style/modality columns; `test/blink_features/morphology/test_morphology_ear_eeg_eog.py` is used as segmentation ground truth consistency coverage.
 
-*Frequency-domain aggregation change*: Channel selection, missing-channel validation, and sampling-frequency warnings for wavelet aggregation now live in a shared helper to keep the computation path consistent across callers.
+*Frequency-domain aggregation change*: Wavelet epoch aggregation now uses channel-aware, frame-based style segmentation and no longer extracts windows from deprecated onset/duration metadata.
 
 #### MATLAB parity definitions for BlinkProperties
 Below are the feature definitions from the BLINKER paper and the MATLAB reference, mapped to Python column names. In MATLAB output tables, columns use **camelCase** (e.g., `durationBase`), while the Python outputs use **snake_case** (e.g., `duration_base`). The comparison tests map MATLAB to Python via these names when validating parity.
