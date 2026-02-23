@@ -8,8 +8,7 @@ from pathlib import Path
 import mne
 
 from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
-from pyblinker.blink_features.morphology import compute_epoch_morphology_features
-
+from pyblinker.blink_features.energy.energy_features import compute_energy_features
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 EAR_CHANNEL = "EAR-avg_ear"
 
@@ -48,8 +47,8 @@ class TestEarOnlyKinematicPipeline(unittest.TestCase):
 
 	def test_ear_only_runs_with_single_modality_config(self) -> None:
 		"""EAR-only config produces EAR-only outputs without validating EEG."""
+		df = compute_energy_features(self.epochs, picks=[EAR_CHANNEL])
 
-		df = compute_epoch_morphology_features(self.epochs, picks=[EAR_CHANNEL])
 		for col in required_columns:
 			self.assertIn(col, df.columns)
 
