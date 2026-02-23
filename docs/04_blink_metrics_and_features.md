@@ -357,3 +357,21 @@ The core helpers are structured to compute metrics one blink at a time so per-bl
 *   `test/blink_features/morphology/test_morphology_eeg_only_config.py`
 *   `test/blink_features/morphology/test_morphology_eog_only_config.py`
 *   `test/blink_features/morphology/test_morphology_ear_eeg_eog.py`
+
+
+## Energy epoch segmentation refactor (style-aware windows)
+
+*Feature/change*: Energy epoch aggregation now uses the same frame-based style segmentation strategy as the morphology/kinematics pipeline instead of deprecated `onset_s`/`duration_s` windows. EEG/EOG energy windows are now style-driven (`zero`, `base`, `tent`, plus `half`/`peak` aliases), while EAR energy windows follow threshold interpolation metadata (`th_point`/`th_interpolation`) when present.
+
+*Related Code*:
+*   `pyblinker/blink_features/energy/energy_features.py`
+*   `pyblinker/blink_features/kinematics/kinematic_features.py` (reference segmentation logic mirrored by energy)
+
+*Tutorials*:
+*   `tutorial/05a_ear_energy_feature_tutorial.py`
+
+*Unit Tests*:
+*   `test/blink_features/energy/test_energy_eeg_only_config.py`
+*   `test/blink_features/energy/test_energy_ear_only_config.py`
+*   `test/blink_features/morphology/test_morphology_ear_eeg_eog.py`
+

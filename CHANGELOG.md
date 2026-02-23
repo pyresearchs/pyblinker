@@ -6,6 +6,7 @@
 - Extend epoch-level legacy morphology aggregation to compute `mean`, `std`, and `cv` for each legacy metric via the shared `_safe_stats` convention.
 
 ### Changed
+- Refactor epoch-level energy feature aggregation to use modality-aware style segmentation windows (EEG/EOG style landmarks and EAR threshold-interpolation windows) instead of deprecated onset/duration windowing.
 - Rename aggregated legacy morphology outputs to the new fully qualified naming format (`{modality}__{style}__morphology__{metric}_{stat}__{channel}`) for EEG/EOG legacy metric exports.
 - Update morphology integration tests to assert the new legacy naming convention with mean/std/cv variants in full-modality and EEG-only coverage.
 
