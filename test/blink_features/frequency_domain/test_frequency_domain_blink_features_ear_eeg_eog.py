@@ -229,7 +229,7 @@ REQUIRED_EOG_METRICS = {
         ],
         "wavelet_energy_d3": [
             "eog__half__energy__wavelet_energy_d3_mean__EOG-EEG-eog_vert_left",
-            "eog__half__energy__wavelet_energy_d3.std__EOG-EEG-eog_vert_left",
+            "eog__half__energy__wavelet_energy_d3_std__EOG-EEG-eog_vert_left",
             "eog__half__energy__wavelet_energy_d3_cv__EOG-EEG-eog_vert_left",
         ],
         "wavelet_energy_d4": [
@@ -246,17 +246,17 @@ REQUIRED_EOG_METRICS = {
         ],
         "wavelet_energy_d2": [
             "eog__peak__energy__wavelet_energy_d2_mean__EOG-EEG-eog_vert_left",
-            "eog__peak__energy__wavelet_energy_d2.std__EOG-EEG-eog_vert_left",
+            "eog__peak__energy__wavelet_energy_d2_std__EOG-EEG-eog_vert_left",
             "eog__peak__energy__wavelet_energy_d2_cv__EOG-EEG-eog_vert_left",
         ],
         "wavelet_energy_d3": [
             "eog__peak__energy__wavelet_energy_d3_mean__EOG-EEG-eog_vert_left",
-            "eog__peak__energy__wavelet_energy_d3.std__EOG-EEG-eog_vert_left",
+            "eog__peak__energy__wavelet_energy_d3_std__EOG-EEG-eog_vert_left",
             "eog__peak__energy__wavelet_energy_d3_cv__EOG-EEG-eog_vert_left",
         ],
         "wavelet_energy_d4": [
             "eog__peak__energy__wavelet_energy_d4_mean__EOG-EEG-eog_vert_left",
-            "eog__peak__energy__wavelet_energy_d4.std__EOG-EEG-eog_vert_left",
+            "eog__peak__energy__wavelet_energy_d4_std__EOG-EEG-eog_vert_left",
             "eog__peak__energy__wavelet_energy_d4_cv__EOG-EEG-eog_vert_left",
         ],
     },
@@ -299,12 +299,12 @@ class TestFrequencyDomainBlinkFeaturesAllModalities(unittest.TestCase):
             cls.epochs, picks=channels, progress_bar=False
         )
 
-    # def _load_baseline(self) -> pd.DataFrame:
-    #     if not BASELINE_PATH.exists():
-    #         raise AssertionError(
-    #             "Missing baseline pickle. Set UPDATE_FREQUENCY_BASELINE=1 and rerun the test to generate it."
-    #         )
-    #     return pd.read_pickle(BASELINE_PATH)
+    def _load_baseline(self) -> pd.DataFrame:
+        if not BASELINE_PATH.exists():
+            raise AssertionError(
+                "Missing baseline pickle. Set UPDATE_FREQUENCY_BASELINE=1 and rerun the test to generate it."
+            )
+        return pd.read_pickle(BASELINE_PATH)
 
     def _maybe_write_baseline(self) -> None:
         if os.environ.get(UPDATE_ENV_VAR) == "1":
@@ -327,17 +327,17 @@ class TestFrequencyDomainBlinkFeaturesAllModalities(unittest.TestCase):
         for col in REQUIRED_EAR_COLUMNS:
             self.assertIn(col, self.df.columns)
 
-    # def test_matches_baseline_pickle(self) -> None:
-    #     # self._maybe_write_baseline()
-    #     self.df.to_pickle(BASELINE_PATH)
-    #     baseline = self._load_baseline()
-    #     pd.testing.assert_frame_equal(
-    #         self.df.sort_index(axis=1),
-    #         baseline.sort_index(axis=1),
-    #         check_dtype=False,
-    #         rtol=1e-6,
-    #         atol=1e-9,
-    #     )
+    def test_matches_baseline_pickle(self) -> None:
+        # self._maybe_write_baseline()
+        # self.df.to_pickle(BASELINE_PATH)
+        baseline = self._load_baseline()
+        pd.testing.assert_frame_equal(
+            self.df.sort_index(axis=1),
+            baseline.sort_index(axis=1),
+            check_dtype=False,
+            rtol=1e-6,
+            atol=1e-9,
+        )
 
 
 if __name__ == "__main__":
