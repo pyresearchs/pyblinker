@@ -7,11 +7,10 @@ import unittest
 from pathlib import Path
 
 import mne
-import numpy as np
 import pandas as pd
 
 from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
-from pyblinker.blink_features.morphology.epoch_features import _available_styles, _style_windows
+from pyblinker.blink_features.morphology.epoch_features import _available_styles
 from pyblinker.blink_features.morphology import compute_epoch_morphology_features
 from test.segment_config import build_segment_config
 
@@ -266,7 +265,6 @@ class TestFullModalityKinematicPipeline(unittest.TestCase):
         cls.df = compute_epoch_morphology_features(
             epochs=cls.epochs, picks=[EAR_CHANNEL, EEG_CHANNEL, EOG_CHANNEL]
         )
-        h=1
 
     def _load_baseline(self) -> pd.DataFrame:
         if not BASELINE_PATH.exists():
