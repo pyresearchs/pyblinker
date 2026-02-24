@@ -266,6 +266,7 @@ class TestFullModalityKinematicPipeline(unittest.TestCase):
             epochs=cls.epochs, picks=[EAR_CHANNEL, EEG_CHANNEL, EOG_CHANNEL]
         )
 
+
     def _load_baseline(self) -> pd.DataFrame:
         if not BASELINE_PATH.exists():
             raise AssertionError(
@@ -316,46 +317,19 @@ class TestFullModalityKinematicPipeline(unittest.TestCase):
     def test_ear_columns(self) -> None:
         for col in REQUIRED_EAR_COLUMNS:
             self.assertIn(col, self.df.columns)
-    #
-    # def test_compare_with_excel_input(self) -> None:
-    #     fixture_path = (
-    #         PROJECT_ROOT
-    #         / "test"
-    #         / "blink_features"
-    #         / "morphology"
-    #         / "expected_output_new_naming.xlsx"
-    #     )
-    #     expected_df = pd.read_excel(fixture_path)
-    #     expected_df = expected_df.drop(columns=["Unnamed: 0"], errors="ignore")
-    #
-    #     self.assertEqual(len(self.df), len(expected_df))
-    #
-    #     column_overrides = {
-    #         "eeg__peak__morphology__peak_time_tent_mean__EEG-E8": "eeg__peak__morphology__peak_max_tent_mean__EEG-E8",
-    #         "eeg__peak__morphology__peak_time_tent_mean__EEG-E8.1": "eeg__peak__morphology__peak_time_tent_mean__EEG-E8",
-    #     }
-    #
-    #     for expected_col in expected_df.columns:
-    #         output_col = column_overrides.get(expected_col, expected_col.split(".", 1)[0])
-    #         self.assertIn(output_col, self.df.columns)
-    #
-    #         expected_values = expected_df[expected_col].to_numpy(dtype=float)
-    #         actual_values = self.df[output_col].to_numpy(dtype=float)
-    #         self.assertTrue(
-    #             np.allclose(actual_values, expected_values, atol=1e-8, equal_nan=True),
-    #             msg=f"Column mismatch: fixture={expected_col} output={output_col}",
-    #         )
 
-    # def test_matches_baseline_pickle(self) -> None:
-    #     self._maybe_write_baseline()
-    #     baseline = self._load_baseline()
-    #     pd.testing.assert_frame_equal(
-    #         self.df.sort_index(axis=1),
-    #         baseline.sort_index(axis=1),
-    #         check_dtype=False,
-    #         rtol=1e-6,
-    #         atol=1e-9,
-    #     )
+
+    def test_matches_baseline_pickle(self) -> None:
+        # self._maybe_write_baseline()
+        # self.df.to_pickle(BASELINE_PATH)
+        baseline = self._load_baseline()
+        pd.testing.assert_frame_equal(
+            self.df.sort_index(axis=1),
+            baseline.sort_index(axis=1),
+            check_dtype=False,
+            rtol=1e-6,
+            atol=1e-9,
+        )
 
 
 if __name__ == "__main__":
