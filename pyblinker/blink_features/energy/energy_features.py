@@ -176,6 +176,12 @@ def _channel_style_windows(
     return style_windows
 
 
+
+
+def _feature_channel_name(channel_name: str, modality: str) -> str:
+    """Return output-channel label for feature columns by modality."""
+
+    return channel_name if modality == "eog" else channel_name.upper()
 def _make_columns(modality_by_channel: Dict[str, str], styles_by_modality: Dict[str, Set[str]]) -> List[str]:
     """Generate ordered output columns for modality/style/metric/stat combinations."""
 
@@ -184,7 +190,7 @@ def _make_columns(modality_by_channel: Dict[str, str], styles_by_modality: Dict[
         for style in sorted(styles_by_modality.get(modality, set())):
             for metric in _METRICS:
                 for stat in _STATS:
-                    columns.append(f"{modality}__{style}__energy__{metric}_{stat}__{ch.upper()}")
+                    columns.append(f"{modality}__{style}__energy__{metric}_{stat}__{_feature_channel_name(ch, modality)}")
     return columns
 
 
@@ -300,7 +306,7 @@ def compute_energy_features(
                 for metric, stats in style_metrics.items():
                     for stat_name, value in stats.items():
                         record[
-                            f"{modality}__{style}__energy__{metric}_{stat_name}__{ch.upper()}"
+                            f"{modality}__{style}__energy__{metric}_{stat_name}__{_feature_channel_name(ch, modality)}"
                         ] = value
         records.append(record)
 
