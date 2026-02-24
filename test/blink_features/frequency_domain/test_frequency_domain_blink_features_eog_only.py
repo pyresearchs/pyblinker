@@ -8,10 +8,7 @@ from pathlib import Path
 import mne
 
 
-from pyblinker.blink_features.frequency_domain import (
-	aggregate_frequency_domain_features,
-	)
-
+from pyblinker.blink_features.frequency_domain import (aggregate_frequency_domain_features)
 from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
 
 
