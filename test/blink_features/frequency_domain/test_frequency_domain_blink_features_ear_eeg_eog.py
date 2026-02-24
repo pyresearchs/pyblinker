@@ -1,82 +1,344 @@
-# """Combined EAR, EEG, and EOG unit tests for wavelet-based blink frequency features."""
-#
-# from __future__ import annotations
-#
-# import unittest
-# from pathlib import Path
-#
-# import mne
-#
-# from pyblinker.blink_features.frequency_domain import aggregate_frequency_domain_features
-# from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
-#
-# from ..utils.helpers import assert_df_has_columns, assert_numeric_or_nan
-#
-#
-# PROJECT_ROOT = Path(__file__).resolve().parents[3]
-#
-#
-# class TestFrequencyDomainBlinkFeaturesAllModalities(unittest.TestCase):
-#     """Validate DWT energy features per epoch with all modalities enabled."""
-#
-#     def setUp(self) -> None:  # noqa: D401
-#         raw_path = PROJECT_ROOT / "test" / "test_files" / "ear_eog_raw.fif"
-#         raw = mne.io.read_raw_fif(raw_path, preload=True, verbose=False)
-#         channels = ["EAR-avg_ear", "EEG-E8", "EOG-EEG-eog_vert_left"]
-#         raw.pick(channels)
-#         segmentation_config = {
-#             "ear": {
-#                 "channel": "EAR-avg_ear",
-#                 "seg_type": "threshold_interpolation",
-#                 "threshold": 0.260,
-#                 "annotation_time_unit": "seconds",
-#                 "max_extension": 0.35,
-#                 "extension_step": 0.05,
-#                 "padding": 0.05,
-#                 "extend_before": True,
-#                 "extend_after": True,
-#             },
-#             "eeg": {"channel": "EEG-E8"},
-#             "eog": {"channel": "EOG-EEG-eog_vert_left"},
-#         }
-#         self.epochs = slice_raw_into_mne_epochs_refine_annot(
-#             raw,
-#             epoch_len=30.0,
-#             blink_label=None,
-#             progress_bar=False,
-#             segmentation_type=segmentation_config,
-#         )
-#         self.channels = channels
-#
-#     def test_schema_and_rows(self) -> None:
-#         """DataFrame has expected columns and indexing for first epochs."""
-#         df = aggregate_frequency_domain_features(
-#             self.epochs, picks=self.channels, progress_bar=False
-#         )
-#         expected_cols = [
-#             "ep",
-#             *[
-#                 f"wavelet_energy_d{i}_{modality}"
-#                 for modality in ("ear", "eeg", "eog")
-#                 for i in range(1, 5)
-#             ],
-#         ]
-#         assert_df_has_columns(
-#             self,
-#             df,
-#             expected_cols,
-#         )
-#         self.assertEqual(len(df), len(self.epochs))
-#         for idx in range(4):
-#             self.assertIn(idx, df.index)
-#             self.assertEqual(df.iloc[idx]["ep"], idx)
-#             assert_numeric_or_nan(self, df.iloc[idx].drop(labels="ep"))
-#         # Ensure modality-specific energies differ (no channel averaging)
-#         self.assertTrue(
-#             (df["wavelet_energy_d2_ear"] != df["wavelet_energy_d2_eeg"]).any()
-#             or (df["wavelet_energy_d2_ear"].isna() & df["wavelet_energy_d2_eeg"].isna()).all(),
-#         )
-#
-#
-# if __name__ == "__main__":
-#     unittest.main()
+"""Combined EAR, EEG, and EOG unit tests for wavelet-based blink frequency features."""
+
+from __future__ import annotations
+
+import os
+import unittest
+from pathlib import Path
+
+import mne
+import pandas as pd
+
+from pyblinker.blink_features.frequency_domain import aggregate_frequency_domain_features
+from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
+
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+OUTPUT_DIR = PROJECT_ROOT / "test" / "major_structure_refactor"
+BASELINE_PATH = OUTPUT_DIR / "frequency_domain_features_ear_eeg_eog.pkl"
+UPDATE_ENV_VAR = "UPDATE_FREQUENCY_BASELINE"
+
+EAR_CHANNEL = "EAR-avg_ear"
+EEG_CHANNEL = "EEG-E8"
+EOG_CHANNEL = "EOG-EEG-eog_vert_left"
+
+REQUIRED_EAR_COLUMNS = [
+    "ear__th_point__energy__wavelet_energy_d1_mean__EAR-AVG_EAR",
+    "ear__th_point__energy__wavelet_energy_d1_std__EAR-AVG_EAR",
+    "ear__th_point__energy__wavelet_energy_d1_cv__EAR-AVG_EAR",
+    "ear__th_point__energy__wavelet_energy_d2_mean__EAR-AVG_EAR",
+    "ear__th_point__energy__wavelet_energy_d2_std__EAR-AVG_EAR",
+    "ear__th_point__energy__wavelet_energy_d2_cv__EAR-AVG_EAR",
+    "ear__th_point__energy__wavelet_energy_d3_mean__EAR-AVG_EAR",
+    "ear__th_point__energy__wavelet_energy_d3_std__EAR-AVG_EAR",
+    "ear__th_point__energy__wavelet_energy_d3_cv__EAR-AVG_EAR",
+    "ear__th_point__energy__wavelet_energy_d4_mean__EAR-AVG_EAR",
+    "ear__th_point__energy__wavelet_energy_d4_std__EAR-AVG_EAR",
+    "ear__th_point__energy__wavelet_energy_d4_cv__EAR-AVG_EAR",
+]
+
+REQUIRED_EEG_METRICS = {
+    "zero": {
+        "wavelet_energy_d1": [
+            "eeg__zero__energy__wavelet_energy_d1_mean__EEG-E8",
+            "eeg__zero__energy__wavelet_energy_d1_std__EEG-E8",
+            "eeg__zero__energy__wavelet_energy_d1_cv__EEG-E8",
+        ],
+        "wavelet_energy_d2": [
+            "eeg__zero__energy__wavelet_energy_d2_mean__EEG-E8",
+            "eeg__zero__energy__wavelet_energy_d2_std__EEG-E8",
+            "eeg__zero__energy__wavelet_energy_d2_cv__EEG-E8",
+        ],
+        "wavelet_energy_d3": [
+            "eeg__zero__energy__wavelet_energy_d3_mean__EEG-E8",
+            "eeg__zero__energy__wavelet_energy_d3_std__EEG-E8",
+            "eeg__zero__energy__wavelet_energy_d3_cv__EEG-E8",
+        ],
+        "wavelet_energy_d4": [
+            "eeg__zero__energy__wavelet_energy_d4_mean__EEG-E8",
+            "eeg__zero__energy__wavelet_energy_d4_std__EEG-E8",
+            "eeg__zero__energy__wavelet_energy_d4_cv__EEG-E8",
+        ],
+    },
+    "base": {
+        "wavelet_energy_d1": [
+            "eeg__base__energy__wavelet_energy_d1_mean__EEG-E8",
+            "eeg__base__energy__wavelet_energy_d1_std__EEG-E8",
+            "eeg__base__energy__wavelet_energy_d1_cv__EEG-E8",
+        ],
+        "wavelet_energy_d2": [
+            "eeg__base__energy__wavelet_energy_d2_mean__EEG-E8",
+            "eeg__base__energy__wavelet_energy_d2_std__EEG-E8",
+            "eeg__base__energy__wavelet_energy_d2_cv__EEG-E8",
+        ],
+        "wavelet_energy_d3": [
+            "eeg__base__energy__wavelet_energy_d3_mean__EEG-E8",
+            "eeg__base__energy__wavelet_energy_d3_std__EEG-E8",
+            "eeg__base__energy__wavelet_energy_d3_cv__EEG-E8",
+        ],
+        "wavelet_energy_d4": [
+            "eeg__base__energy__wavelet_energy_d4_mean__EEG-E8",
+            "eeg__base__energy__wavelet_energy_d4_std__EEG-E8",
+            "eeg__base__energy__wavelet_energy_d4_cv__EEG-E8",
+        ],
+    },
+    "tent": {
+        "wavelet_energy_d1": [
+            "eeg__tent__energy__wavelet_energy_d1_mean__EEG-E8",
+            "eeg__tent__energy__wavelet_energy_d1_std__EEG-E8",
+            "eeg__tent__energy__wavelet_energy_d1_cv__EEG-E8",
+        ],
+        "wavelet_energy_d2": [
+            "eeg__tent__energy__wavelet_energy_d2_mean__EEG-E8",
+            "eeg__tent__energy__wavelet_energy_d2_std__EEG-E8",
+            "eeg__tent__energy__wavelet_energy_d2_cv__EEG-E8",
+        ],
+        "wavelet_energy_d3": [
+            "eeg__tent__energy__wavelet_energy_d3_mean__EEG-E8",
+            "eeg__tent__energy__wavelet_energy_d3_std__EEG-E8",
+            "eeg__tent__energy__wavelet_energy_d3_cv__EEG-E8",
+        ],
+        "wavelet_energy_d4": [
+            "eeg__tent__energy__wavelet_energy_d4_mean__EEG-E8",
+            "eeg__tent__energy__wavelet_energy_d4_std__EEG-E8",
+            "eeg__tent__energy__wavelet_energy_d4_cv__EEG-E8",
+        ],
+    },
+    "half": {
+        "wavelet_energy_d1": [
+            "eeg__half__energy__wavelet_energy_d1_mean__EEG-E8",
+            "eeg__half__energy__wavelet_energy_d1_std__EEG-E8",
+            "eeg__half__energy__wavelet_energy_d1_cv__EEG-E8",
+        ],
+        "wavelet_energy_d2": [
+            "eeg__half__energy__wavelet_energy_d2_mean__EEG-E8",
+            "eeg__half__energy__wavelet_energy_d2_std__EEG-E8",
+            "eeg__half__energy__wavelet_energy_d2_cv__EEG-E8",
+        ],
+        "wavelet_energy_d3": [
+            "eeg__half__energy__wavelet_energy_d3_mean__EEG-E8",
+            "eeg__half__energy__wavelet_energy_d3_std__EEG-E8",
+            "eeg__half__energy__wavelet_energy_d3_cv__EEG-E8",
+        ],
+        "wavelet_energy_d4": [
+            "eeg__half__energy__wavelet_energy_d4_mean__EEG-E8",
+            "eeg__half__energy__wavelet_energy_d4_std__EEG-E8",
+            "eeg__half__energy__wavelet_energy_d4_cv__EEG-E8",
+        ],
+    },
+    "peak": {
+        "wavelet_energy_d1": [
+            "eeg__peak__energy__wavelet_energy_d1_mean__EEG-E8",
+            "eeg__peak__energy__wavelet_energy_d1_std__EEG-E8",
+            "eeg__peak__energy__wavelet_energy_d1_cv__EEG-E8",
+        ],
+        "wavelet_energy_d2": [
+            "eeg__peak__energy__wavelet_energy_d2_mean__EEG-E8",
+            "eeg__peak__energy__wavelet_energy_d2_std__EEG-E8",
+            "eeg__peak__energy__wavelet_energy_d2_cv__EEG-E8",
+        ],
+        "wavelet_energy_d3": [
+            "eeg__peak__energy__wavelet_energy_d3_mean__EEG-E8",
+            "eeg__peak__energy__wavelet_energy_d3_std__EEG-E8",
+            "eeg__peak__energy__wavelet_energy_d3_cv__EEG-E8",
+        ],
+        "wavelet_energy_d4": [
+            "eeg__peak__energy__wavelet_energy_d4_mean__EEG-E8",
+            "eeg__peak__energy__wavelet_energy_d4_std__EEG-E8",
+            "eeg__peak__energy__wavelet_energy_d4_cv__EEG-E8",
+        ],
+    },
+}
+
+REQUIRED_EOG_METRICS = {
+    "zero": {
+        "wavelet_energy_d1": [
+            "eog__zero__energy__wavelet_energy_d1_mean__EOG-EEG-eog_vert_left",
+            "eog__zero__energy__wavelet_energy_d1_std__EOG-EEG-eog_vert_left",
+            "eog__zero__energy__wavelet_energy_d1_cv__EOG-EEG-eog_vert_left",
+        ],
+        "wavelet_energy_d2": [
+            "eog__zero__energy__wavelet_energy_d2_mean__EOG-EEG-eog_vert_left",
+            "eog__zero__energy__wavelet_energy_d2_std__EOG-EEG-eog_vert_left",
+            "eog__zero__energy__wavelet_energy_d2_cv__EOG-EEG-eog_vert_left",
+        ],
+        "wavelet_energy_d3": [
+            "eog__zero__energy__wavelet_energy_d3_mean__EOG-EEG-eog_vert_left",
+            "eog__zero__energy__wavelet_energy_d3_std__EOG-EEG-eog_vert_left",
+            "eog__zero__energy__wavelet_energy_d3_cv__EOG-EEG-eog_vert_left",
+        ],
+        "wavelet_energy_d4": [
+            "eog__zero__energy__wavelet_energy_d4_mean__EOG-EEG-eog_vert_left",
+            "eog__zero__energy__wavelet_energy_d4_std__EOG-EEG-eog_vert_left",
+            "eog__zero__energy__wavelet_energy_d4_cv__EOG-EEG-eog_vert_left",
+        ],
+    },
+    "base": {
+        "wavelet_energy_d1": [
+            "eog__base__energy__wavelet_energy_d1_mean__EOG-EEG-eog_vert_left",
+            "eog__base__energy__wavelet_energy_d1_std__EOG-EEG-eog_vert_left",
+            "eog__base__energy__wavelet_energy_d1_cv__EOG-EEG-eog_vert_left",
+        ],
+        "wavelet_energy_d2": [
+            "eog__base__energy__wavelet_energy_d2_mean__EOG-EEG-eog_vert_left",
+            "eog__base__energy__wavelet_energy_d2_std__EOG-EEG-eog_vert_left",
+            "eog__base__energy__wavelet_energy_d2_cv__EOG-EEG-eog_vert_left",
+        ],
+        "wavelet_energy_d3": [
+            "eog__base__energy__wavelet_energy_d3_mean__EOG-EEG-eog_vert_left",
+            "eog__base__energy__wavelet_energy_d3_std__EOG-EEG-eog_vert_left",
+            "eog__base__energy__wavelet_energy_d3_cv__EOG-EEG-eog_vert_left",
+        ],
+        "wavelet_energy_d4": [
+            "eog__base__energy__wavelet_energy_d4_mean__EOG-EEG-eog_vert_left",
+            "eog__base__energy__wavelet_energy_d4_std__EOG-EEG-eog_vert_left",
+            "eog__base__energy__wavelet_energy_d4_cv__EOG-EEG-eog_vert_left",
+        ],
+    },
+    "tent": {
+        "wavelet_energy_d1": [
+            "eog__tent__energy__wavelet_energy_d1_mean__EOG-EEG-eog_vert_left",
+            "eog__tent__energy__wavelet_energy_d1_std__EOG-EEG-eog_vert_left",
+            "eog__tent__energy__wavelet_energy_d1_cv__EOG-EEG-eog_vert_left",
+        ],
+        "wavelet_energy_d2": [
+            "eog__tent__energy__wavelet_energy_d2_mean__EOG-EEG-eog_vert_left",
+            "eog__tent__energy__wavelet_energy_d2_std__EOG-EEG-eog_vert_left",
+            "eog__tent__energy__wavelet_energy_d2_cv__EOG-EEG-eog_vert_left",
+        ],
+        "wavelet_energy_d3": [
+            "eog__tent__energy__wavelet_energy_d3_mean__EOG-EEG-eog_vert_left",
+            "eog__tent__energy__wavelet_energy_d3_std__EOG-EEG-eog_vert_left",
+            "eog__tent__energy__wavelet_energy_d3_cv__EOG-EEG-eog_vert_left",
+        ],
+        "wavelet_energy_d4": [
+            "eog__tent__energy__wavelet_energy_d4_mean__EOG-EEG-eog_vert_left",
+            "eog__tent__energy__wavelet_energy_d4_std__EOG-EEG-eog_vert_left",
+            "eog__tent__energy__wavelet_energy_d4_cv__EOG-EEG-eog_vert_left",
+        ],
+    },
+    "half": {
+        "wavelet_energy_d1": [
+            "eog__half__energy__wavelet_energy_d1_mean__EOG-EEG-eog_vert_left",
+            "eog__half__energy__wavelet_energy_d1_std__EOG-EEG-eog_vert_left",
+            "eog__half__energy__wavelet_energy_d1_cv__EOG-EEG-eog_vert_left",
+        ],
+        "wavelet_energy_d2": [
+            "eog__half__energy__wavelet_energy_d2_mean__EOG-EEG-eog_vert_left",
+            "eog__half__energy__wavelet_energy_d2_std__EOG-EEG-eog_vert_left",
+            "eog__half__energy__wavelet_energy_d2_cv__EOG-EEG-eog_vert_left",
+        ],
+        "wavelet_energy_d3": [
+            "eog__half__energy__wavelet_energy_d3_mean__EOG-EEG-eog_vert_left",
+            "eog__half__energy__wavelet_energy_d3.std__EOG-EEG-eog_vert_left",
+            "eog__half__energy__wavelet_energy_d3_cv__EOG-EEG-eog_vert_left",
+        ],
+        "wavelet_energy_d4": [
+            "eog__half__energy__wavelet_energy_d4_mean__EOG-EEG-eog_vert_left",
+            "eog__half__energy__wavelet_energy_d4_std__EOG-EEG-eog_vert_left",
+            "eog__half__energy__wavelet_energy_d4_cv__EOG-EEG-eog_vert_left",
+        ],
+    },
+    "peak": {
+        "wavelet_energy_d1": [
+            "eog__peak__energy__wavelet_energy_d1_mean__EOG-EEG-eog_vert_left",
+            "eog__peak__energy__wavelet_energy_d1_std__EOG-EEG-eog_vert_left",
+            "eog__peak__energy__wavelet_energy_d1_cv__EOG-EEG-eog_vert_left",
+        ],
+        "wavelet_energy_d2": [
+            "eog__peak__energy__wavelet_energy_d2_mean__EOG-EEG-eog_vert_left",
+            "eog__peak__energy__wavelet_energy_d2.std__EOG-EEG-eog_vert_left",
+            "eog__peak__energy__wavelet_energy_d2_cv__EOG-EEG-eog_vert_left",
+        ],
+        "wavelet_energy_d3": [
+            "eog__peak__energy__wavelet_energy_d3_mean__EOG-EEG-eog_vert_left",
+            "eog__peak__energy__wavelet_energy_d3.std__EOG-EEG-eog_vert_left",
+            "eog__peak__energy__wavelet_energy_d3_cv__EOG-EEG-eog_vert_left",
+        ],
+        "wavelet_energy_d4": [
+            "eog__peak__energy__wavelet_energy_d4_mean__EOG-EEG-eog_vert_left",
+            "eog__peak__energy__wavelet_energy_d4.std__EOG-EEG-eog_vert_left",
+            "eog__peak__energy__wavelet_energy_d4_cv__EOG-EEG-eog_vert_left",
+        ],
+    },
+}
+
+SEGMENT_CONFIG = {
+    "ear": {
+        "channel": EAR_CHANNEL,
+        "seg_type": "threshold_interpolation",
+        "threshold": 0.260,
+        "annotation_time_unit": "seconds",
+        "max_extension": 0.35,
+        "extension_step": 0.05,
+        "padding": 0.05,
+        "extend_before": True,
+        "extend_after": True,
+    },
+    "eeg": {"channel": EEG_CHANNEL},
+    "eog": {"channel": EOG_CHANNEL},
+}
+
+
+class TestFrequencyDomainBlinkFeaturesAllModalities(unittest.TestCase):
+    """Validate DWT energy features per epoch with all modalities enabled."""
+
+    @classmethod
+    def setUpClass(cls) -> None:  # noqa: D401
+        raw_path = PROJECT_ROOT / "test" / "test_files" / "ear_eog_raw.fif"
+        raw = mne.io.read_raw_fif(raw_path, preload=True, verbose=False)
+        channels = [EAR_CHANNEL, EEG_CHANNEL, EOG_CHANNEL]
+        raw.pick(channels)
+        cls.epochs = slice_raw_into_mne_epochs_refine_annot(
+            raw,
+            epoch_len=30.0,
+            blink_label=None,
+            progress_bar=False,
+            segmentation_type=SEGMENT_CONFIG,
+        )
+        cls.df = aggregate_frequency_domain_features(
+            cls.epochs, picks=channels, progress_bar=False
+        )
+
+    # def _load_baseline(self) -> pd.DataFrame:
+    #     if not BASELINE_PATH.exists():
+    #         raise AssertionError(
+    #             "Missing baseline pickle. Set UPDATE_FREQUENCY_BASELINE=1 and rerun the test to generate it."
+    #         )
+    #     return pd.read_pickle(BASELINE_PATH)
+
+    def _maybe_write_baseline(self) -> None:
+        if os.environ.get(UPDATE_ENV_VAR) == "1":
+            OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+            self.df.to_pickle(BASELINE_PATH)
+
+    def test_eeg_columns(self) -> None:
+        for style in REQUIRED_EEG_METRICS.values():
+            for metric in style.values():
+                for stat_name in metric:
+                    self.assertIn(stat_name, self.df.columns)
+
+    def test_eog_columns(self) -> None:
+        for style in REQUIRED_EOG_METRICS.values():
+            for metric in style.values():
+                for stat_name in metric:
+                    self.assertIn(stat_name, self.df.columns)
+
+    def test_ear_columns(self) -> None:
+        for col in REQUIRED_EAR_COLUMNS:
+            self.assertIn(col, self.df.columns)
+
+    # def test_matches_baseline_pickle(self) -> None:
+    #     # self._maybe_write_baseline()
+    #     self.df.to_pickle(BASELINE_PATH)
+    #     baseline = self._load_baseline()
+    #     pd.testing.assert_frame_equal(
+    #         self.df.sort_index(axis=1),
+    #         baseline.sort_index(axis=1),
+    #         check_dtype=False,
+    #         rtol=1e-6,
+    #         atol=1e-9,
+    #     )
+
+
+if __name__ == "__main__":
+    unittest.main()
