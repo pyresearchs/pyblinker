@@ -14,6 +14,12 @@
 ### Fixed
 - Emit an actionable runtime warning when required legacy morphology columns are missing from `blink_df`, including the missing column names and guidance to review `_REQUIRED_LEGACY_MORPHOLOGY_METRICS`.
 
+
+## [0.3.3] - 2026-02-24
+
+### Fixed
+- Preserve the original EOG channel label casing in epoch energy and frequency-domain feature column names, while keeping non-EOG channel labels uppercased for backward-compatible EAR/EEG outputs.
+
 ## [0.3.2] - 2026-02-23
 
 ### Fixed

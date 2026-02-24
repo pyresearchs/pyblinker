@@ -32,6 +32,12 @@ def _infer_modality(channel_name: str, info: mne.Info) -> str:
     return ch_type.lower()
 
 
+
+
+def _feature_channel_name(channel_name: str, modality: str) -> str:
+    """Return output-channel label for feature columns by modality."""
+
+    return channel_name if modality == "eog" else channel_name.upper()
 def _compute_epoch_wavelet_record(
     *,
     epoch_index: int,
@@ -71,7 +77,7 @@ def _compute_epoch_wavelet_record(
             for lvl in range(1, 5):
                 stats = _safe_stats(per_level[lvl])
                 for stat_name, value in stats.items():
-                    key = f"{modality}__{style}__energy__wavelet_energy_d{lvl}_{stat_name}__{ch.upper()}"
+                    key = f"{modality}__{style}__energy__wavelet_energy_d{lvl}_{stat_name}__{_feature_channel_name(ch, modality)}"
                     record[key] = value
     return record
 
