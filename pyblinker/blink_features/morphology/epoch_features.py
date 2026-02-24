@@ -704,10 +704,8 @@ class MorphologyBlinkFeatureExtractor:
         return styles_by_modality
 
     def _should_emit_legacy_metrics(self, modality_channels: Dict[str, List[str]]) -> bool:
-        """Emit legacy morphology metrics for EEG, or EOG when EEG is absent."""
-        if modality_channels.get("eeg"):
-            return True
-        return bool(modality_channels.get("eog"))
+        """Emit legacy morphology metrics whenever EEG or EOG channels are present."""
+        return bool(modality_channels.get("eeg") or modality_channels.get("eog"))
 
     def _build_output_columns(
         self,
@@ -753,9 +751,7 @@ class MorphologyBlinkFeatureExtractor:
                                 f"{mod}__{style}__morphology__{metric}_{stat}__{ch}"
                             )
 
-            if channels and (
-                mod == "eeg" or (mod == "eog" and not modality_channels.get("eeg"))
-            ):
+            if channels and mod in {"eeg", "eog"}:
                 primary_channel = channels[0]
                 for legacy_metric in _LEGACY_MORPHOLOGY_METRICS:
                     for stat_name in _STATS:

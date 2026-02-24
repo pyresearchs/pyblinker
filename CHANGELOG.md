@@ -15,6 +15,11 @@
 - Emit an actionable runtime warning when required legacy morphology columns are missing from `blink_df`, including the missing column names and guidance to review `_REQUIRED_LEGACY_MORPHOLOGY_METRICS`.
 
 
+## [0.3.4] - 2026-02-24
+
+### Fixed
+- Emit legacy EOG morphology metrics even when EEG channels are also present, restoring expected combined-modality morphology columns in `test_morphology_ear_eeg_eog.py`.
+
 ## [0.3.3] - 2026-02-24
 
 ### Fixed
