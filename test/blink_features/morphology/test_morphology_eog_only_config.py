@@ -138,7 +138,7 @@ class TestMorphologyAggregation(unittest.TestCase):
     def test_epoch_output_contains_expected_morphology_features(self) -> None:
         """Epoch output includes expected style-aware and legacy morphology fields."""
         df = compute_epoch_morphology_features(self.epochs, picks=[EOG_CHANNEL])
-        styles = _available_styles(tuple(self.epochs.metadata.columns), "eeg")
+        styles = _available_styles(tuple(self.epochs.metadata.columns), "eog")
         self.assertTrue(styles)
 
         for style in styles:
