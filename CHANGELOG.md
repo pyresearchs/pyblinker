@@ -6,6 +6,7 @@
 - Extend epoch-level legacy morphology aggregation to compute `mean`, `std`, and `cv` for each legacy metric via the shared `_safe_stats` convention.
 
 ### Changed
+- Refactor EEG-only kinematics test expected metric construction to generate shared and style-suffixed metrics programmatically, reducing duplication while preserving expected columns.
 - Refactor epoch-level energy feature aggregation to use modality-aware style segmentation windows (EEG/EOG style landmarks and EAR threshold-interpolation windows) instead of deprecated onset/duration windowing.
 - Refactor frequency-domain wavelet epoch aggregation to use channel-aware frame-based segmentation windows (EEG/EOG style landmarks plus `half`/`peak` aliases, and EAR threshold interpolation mapped to `th_point`) instead of deprecated onset/duration windows.
 - Rename aggregated legacy morphology outputs to the new fully qualified naming format (`{modality}__{style}__morphology__{metric}_{stat}__{channel}`) for EEG/EOG legacy metric exports.
@@ -14,6 +15,11 @@
 ### Fixed
 - Emit an actionable runtime warning when required legacy morphology columns are missing from `blink_df`, including the missing column names and guidance to review `_REQUIRED_LEGACY_MORPHOLOGY_METRICS`.
 
+
+## [0.3.5] - 2026-02-25
+
+### Fixed
+- Correct EEG-only kinematics expected-column generation in `test_kinematics_eeg_only_config.py` by mapping style-specific metrics to the appropriate landmarks (`base`, `tent`, and `zero`) so the test no longer asserts impossible column combinations.
 
 ## [0.3.4] - 2026-02-24
 
