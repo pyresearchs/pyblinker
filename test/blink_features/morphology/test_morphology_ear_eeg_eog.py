@@ -177,7 +177,7 @@ class TestFullModalityMorphologyPipeline(unittest.TestCase):
             )
 
     def test_matches_baseline_pickle(self) -> None:
-        self._maybe_write_baseline()
+        # self._maybe_write_baseline()
         baseline = self._load_baseline()
         pd.testing.assert_frame_equal(
             self.df.sort_index(axis=1),
