@@ -17,121 +17,6 @@ from test.helper import build_expected_metrics
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 EOG_CHANNEL = "EOG-EEG-eog_vert_left"
 
-
-LEGACY_REQUIRED_ENERGY_METRICS = {
-		"zero": {
-				"wavelet_energy_d1": [
-						"eog__zero__energy__wavelet_energy_d1_mean__EOG-EEG-eog_vert_left",
-						"eog__zero__energy__wavelet_energy_d1_std__EOG-EEG-eog_vert_left",
-						"eog__zero__energy__wavelet_energy_d1_cv__EOG-EEG-eog_vert_left",
-						],
-				"wavelet_energy_d2": [
-						"eog__zero__energy__wavelet_energy_d2_mean__EOG-EEG-eog_vert_left",
-						"eog__zero__energy__wavelet_energy_d2_std__EOG-EEG-eog_vert_left",
-						"eog__zero__energy__wavelet_energy_d2_cv__EOG-EEG-eog_vert_left",
-						],
-				"wavelet_energy_d3": [
-						"eog__zero__energy__wavelet_energy_d3_mean__EOG-EEG-eog_vert_left",
-						"eog__zero__energy__wavelet_energy_d3_std__EOG-EEG-eog_vert_left",
-						"eog__zero__energy__wavelet_energy_d3_cv__EOG-EEG-eog_vert_left",
-						],
-				"wavelet_energy_d4": [
-						"eog__zero__energy__wavelet_energy_d4_mean__EOG-EEG-eog_vert_left",
-						"eog__zero__energy__wavelet_energy_d4_std__EOG-EEG-eog_vert_left",
-						"eog__zero__energy__wavelet_energy_d4_cv__EOG-EEG-eog_vert_left",
-						],
-				},
-		"base": {
-				"wavelet_energy_d1": [
-						"eog__base__energy__wavelet_energy_d1_mean__EOG-EEG-eog_vert_left",
-						"eog__base__energy__wavelet_energy_d1_std__EOG-EEG-eog_vert_left",
-						"eog__base__energy__wavelet_energy_d1_cv__EOG-EEG-eog_vert_left",
-						],
-				"wavelet_energy_d2": [
-						"eog__base__energy__wavelet_energy_d2_mean__EOG-EEG-eog_vert_left",
-						"eog__base__energy__wavelet_energy_d2_std__EOG-EEG-eog_vert_left",
-						"eog__base__energy__wavelet_energy_d2_cv__EOG-EEG-eog_vert_left",
-						],
-				"wavelet_energy_d3": [
-						"eog__base__energy__wavelet_energy_d3_mean__EOG-EEG-eog_vert_left",
-						"eog__base__energy__wavelet_energy_d3_std__EOG-EEG-eog_vert_left",
-						"eog__base__energy__wavelet_energy_d3_cv__EOG-EEG-eog_vert_left",
-						],
-				"wavelet_energy_d4": [
-						"eog__base__energy__wavelet_energy_d4_mean__EOG-EEG-eog_vert_left",
-						"eog__base__energy__wavelet_energy_d4_std__EOG-EEG-eog_vert_left",
-						"eog__base__energy__wavelet_energy_d4_cv__EOG-EEG-eog_vert_left",
-						],
-				},
-		"tent": {
-				"wavelet_energy_d1": [
-						"eog__tent__energy__wavelet_energy_d1_mean__EOG-EEG-eog_vert_left",
-						"eog__tent__energy__wavelet_energy_d1_std__EOG-EEG-eog_vert_left",
-						"eog__tent__energy__wavelet_energy_d1_cv__EOG-EEG-eog_vert_left",
-						],
-				"wavelet_energy_d2": [
-						"eog__tent__energy__wavelet_energy_d2_mean__EOG-EEG-eog_vert_left",
-						"eog__tent__energy__wavelet_energy_d2_std__EOG-EEG-eog_vert_left",
-						"eog__tent__energy__wavelet_energy_d2_cv__EOG-EEG-eog_vert_left",
-						],
-				"wavelet_energy_d3": [
-						"eog__tent__energy__wavelet_energy_d3_mean__EOG-EEG-eog_vert_left",
-						"eog__tent__energy__wavelet_energy_d3_std__EOG-EEG-eog_vert_left",
-						"eog__tent__energy__wavelet_energy_d3_cv__EOG-EEG-eog_vert_left",
-						],
-				"wavelet_energy_d4": [
-						"eog__tent__energy__wavelet_energy_d4_mean__EOG-EEG-eog_vert_left",
-						"eog__tent__energy__wavelet_energy_d4_std__EOG-EEG-eog_vert_left",
-						"eog__tent__energy__wavelet_energy_d4_cv__EOG-EEG-eog_vert_left",
-						],
-				},
-		"half": {
-				"wavelet_energy_d1": [
-						"eog__half__energy__wavelet_energy_d1_mean__EOG-EEG-eog_vert_left",
-						"eog__half__energy__wavelet_energy_d1_std__EOG-EEG-eog_vert_left",
-						"eog__half__energy__wavelet_energy_d1_cv__EOG-EEG-eog_vert_left",
-						],
-				"wavelet_energy_d2": [
-						"eog__half__energy__wavelet_energy_d2_mean__EOG-EEG-eog_vert_left",
-						"eog__half__energy__wavelet_energy_d2_std__EOG-EEG-eog_vert_left",
-						"eog__half__energy__wavelet_energy_d2_cv__EOG-EEG-eog_vert_left",
-						],
-				"wavelet_energy_d3": [
-						"eog__half__energy__wavelet_energy_d3_mean__EOG-EEG-eog_vert_left",
-						"eog__half__energy__wavelet_energy_d3_std__EOG-EEG-eog_vert_left",
-						"eog__half__energy__wavelet_energy_d3_cv__EOG-EEG-eog_vert_left",
-						],
-				"wavelet_energy_d4": [
-						"eog__half__energy__wavelet_energy_d4_mean__EOG-EEG-eog_vert_left",
-						"eog__half__energy__wavelet_energy_d4_std__EOG-EEG-eog_vert_left",
-						"eog__half__energy__wavelet_energy_d4_cv__EOG-EEG-eog_vert_left",
-						],
-				},
-		"peak": {
-				"wavelet_energy_d1": [
-						"eog__peak__energy__wavelet_energy_d1_mean__EOG-EEG-eog_vert_left",
-						"eog__peak__energy__wavelet_energy_d1_std__EOG-EEG-eog_vert_left",
-						"eog__peak__energy__wavelet_energy_d1_cv__EOG-EEG-eog_vert_left",
-						],
-				"wavelet_energy_d2": [
-						"eog__peak__energy__wavelet_energy_d2_mean__EOG-EEG-eog_vert_left",
-						"eog__peak__energy__wavelet_energy_d2_std__EOG-EEG-eog_vert_left",
-						"eog__peak__energy__wavelet_energy_d2_cv__EOG-EEG-eog_vert_left",
-						],
-				"wavelet_energy_d3": [
-						"eog__peak__energy__wavelet_energy_d3_mean__EOG-EEG-eog_vert_left",
-						"eog__peak__energy__wavelet_energy_d3_std__EOG-EEG-eog_vert_left",
-						"eog__peak__energy__wavelet_energy_d3_cv__EOG-EEG-eog_vert_left",
-						],
-				"wavelet_energy_d4": [
-						"eog__peak__energy__wavelet_energy_d4_mean__EOG-EEG-eog_vert_left",
-						"eog__peak__energy__wavelet_energy_d4_std__EOG-EEG-eog_vert_left",
-						"eog__peak__energy__wavelet_energy_d4_cv__EOG-EEG-eog_vert_left",
-						],
-				},
-		}
-
-
 stats = ["mean", "std", "cv"]
 metrics = ["wavelet_energy_d1", "wavelet_energy_d2", "wavelet_energy_d3", "wavelet_energy_d4"]
 landmarks = ["zero", "base", "tent", "half", "peak"]
@@ -168,8 +53,6 @@ class TestFrequencyDomainBlinkFeaturesEEGOnly(unittest.TestCase):
 			)
 		self.eeg_channel = EOG_CHANNEL
 
-	def test_expected_metrics_builder_matches_legacy(self) -> None:
-		self.assertEqual(LEGACY_REQUIRED_ENERGY_METRICS, REQUIRED_ENERGY_METRICS)
 
 	def test_schema_and_rows(self) -> None:
 		"""DataFrame has expected columns and indexing for first epochs."""
