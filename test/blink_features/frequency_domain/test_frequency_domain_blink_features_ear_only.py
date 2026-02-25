@@ -20,7 +20,7 @@ stats = ["mean", "std", "cv"]
 metrics = ["wavelet_energy_d1", "wavelet_energy_d2", "wavelet_energy_d3", "wavelet_energy_d4"]
 
 modality = "ear"
-landmark = "th_point"
+landmark = ["th_point"]
 feature = "energy"
 channel = "EAR-AVG_EAR"
 
@@ -69,8 +69,8 @@ class TestFrequencyDomainBlinkFeaturesEAROnly(unittest.TestCase):
         df = aggregate_frequency_domain_features(
             self.epochs, picks=self.ear_channel, progress_bar=False
         )
-        for landmark in EAR_ENERGY_METRICS.values():
-            for metric in landmark.values():
+        for landmark_metrics in EAR_ENERGY_METRICS.values():
+            for metric in landmark_metrics.values():
                 for stat_name in metric:
                     self.assertIn(stat_name, df.columns)
 
