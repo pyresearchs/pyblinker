@@ -18,140 +18,137 @@ from test.helper import build_expected_metrics
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 EEG_CHANNEL = "EEG-E8"
 
-# LEGACY_REQUIRED_ENERGY_METRICS= {
-#         "zero": {
-#                 "wavelet_energy_d1": [
-#                         "eeg__zero__energy__wavelet_energy_d1_mean__EEG-E8",
-#                         "eeg__zero__energy__wavelet_energy_d1_std__EEG-E8",
-#                         "eeg__zero__energy__wavelet_energy_d1_cv__EEG-E8",
-#                         ],
-#                 "wavelet_energy_d2": [
-#                         "eeg__zero__energy__wavelet_energy_d2_mean__EEG-E8",
-#                         "eeg__zero__energy__wavelet_energy_d2_std__EEG-E8",
-#                         "eeg__zero__energy__wavelet_energy_d2_cv__EEG-E8",
-#                         ],
-#                 "wavelet_energy_d3": [
-#                         "eeg__zero__energy__wavelet_energy_d3_mean__EEG-E8",
-#                         "eeg__zero__energy__wavelet_energy_d3_std__EEG-E8",
-#                         "eeg__zero__energy__wavelet_energy_d3_cv__EEG-E8",
-#                         ],
-#                 "wavelet_energy_d4": [
-#                         "eeg__zero__energy__wavelet_energy_d4_mean__EEG-E8",
-#                         "eeg__zero__energy__wavelet_energy_d4_std__EEG-E8",
-#                         "eeg__zero__energy__wavelet_energy_d4_cv__EEG-E8",
-#                         ],
-#                 },
-#
-#         "base": {
-#                 "wavelet_energy_d1": [
-#                         "eeg__base__energy__wavelet_energy_d1_mean__EEG-E8",
-#                         "eeg__base__energy__wavelet_energy_d1_std__EEG-E8",
-#                         "eeg__base__energy__wavelet_energy_d1_cv__EEG-E8",
-#                         ],
-#                 "wavelet_energy_d2": [
-#                         "eeg__base__energy__wavelet_energy_d2_mean__EEG-E8",
-#                         "eeg__base__energy__wavelet_energy_d2_std__EEG-E8",
-#                         "eeg__base__energy__wavelet_energy_d2_cv__EEG-E8",
-#                         ],
-#                 "wavelet_energy_d3": [
-#                         "eeg__base__energy__wavelet_energy_d3_mean__EEG-E8",
-#                         "eeg__base__energy__wavelet_energy_d3_std__EEG-E8",
-#                         "eeg__base__energy__wavelet_energy_d3_cv__EEG-E8",
-#                         ],
-#                 "wavelet_energy_d4": [
-#                         "eeg__base__energy__wavelet_energy_d4_mean__EEG-E8",
-#                         "eeg__base__energy__wavelet_energy_d4_std__EEG-E8",
-#                         "eeg__base__energy__wavelet_energy_d4_cv__EEG-E8",
-#                         ],
-#                 },
-#
-#         "tent": {
-#                 "wavelet_energy_d1": [
-#                         "eeg__tent__energy__wavelet_energy_d1_mean__EEG-E8",
-#                         "eeg__tent__energy__wavelet_energy_d1_std__EEG-E8",
-#                         "eeg__tent__energy__wavelet_energy_d1_cv__EEG-E8",
-#                         ],
-#                 "wavelet_energy_d2": [
-#                         "eeg__tent__energy__wavelet_energy_d2_mean__EEG-E8",
-#                         "eeg__tent__energy__wavelet_energy_d2_std__EEG-E8",
-#                         "eeg__tent__energy__wavelet_energy_d2_cv__EEG-E8",
-#                         ],
-#                 "wavelet_energy_d3": [
-#                         "eeg__tent__energy__wavelet_energy_d3_mean__EEG-E8",
-#                         "eeg__tent__energy__wavelet_energy_d3_std__EEG-E8",
-#                         "eeg__tent__energy__wavelet_energy_d3_cv__EEG-E8",
-#                         ],
-#                 "wavelet_energy_d4": [
-#                         "eeg__tent__energy__wavelet_energy_d4_mean__EEG-E8",
-#                         "eeg__tent__energy__wavelet_energy_d4_std__EEG-E8",
-#                         "eeg__tent__energy__wavelet_energy_d4_cv__EEG-E8",
-#                         ],
-#                 },
-#
-#         "half": {
-#                 "wavelet_energy_d1": [
-#                         "eeg__half__energy__wavelet_energy_d1_mean__EEG-E8",
-#                         "eeg__half__energy__wavelet_energy_d1_std__EEG-E8",
-#                         "eeg__half__energy__wavelet_energy_d1_cv__EEG-E8",
-#                         ],
-#                 "wavelet_energy_d2": [
-#                         "eeg__half__energy__wavelet_energy_d2_mean__EEG-E8",
-#                         "eeg__half__energy__wavelet_energy_d2_std__EEG-E8",
-#                         "eeg__half__energy__wavelet_energy_d2_cv__EEG-E8",
-#                         ],
-#                 "wavelet_energy_d3": [
-#                         "eeg__half__energy__wavelet_energy_d3_mean__EEG-E8",
-#                         "eeg__half__energy__wavelet_energy_d3_std__EEG-E8",
-#                         "eeg__half__energy__wavelet_energy_d3_cv__EEG-E8",
-#                         ],
-#                 "wavelet_energy_d4": [
-#                         "eeg__half__energy__wavelet_energy_d4_mean__EEG-E8",
-#                         "eeg__half__energy__wavelet_energy_d4_std__EEG-E8",
-#                         "eeg__half__energy__wavelet_energy_d4_cv__EEG-E8",
-#                         ],
-#                 },
-#
-#         "peak": {
-#                 "wavelet_energy_d1": [
-#                         "eeg__peak__energy__wavelet_energy_d1_mean__EEG-E8",
-#                         "eeg__peak__energy__wavelet_energy_d1_std__EEG-E8",
-#                         "eeg__peak__energy__wavelet_energy_d1_cv__EEG-E8",
-#                         ],
-#                 "wavelet_energy_d2": [
-#                         "eeg__peak__energy__wavelet_energy_d2_mean__EEG-E8",
-#                         "eeg__peak__energy__wavelet_energy_d2_std__EEG-E8",
-#                         "eeg__peak__energy__wavelet_energy_d2_cv__EEG-E8",
-#                         ],
-#                 "wavelet_energy_d3": [
-#                         "eeg__peak__energy__wavelet_energy_d3_mean__EEG-E8",
-#                         "eeg__peak__energy__wavelet_energy_d3_std__EEG-E8",
-#                         "eeg__peak__energy__wavelet_energy_d3_cv__EEG-E8",
-#                         ],
-#                 "wavelet_energy_d4": [
-#                         "eeg__peak__energy__wavelet_energy_d4_mean__EEG-E8",
-#                         "eeg__peak__energy__wavelet_energy_d4_std__EEG-E8",
-#                         "eeg__peak__energy__wavelet_energy_d4_cv__EEG-E8",
-#                         ],
-#                 },
-#         }
+LEGACY_REQUIRED_ENERGY_METRICS= {
+        "zero": {
+                "wavelet_energy_d1": [
+                        "eeg__zero__energy__wavelet_energy_d1_mean__EEG-E8",
+                        "eeg__zero__energy__wavelet_energy_d1_std__EEG-E8",
+                        "eeg__zero__energy__wavelet_energy_d1_cv__EEG-E8",
+                        ],
+                "wavelet_energy_d2": [
+                        "eeg__zero__energy__wavelet_energy_d2_mean__EEG-E8",
+                        "eeg__zero__energy__wavelet_energy_d2_std__EEG-E8",
+                        "eeg__zero__energy__wavelet_energy_d2_cv__EEG-E8",
+                        ],
+                "wavelet_energy_d3": [
+                        "eeg__zero__energy__wavelet_energy_d3_mean__EEG-E8",
+                        "eeg__zero__energy__wavelet_energy_d3_std__EEG-E8",
+                        "eeg__zero__energy__wavelet_energy_d3_cv__EEG-E8",
+                        ],
+                "wavelet_energy_d4": [
+                        "eeg__zero__energy__wavelet_energy_d4_mean__EEG-E8",
+                        "eeg__zero__energy__wavelet_energy_d4_std__EEG-E8",
+                        "eeg__zero__energy__wavelet_energy_d4_cv__EEG-E8",
+                        ],
+                },
+
+        "base": {
+                "wavelet_energy_d1": [
+                        "eeg__base__energy__wavelet_energy_d1_mean__EEG-E8",
+                        "eeg__base__energy__wavelet_energy_d1_std__EEG-E8",
+                        "eeg__base__energy__wavelet_energy_d1_cv__EEG-E8",
+                        ],
+                "wavelet_energy_d2": [
+                        "eeg__base__energy__wavelet_energy_d2_mean__EEG-E8",
+                        "eeg__base__energy__wavelet_energy_d2_std__EEG-E8",
+                        "eeg__base__energy__wavelet_energy_d2_cv__EEG-E8",
+                        ],
+                "wavelet_energy_d3": [
+                        "eeg__base__energy__wavelet_energy_d3_mean__EEG-E8",
+                        "eeg__base__energy__wavelet_energy_d3_std__EEG-E8",
+                        "eeg__base__energy__wavelet_energy_d3_cv__EEG-E8",
+                        ],
+                "wavelet_energy_d4": [
+                        "eeg__base__energy__wavelet_energy_d4_mean__EEG-E8",
+                        "eeg__base__energy__wavelet_energy_d4_std__EEG-E8",
+                        "eeg__base__energy__wavelet_energy_d4_cv__EEG-E8",
+                        ],
+                },
+
+        "tent": {
+                "wavelet_energy_d1": [
+                        "eeg__tent__energy__wavelet_energy_d1_mean__EEG-E8",
+                        "eeg__tent__energy__wavelet_energy_d1_std__EEG-E8",
+                        "eeg__tent__energy__wavelet_energy_d1_cv__EEG-E8",
+                        ],
+                "wavelet_energy_d2": [
+                        "eeg__tent__energy__wavelet_energy_d2_mean__EEG-E8",
+                        "eeg__tent__energy__wavelet_energy_d2_std__EEG-E8",
+                        "eeg__tent__energy__wavelet_energy_d2_cv__EEG-E8",
+                        ],
+                "wavelet_energy_d3": [
+                        "eeg__tent__energy__wavelet_energy_d3_mean__EEG-E8",
+                        "eeg__tent__energy__wavelet_energy_d3_std__EEG-E8",
+                        "eeg__tent__energy__wavelet_energy_d3_cv__EEG-E8",
+                        ],
+                "wavelet_energy_d4": [
+                        "eeg__tent__energy__wavelet_energy_d4_mean__EEG-E8",
+                        "eeg__tent__energy__wavelet_energy_d4_std__EEG-E8",
+                        "eeg__tent__energy__wavelet_energy_d4_cv__EEG-E8",
+                        ],
+                },
+
+        "half": {
+                "wavelet_energy_d1": [
+                        "eeg__half__energy__wavelet_energy_d1_mean__EEG-E8",
+                        "eeg__half__energy__wavelet_energy_d1_std__EEG-E8",
+                        "eeg__half__energy__wavelet_energy_d1_cv__EEG-E8",
+                        ],
+                "wavelet_energy_d2": [
+                        "eeg__half__energy__wavelet_energy_d2_mean__EEG-E8",
+                        "eeg__half__energy__wavelet_energy_d2_std__EEG-E8",
+                        "eeg__half__energy__wavelet_energy_d2_cv__EEG-E8",
+                        ],
+                "wavelet_energy_d3": [
+                        "eeg__half__energy__wavelet_energy_d3_mean__EEG-E8",
+                        "eeg__half__energy__wavelet_energy_d3_std__EEG-E8",
+                        "eeg__half__energy__wavelet_energy_d3_cv__EEG-E8",
+                        ],
+                "wavelet_energy_d4": [
+                        "eeg__half__energy__wavelet_energy_d4_mean__EEG-E8",
+                        "eeg__half__energy__wavelet_energy_d4_std__EEG-E8",
+                        "eeg__half__energy__wavelet_energy_d4_cv__EEG-E8",
+                        ],
+                },
+
+        "peak": {
+                "wavelet_energy_d1": [
+                        "eeg__peak__energy__wavelet_energy_d1_mean__EEG-E8",
+                        "eeg__peak__energy__wavelet_energy_d1_std__EEG-E8",
+                        "eeg__peak__energy__wavelet_energy_d1_cv__EEG-E8",
+                        ],
+                "wavelet_energy_d2": [
+                        "eeg__peak__energy__wavelet_energy_d2_mean__EEG-E8",
+                        "eeg__peak__energy__wavelet_energy_d2_std__EEG-E8",
+                        "eeg__peak__energy__wavelet_energy_d2_cv__EEG-E8",
+                        ],
+                "wavelet_energy_d3": [
+                        "eeg__peak__energy__wavelet_energy_d3_mean__EEG-E8",
+                        "eeg__peak__energy__wavelet_energy_d3_std__EEG-E8",
+                        "eeg__peak__energy__wavelet_energy_d3_cv__EEG-E8",
+                        ],
+                "wavelet_energy_d4": [
+                        "eeg__peak__energy__wavelet_energy_d4_mean__EEG-E8",
+                        "eeg__peak__energy__wavelet_energy_d4_std__EEG-E8",
+                        "eeg__peak__energy__wavelet_energy_d4_cv__EEG-E8",
+                        ],
+                },
+        }
 
 
 stats = ["mean", "std", "cv"]
 metrics = ["wavelet_energy_d1", "wavelet_energy_d2", "wavelet_energy_d3", "wavelet_energy_d4"]
 landmarks = ["zero", "base", "tent", "half", "peak"]
 
-REQUIRED_ENERGY_METRICS = {}
-for lm in landmarks:
-    REQUIRED_ENERGY_METRICS.update(
-        build_expected_metrics(
-            landmark=lm,
+REQUIRED_ENERGY_METRICS = build_expected_metrics(
+            landmark=landmarks,
             metrics=metrics,
             stats=stats,
             modality="eeg",
             feature="energy",
             channel=EEG_CHANNEL,
         )
-    )
+
 
 
 class TestFrequencyDomainBlinkFeaturesEEGOnly(unittest.TestCase):
@@ -176,8 +173,8 @@ class TestFrequencyDomainBlinkFeaturesEEGOnly(unittest.TestCase):
         )
         self.eeg_channel = eeg_channel
 
-    # def test_expected_metrics_builder_matches_legacy(self) -> None:
-    #     self.assertEqual(LEGACY_REQUIRED_ENERGY_METRICS, REQUIRED_ENERGY_METRICS)
+    def test_expected_metrics_builder_matches_legacy(self) -> None:
+        self.assertEqual(LEGACY_REQUIRED_ENERGY_METRICS, REQUIRED_ENERGY_METRICS)
 
     def test_schema_and_rows(self) -> None:
         """DataFrame has expected columns and indexing for first epochs."""
