@@ -11,6 +11,7 @@ from pyblinker.blink_features.morphology import compute_epoch_morphology_feature
 from pyblinker.blink_features.morphology.epoch_features import _available_styles, _style_windows
 from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
 from test.segment_config import build_segment_config
+from test.helper import build_expected_metrics
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 EOG_CHANNEL = "EOG-EEG-eog_vert_left"
@@ -116,6 +117,25 @@ _REQUIRED_LEGACY_MORPHOLOGY_METRICS = {
                 },
         }
 
+stats = ["mean", "std", "cv"]
+
+metrics_by_landmark = {
+		"base": ["duration_base", "time_shut_base"],
+		"half": ["duration_half_base", "duration_half_zero"],
+		"inter_blink": ["inter_blink_max_amp"],
+		"peak": ["peak_time_blink", "peak_time_tent", "peak_max_blink", "peak_max_tent"],
+		"tent": ["duration_tent", "closing_time_tent", "reopening_time_tent", "time_shut_tent"],
+		"zero": ["duration_zero", "closing_time_zero", "reopening_time_zero", "time_shut_zero"],
+		}
+
+REQUIRED_MORPHOLOGY_METRICS = build_expected_metrics(
+    landmark=list(metrics_by_landmark.keys()),
+    metrics=metrics_by_landmark,
+    stats=stats,
+    modality="eog",
+    feature="morphology",
+    channel=EOG_CHANNEL,
+)
 
 
 class TestMorphologyAggregation(unittest.TestCase):
@@ -133,7 +153,8 @@ class TestMorphologyAggregation(unittest.TestCase):
             segmentation_type=segmentation_config,
             )
 
-
+    def test_expected_metrics_builder_matches_legacy(self) -> None:
+        self.assertEqual(_REQUIRED_LEGACY_MORPHOLOGY_METRICS, REQUIRED_MORPHOLOGY_METRICS)
 
     def test_epoch_output_contains_expected_morphology_features(self) -> None:
         """Epoch output includes expected style-aware and legacy morphology fields."""
@@ -145,7 +166,7 @@ class TestMorphologyAggregation(unittest.TestCase):
             expected = f"eog__{style}__morphology__duration_mean__{EOG_CHANNEL}"
             self.assertIn(expected, df.columns)
 
-        for style in _REQUIRED_LEGACY_MORPHOLOGY_METRICS.values():
+        for style in REQUIRED_MORPHOLOGY_METRICS.values():
             for metric in style.values():
                 for stat_name in metric:
                     self.assertIn(stat_name, df.columns)

@@ -13,11 +13,12 @@ from pyblinker.blink_features.morphology import compute_epoch_morphology_feature
 from pyblinker.blink_features.morphology.epoch_features import _available_styles, _style_windows
 from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
 from test.segment_config import build_segment_config
+from test.helper import build_expected_metrics
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 EEG_CHANNEL = "EEG-E8"
 
-_REQUIRED_LEGACY_MORPHOLOGY_METRICS = {
+REQUIRED_LEGACY_MORPHOLOGY_METRICS = {
 		"zero": {
 				"duration_zero": [
 						"eeg__zero__morphology__duration_zero_mean__EEG-E8",
@@ -118,6 +119,26 @@ _REQUIRED_LEGACY_MORPHOLOGY_METRICS = {
 		}
 
 
+stats = ["mean", "std", "cv"]
+
+metrics_by_landmark = {
+		"base": ["duration_base", "time_shut_base"],
+		"half": ["duration_half_base", "duration_half_zero"],
+		"inter_blink": ["inter_blink_max_amp"],
+		"peak": ["peak_time_blink", "peak_time_tent", "peak_max_blink", "peak_max_tent"],
+		"tent": ["duration_tent", "closing_time_tent", "reopening_time_tent", "time_shut_tent"],
+		"zero": ["duration_zero", "closing_time_zero", "reopening_time_zero", "time_shut_zero"],
+		}
+REQUIRED_MORPHOLOGY_METRICS = build_expected_metrics(
+	landmark=list(metrics_by_landmark.keys()),
+	metrics=metrics_by_landmark,
+	stats=stats,
+	modality="eeg",
+	feature="morphology",
+	channel=EEG_CHANNEL,
+)
+
+
 class TestMorphologyAggregation(unittest.TestCase):
     """Test aggregation of morphology features with blink counts."""
 
@@ -147,6 +168,9 @@ class TestMorphologyAggregation(unittest.TestCase):
 
         self.assertEqual(windows, [(10, 16), (30, 40)])
 
+    def test_expected_metrics_builder_matches_legacy(self) -> None:
+        self.assertEqual(REQUIRED_LEGACY_MORPHOLOGY_METRICS, REQUIRED_MORPHOLOGY_METRICS)
+
     def test_epoch_output_contains_expected_morphology_features(self) -> None:
         """Epoch output includes expected style-aware and legacy morphology fields."""
         df = compute_epoch_morphology_features(self.epochs, picks=[EEG_CHANNEL])
@@ -157,7 +181,7 @@ class TestMorphologyAggregation(unittest.TestCase):
             expected = f"eeg__{style}__morphology__duration_mean__{EEG_CHANNEL}"
             self.assertIn(expected, df.columns)
 
-        for style in _REQUIRED_LEGACY_MORPHOLOGY_METRICS.values():
+        for style in REQUIRED_MORPHOLOGY_METRICS.values():
             for metric in style.values():
                 for stat_name in metric:
                     self.assertIn(stat_name, df.columns)
