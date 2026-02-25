@@ -11,9 +11,27 @@ from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_a
 from pyblinker.blink_features.energy.energy_features import compute_energy_features
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 EAR_CHANNEL = "EAR-avg_ear"
-
+from test.helper import build_expected_metrics
 required_columns=['ear__th_point__energy__blink_signal_energy_mean__EAR-AVG_EAR', 'ear__th_point__energy__blink_signal_energy_std__EAR-AVG_EAR', 'ear__th_point__energy__blink_signal_energy_cv__EAR-AVG_EAR'
 		]
+
+stats = ["mean", "std", "cv"]
+metrics = ["blink_signal_energy"]
+
+EAR_CHANNEL = "EAR-avg_ear"
+modality = "ear"
+landmark = ["th_point"]
+feature = "energy"
+
+
+REQUIRED_MORPHOLOGY_METRICS = build_expected_metrics(
+	landmark=landmark,
+	metrics=metrics,
+	stats=stats,
+	modality=modality,
+	feature=feature,
+	channel=EAR_CHANNEL.upper(),
+	)
 
 class TestEarOnlyKinematicPipeline(unittest.TestCase):
 	"""Tests for EAR-only kinematic pipeline coverage."""
@@ -49,7 +67,7 @@ class TestEarOnlyKinematicPipeline(unittest.TestCase):
 		"""EAR-only config produces EAR-only outputs without validating EEG."""
 		df = compute_energy_features(self.epochs, picks=[EAR_CHANNEL])
 
-		for col in required_columns:
+		for style in REQUIRED_MORPHOLOGY_METRICS.values():
 			for metric in style.values():
 				for stat_name in metric:
 					self.assertIn(stat_name, df.columns)

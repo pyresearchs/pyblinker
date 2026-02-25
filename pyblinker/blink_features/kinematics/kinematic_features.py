@@ -523,7 +523,7 @@ class KinematicBlinkFeatureExtractor:
             records.append(record)
 
         df = pd.DataFrame.from_records(records, index=index, columns=columns)
-        df = _add_legacy_ear_interpolation_aliases(df)
+        # df = _add_legacy_ear_interpolation_aliases(df) # If there is error, this is the place to check for the column names in the test and make sure they match the expected format.
         logger.debug("Kinematic feature DataFrame shape: %s", df.shape)
         return df
 

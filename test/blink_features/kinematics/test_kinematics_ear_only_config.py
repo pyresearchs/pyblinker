@@ -46,7 +46,9 @@ BASE_STYLE_SUFFIXED_METRICS = (
 
 metrics_by_landmark = {
     landmark: list(SHARED_KINEMATIC_METRICS) + list(BASE_STYLE_SUFFIXED_METRICS)
-    for landmark in ("th_interpolation", "th_point", " interpolated_threshold")
+    for landmark in ("th_interpolation", "th_point",
+					 # " interpolated_threshold"
+				)
 }
 stats = ["mean", "std", "cv"]
 REQUIRED_KINEMATICS_METRICS = build_expected_metrics(
@@ -59,10 +61,10 @@ REQUIRED_KINEMATICS_METRICS = build_expected_metrics(
 )
 
 # Backward-compatibility alias includes an extra separator before channel token.
-REQUIRED_KINEMATICS_METRICS[" interpolated_threshold"] = {
-    metric: [name.replace("__EAR-avg_ear", "____EAR-avg_ear") for name in names]
-    for metric, names in REQUIRED_KINEMATICS_METRICS[" interpolated_threshold"].items()
-}
+# REQUIRED_KINEMATICS_METRICS[" interpolated_threshold"] = {
+#     metric: [name.replace("__EAR-avg_ear", "____EAR-avg_ear") for name in names]
+#     for metric, names in REQUIRED_KINEMATICS_METRICS[" interpolated_threshold"].items()
+# }
 
 
 
