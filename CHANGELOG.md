@@ -6,6 +6,7 @@
 - Extend epoch-level legacy morphology aggregation to compute `mean`, `std`, and `cv` for each legacy metric via the shared `_safe_stats` convention.
 
 ### Changed
+- Refactor EAR-only kinematics test to define `REQUIRED_KINEMATICS_METRICS` via `build_expected_metrics` and shared/style-suffixed metric generation for parity with EEG/EOG kinematics tests.
 - Refactor EOG-only kinematics expected metric assertions to use `build_expected_metrics` with programmatic per-landmark shared/style-suffixed metric generation for `base`, `tent`, and `zero`.
 - Refactor EEG-only kinematics test expected metric construction to generate shared and style-suffixed metrics programmatically, reducing duplication while preserving expected columns.
 - Refactor epoch-level energy feature aggregation to use modality-aware style segmentation windows (EEG/EOG style landmarks and EAR threshold-interpolation windows) instead of deprecated onset/duration windowing.

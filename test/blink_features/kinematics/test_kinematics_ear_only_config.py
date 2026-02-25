@@ -11,10 +11,52 @@ from pyblinker.blink_features.kinematics.kinematic_features import (
     KinematicBlinkFeatureExtractor,
 )
 from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
+from test.helper import build_expected_metrics
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 EAR_CHANNEL = "EAR-avg_ear"
+
+
+SHARED_KINEMATIC_METRICS = (
+    "amp_vel_ratio_base",
+    "amp_vel_ratio_tent",
+    "amp_vel_ratio_zero_to_max",
+    "aver_left_velocity",
+    "aver_right_velocity",
+    "blink_velocity",
+    "inter_blink_max_vel",
+    "inter_blink_max_vel_base",
+    "inter_blink_max_vel_zero",
+    "neg_amp_vel_ratio_base",
+    "neg_amp_vel_ratio_tent",
+    "neg_amp_vel_ratio_zero",
+    "pos_amp_vel_ratio_base",
+    "pos_amp_vel_ratio_tent",
+    "pos_amp_vel_ratio_zero",
+)
+STYLE_SUFFIXED_PREFIXES = (
+    "acc_mean_abs",
+    "acc_peak_abs",
+    "slope_fall_neg",
+    "slope_rise_pos",
+    "vel_mean_abs",
+    "vel_peak_abs",
+)
+metrics_by_landmark = {
+    style: list(SHARED_KINEMATIC_METRICS)
+    + [f"{prefix}_{style}" for prefix in STYLE_SUFFIXED_PREFIXES]
+    for style in ("base", "tent", "zero")
+}
+stats = ["mean", "std", "cv"]
+REQUIRED_KINEMATICS_METRICS = build_expected_metrics(
+    landmark=list(metrics_by_landmark.keys()),
+    metrics=metrics_by_landmark,
+    stats=stats,
+    modality="eog",
+    feature="kinematic",
+    channel=EAR_CHANNEL,
+)
 
 
 class TestEarOnlyKinematicPipeline(unittest.TestCase):
