@@ -35,18 +35,18 @@ SHARED_KINEMATIC_METRICS = (
     "pos_amp_vel_ratio_tent",
     "pos_amp_vel_ratio_zero",
 )
-STYLE_SUFFIXED_PREFIXES = (
-    "acc_mean_abs",
-    "acc_peak_abs",
-    "slope_fall_neg",
-    "slope_rise_pos",
-    "vel_mean_abs",
-    "vel_peak_abs",
+BASE_STYLE_SUFFIXED_METRICS = (
+    "acc_mean_abs_base",
+    "acc_peak_abs_base",
+    "slope_fall_neg_base",
+    "slope_rise_pos_base",
+    "vel_mean_abs_base",
+    "vel_peak_abs_base",
 )
+
 metrics_by_landmark = {
-    style: list(SHARED_KINEMATIC_METRICS)
-    + [f"{prefix}_{style}" for prefix in STYLE_SUFFIXED_PREFIXES]
-    for style in ("base", "tent", "zero")
+    landmark: list(SHARED_KINEMATIC_METRICS) + list(BASE_STYLE_SUFFIXED_METRICS)
+    for landmark in ("th_interpolation", "th_point", " interpolated_threshold")
 }
 stats = ["mean", "std", "cv"]
 REQUIRED_KINEMATICS_METRICS = build_expected_metrics(
@@ -57,6 +57,13 @@ REQUIRED_KINEMATICS_METRICS = build_expected_metrics(
     feature="kinematic",
     channel=EAR_CHANNEL,
 )
+
+# Backward-compatibility alias includes an extra separator before channel token.
+REQUIRED_KINEMATICS_METRICS[" interpolated_threshold"] = {
+    metric: [name.replace("__EAR-avg_ear", "____EAR-avg_ear") for name in names]
+    for metric, names in REQUIRED_KINEMATICS_METRICS[" interpolated_threshold"].items()
+}
+
 
 
 class TestEarOnlyKinematicPipeline(unittest.TestCase):
@@ -96,13 +103,10 @@ class TestEarOnlyKinematicPipeline(unittest.TestCase):
         extractor = KinematicBlinkFeatureExtractor(epochs=epochs)
         df = extractor.compute(picks=EAR_CHANNEL)
 
-        required_columns = [
-                "ear__th_point__kinematic__vel_peak_abs_base_mean__EAR-avg_ear",
-                "ear__ interpolated_threshold__kinematic__vel_peak_abs_base_mean____EAR-avg_ear",
-                ]
-
-        for col in required_columns:
-            self.assertIn(col, df.columns)
+        for style in REQUIRED_KINEMATICS_METRICS.values():
+            for metric in style.values():
+                for stat_name in metric:
+                    self.assertIn(stat_name, df.columns)
 
 
 if __name__ == "__main__":
