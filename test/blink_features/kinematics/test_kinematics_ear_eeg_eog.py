@@ -6,18 +6,88 @@ import unittest
 from pathlib import Path
 
 import mne
-import pandas as pd
 
 from pyblinker.blink_features.kinematics.kinematic_features import (
     KinematicBlinkFeatureExtractor,
 )
 from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
-
+from test.helper import build_expected_metrics
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 EAR_CHANNEL = "EAR-avg_ear"
 EEG_CHANNEL = "EEG-E8"
 EOG_CHANNEL = "EOG-EEG-eog_vert_left"
+
+SHARED_KINEMATIC_METRICS = (
+    "amp_vel_ratio_base",
+    "amp_vel_ratio_tent",
+    "amp_vel_ratio_zero_to_max",
+    "aver_left_velocity",
+    "aver_right_velocity",
+    "blink_velocity",
+    "inter_blink_max_vel",
+    "inter_blink_max_vel_base",
+    "inter_blink_max_vel_zero",
+    "neg_amp_vel_ratio_base",
+    "neg_amp_vel_ratio_tent",
+    "neg_amp_vel_ratio_zero",
+    "pos_amp_vel_ratio_base",
+    "pos_amp_vel_ratio_tent",
+    "pos_amp_vel_ratio_zero",
+)
+STYLE_SUFFIXED_PREFIXES = (
+    "acc_mean_abs",
+    "acc_peak_abs",
+    "slope_fall_neg",
+    "slope_rise_pos",
+    "vel_mean_abs",
+    "vel_peak_abs",
+)
+BASE_STYLE_SUFFIXED_METRICS = (
+    "acc_mean_abs_base",
+    "acc_peak_abs_base",
+    "slope_fall_neg_base",
+    "slope_rise_pos_base",
+    "vel_mean_abs_base",
+    "vel_peak_abs_base",
+)
+
+stats = ["mean", "std", "cv"]
+
+EAR_METRICS_BY_LANDMARK = {
+    landmark: list(SHARED_KINEMATIC_METRICS) + list(BASE_STYLE_SUFFIXED_METRICS)
+    for landmark in ("th_interpolation", "th_point")
+}
+EEG_EOG_METRICS_BY_LANDMARK = {
+    style: list(SHARED_KINEMATIC_METRICS)
+    + [f"{prefix}_{style}" for prefix in STYLE_SUFFIXED_PREFIXES]
+    for style in ("base", "tent", "zero")
+}
+
+REQUIRED_EAR_METRICS = build_expected_metrics(
+    landmark=list(EAR_METRICS_BY_LANDMARK.keys()),
+    metrics=EAR_METRICS_BY_LANDMARK,
+    stats=stats,
+    modality="ear",
+    feature="kinematic",
+    channel=EAR_CHANNEL,
+)
+REQUIRED_EEG_METRICS = build_expected_metrics(
+    landmark=list(EEG_EOG_METRICS_BY_LANDMARK.keys()),
+    metrics=EEG_EOG_METRICS_BY_LANDMARK,
+    stats=stats,
+    modality="eeg",
+    feature="kinematic",
+    channel=EEG_CHANNEL,
+)
+REQUIRED_EOG_METRICS = build_expected_metrics(
+    landmark=list(EEG_EOG_METRICS_BY_LANDMARK.keys()),
+    metrics=EEG_EOG_METRICS_BY_LANDMARK,
+    stats=stats,
+    modality="eog",
+    feature="kinematic",
+    channel=EOG_CHANNEL,
+)
 
 
 class TestFullModalityKinematicPipeline(unittest.TestCase):
@@ -26,24 +96,9 @@ class TestFullModalityKinematicPipeline(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.raw_path = PROJECT_ROOT / "test" / "test_files" / "ear_eog_raw.fif"
-        # CSV containing the full list of expected kinematic columns
-        cls.expected_columns_path = (
-            PROJECT_ROOT
-            / "test"
-            / "blink_features"
-            / "kinematics"
-            / "column_full_modality_kinematics_ear_eeg_eog.csv"
-        )
-
-        # Read expected column names; each line is a single column name
-        with cls.expected_columns_path.open("r", encoding="utf-8") as f:
-            cls.expected_columns = [
-                line.strip() for line in f.readlines() if line.strip()
-            ]
 
     def test_full_modality_config_produces_all_channels(self) -> None:
         """EAR+EEG+EOG config yields kinematics for each configured channel."""
-
         raw = mne.io.read_raw_fif(self.raw_path, preload=True, verbose=False)
 
         segment_config = {
@@ -73,24 +128,20 @@ class TestFullModalityKinematicPipeline(unittest.TestCase):
         extractor = KinematicBlinkFeatureExtractor(epochs=epochs)
         df = extractor.compute(picks=[EAR_CHANNEL, EEG_CHANNEL, EOG_CHANNEL])
 
-        # Optional: save kinematic features to CSV in the test output directory
-        # output_dir = PROJECT_ROOT / "test" / "test_outputs"
-        # output_dir.mkdir(parents=True, exist_ok=True)
-        # output_path = output_dir / "full_modality_kinematics_ear_eeg_eog.csv"
-        # df.to_csv(output_path, index=False)
+        for style in REQUIRED_EAR_METRICS.values():
+            for metric in style.values():
+                for stat_name in metric:
+                    self.assertIn(stat_name, df.columns)
 
-        # Assert that all expected columns (from CSV) are present in the dataframe
-        df_columns = set(df.columns)
-        missing = [col for col in self.expected_columns if col not in df_columns]
+        for style in REQUIRED_EEG_METRICS.values():
+            for metric in style.values():
+                for stat_name in metric:
+                    self.assertIn(stat_name, df.columns)
 
-        # Provide a clear failure message listing any missing columns
-        self.assertFalse(
-            missing,
-            msg=(
-                f"Missing {len(missing)} expected kinematic columns. "
-                f"Examples: {missing[:10]}"
-            ),
-        )
+        for style in REQUIRED_EOG_METRICS.values():
+            for metric in style.values():
+                for stat_name in metric:
+                    self.assertIn(stat_name, df.columns)
 
 
 if __name__ == "__main__":
