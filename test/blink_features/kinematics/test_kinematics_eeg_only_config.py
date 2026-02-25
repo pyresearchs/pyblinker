@@ -35,50 +35,41 @@ EEG_CHANNEL = "EEG-E8"
 #     "pos_amp_vel_ratio_tent",
 # )
 
-metrics = [
-        # shared across styles
-        "amp_vel_ratio_base",
-        "amp_vel_ratio_tent",
-        "amp_vel_ratio_zero_to_max",
-        "aver_left_velocity",
-        "aver_right_velocity",
-        "blink_velocity",
-        "inter_blink_max_vel",
-        "inter_blink_max_vel_base",
-        "inter_blink_max_vel_zero",
-        "neg_amp_vel_ratio_base",
-        "neg_amp_vel_ratio_tent",
-        "neg_amp_vel_ratio_zero",
-        "pos_amp_vel_ratio_base",
-        "pos_amp_vel_ratio_tent",
-        "pos_amp_vel_ratio_zero",
-        # style-specific (base)
-        "acc_mean_abs_base",
-        "acc_peak_abs_base",
-        "slope_fall_neg_base",
-        "slope_rise_pos_base",
-        "vel_mean_abs_base",
-        "vel_peak_abs_base",
-        # style-specific (tent)
-        "acc_mean_abs_tent",
-        "acc_peak_abs_tent",
-        "slope_fall_neg_tent",
-        "slope_rise_pos_tent",
-        "vel_mean_abs_tent",
-        "vel_peak_abs_tent",
-        # style-specific (zero)
-        "acc_mean_abs_zero",
-        "acc_peak_abs_zero",
-        "slope_fall_neg_zero",
-        "slope_rise_pos_zero",
-        "vel_mean_abs_zero",
-        "vel_peak_abs_zero",
-        ]
+SHARED_KINEMATIC_METRICS = (
+    "amp_vel_ratio_base",
+    "amp_vel_ratio_tent",
+    "amp_vel_ratio_zero_to_max",
+    "aver_left_velocity",
+    "aver_right_velocity",
+    "blink_velocity",
+    "inter_blink_max_vel",
+    "inter_blink_max_vel_base",
+    "inter_blink_max_vel_zero",
+    "neg_amp_vel_ratio_base",
+    "neg_amp_vel_ratio_tent",
+    "neg_amp_vel_ratio_zero",
+    "pos_amp_vel_ratio_base",
+    "pos_amp_vel_ratio_tent",
+    "pos_amp_vel_ratio_zero",
+)
+STYLE_SUFFIXED_PREFIXES = (
+    "acc_mean_abs",
+    "acc_peak_abs",
+    "slope_fall_neg",
+    "slope_rise_pos",
+    "vel_mean_abs",
+    "vel_peak_abs",
+)
+
+metrics_by_landmark = {
+    style: list(SHARED_KINEMATIC_METRICS)
+    + [f"{prefix}_{style}" for prefix in STYLE_SUFFIXED_PREFIXES]
+    for style in ("base", "tent", "zero")
+}
 stats = ["mean", "std", "cv"]
-landmarks = ["zero", "base", "tent", "half", "peak"]
 REQUIRED_KINEMATICS_METRICS = build_expected_metrics(
-    landmark=landmarks,
-    metrics=metrics,
+    landmark=list(metrics_by_landmark.keys()),
+    metrics=metrics_by_landmark,
     stats=stats,
     modality="eeg",
     feature="kinematic",
