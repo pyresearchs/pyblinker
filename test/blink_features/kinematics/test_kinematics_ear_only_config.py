@@ -53,7 +53,7 @@ REQUIRED_KINEMATICS_METRICS = build_expected_metrics(
     landmark=list(metrics_by_landmark.keys()),
     metrics=metrics_by_landmark,
     stats=stats,
-    modality="eog",
+    modality="ear",
     feature="kinematic",
     channel=EAR_CHANNEL,
 )
