@@ -14,26 +14,6 @@ from test.helper import build_expected_metrics
 from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
-EEG_CHANNEL = "EEG-E8"
-# EOG_CHANNEL = "EOG-EEG-eog_vert_left"
-
-# _REQUIRED_KINEMATIC_METRICS = (
-#     "amp_vel_ratio_base",
-#     "amp_vel_ratio_tent",
-#     "amp_vel_ratio_zero_to_max",
-#     "blink_velocity",
-#     "inter_blink_max_vel",
-#     "inter_blink_max_vel_base",
-#     "inter_blink_max_vel_zero",
-#     "aver_left_velocity",
-#     "aver_right_velocity",
-#     "neg_amp_vel_ratio_base",
-#     "pos_amp_vel_ratio_base",
-#     "neg_amp_vel_ratio_zero",
-#     "pos_amp_vel_ratio_zero",
-#     "neg_amp_vel_ratio_tent",
-#     "pos_amp_vel_ratio_tent",
-# )
 
 SHARED_KINEMATIC_METRICS = (
     "amp_vel_ratio_base",
@@ -66,6 +46,7 @@ metrics_by_landmark = {
     + [f"{prefix}_{style}" for prefix in STYLE_SUFFIXED_PREFIXES]
     for style in ("base", "tent", "zero")
 }
+EEG_CHANNEL = "EEG-E8"
 stats = ["mean", "std", "cv"]
 REQUIRED_KINEMATICS_METRICS = build_expected_metrics(
     landmark=list(metrics_by_landmark.keys()),
@@ -102,13 +83,6 @@ class TestEegOnlyKinematicPipeline(unittest.TestCase):
 
         extractor = KinematicBlinkFeatureExtractor(epochs=epochs)
         df = extractor.compute(picks=EEG_CHANNEL)
-
-        # self.assertNotIn("blink_onset_ear", epochs.metadata.columns)
-        # self.assertIn("blink_onset_eeg", epochs.metadata.columns)
-        # self.assertTrue(all(col.endswith(f"__{EEG_CHANNEL}") for col in df.columns))
-
-        # styles = _available_styles(tuple(epochs.metadata.columns), "eeg")
-        # self.assertTrue(styles)
         for style in REQUIRED_KINEMATICS_METRICS.values():
             for metric in style.values():
                 for stat_name in metric:
