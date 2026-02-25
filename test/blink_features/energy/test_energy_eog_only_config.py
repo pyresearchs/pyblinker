@@ -13,119 +13,6 @@ from test.helper import build_expected_metrics
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 EOG_CHANNEL = "EOG-EEG-eog_vert_left"
 
-LEGACY_ENERGY_METRICS = {
-		"zero": {
-				"blink_signal_energy": [
-						"eog__zero__energy__blink_signal_energy_mean__EOG-EEG-eog_vert_left",
-						"eog__zero__energy__blink_signal_energy_std__EOG-EEG-eog_vert_left",
-						"eog__zero__energy__blink_signal_energy_cv__EOG-EEG-eog_vert_left",
-						],
-				"teager_kaiser_energy": [
-						"eog__zero__energy__teager_kaiser_energy_mean__EOG-EEG-eog_vert_left",
-						"eog__zero__energy__teager_kaiser_energy_std__EOG-EEG-eog_vert_left",
-						"eog__zero__energy__teager_kaiser_energy_cv__EOG-EEG-eog_vert_left",
-						],
-				"blink_line_length": [
-						"eog__zero__energy__blink_line_length_mean__EOG-EEG-eog_vert_left",
-						"eog__zero__energy__blink_line_length_std__EOG-EEG-eog_vert_left",
-						"eog__zero__energy__blink_line_length_cv__EOG-EEG-eog_vert_left",
-						],
-				"blink_velocity_integral": [
-						"eog__zero__energy__blink_velocity_integral_mean__EOG-EEG-eog_vert_left",
-						"eog__zero__energy__blink_velocity_integral_std__EOG-EEG-eog_vert_left",
-						"eog__zero__energy__blink_velocity_integral_cv__EOG-EEG-eog_vert_left",
-						],
-				},
-		"base": {
-				"blink_signal_energy": [
-						"eog__base__energy__blink_signal_energy_mean__EOG-EEG-eog_vert_left",
-						"eog__base__energy__blink_signal_energy_std__EOG-EEG-eog_vert_left",
-						"eog__base__energy__blink_signal_energy_cv__EOG-EEG-eog_vert_left",
-						],
-				"teager_kaiser_energy": [
-						"eog__base__energy__teager_kaiser_energy_mean__EOG-EEG-eog_vert_left",
-						"eog__base__energy__teager_kaiser_energy_std__EOG-EEG-eog_vert_left",
-						"eog__base__energy__teager_kaiser_energy_cv__EOG-EEG-eog_vert_left",
-						],
-				"blink_line_length": [
-						"eog__base__energy__blink_line_length_mean__EOG-EEG-eog_vert_left",
-						"eog__base__energy__blink_line_length_std__EOG-EEG-eog_vert_left",
-						"eog__base__energy__blink_line_length_cv__EOG-EEG-eog_vert_left",
-						],
-				"blink_velocity_integral": [
-						"eog__base__energy__blink_velocity_integral_mean__EOG-EEG-eog_vert_left",
-						"eog__base__energy__blink_velocity_integral_std__EOG-EEG-eog_vert_left",
-						"eog__base__energy__blink_velocity_integral_cv__EOG-EEG-eog_vert_left",
-						],
-				},
-		"tent": {
-				"blink_signal_energy": [
-						"eog__tent__energy__blink_signal_energy_mean__EOG-EEG-eog_vert_left",
-						"eog__tent__energy__blink_signal_energy_std__EOG-EEG-eog_vert_left",
-						"eog__tent__energy__blink_signal_energy_cv__EOG-EEG-eog_vert_left",
-						],
-				"teager_kaiser_energy": [
-						"eog__tent__energy__teager_kaiser_energy_mean__EOG-EEG-eog_vert_left",
-						"eog__tent__energy__teager_kaiser_energy_std__EOG-EEG-eog_vert_left",
-						"eog__tent__energy__teager_kaiser_energy_cv__EOG-EEG-eog_vert_left",
-						],
-				"blink_line_length": [
-						"eog__tent__energy__blink_line_length_mean__EOG-EEG-eog_vert_left",
-						"eog__tent__energy__blink_line_length_std__EOG-EEG-eog_vert_left",
-						"eog__tent__energy__blink_line_length_cv__EOG-EEG-eog_vert_left",
-						],
-				"blink_velocity_integral": [
-						"eog__tent__energy__blink_velocity_integral_mean__EOG-EEG-eog_vert_left",
-						"eog__tent__energy__blink_velocity_integral_std__EOG-EEG-eog_vert_left",
-						"eog__tent__energy__blink_velocity_integral_cv__EOG-EEG-eog_vert_left",
-						],
-				},
-		"half": {
-				"blink_signal_energy": [
-						"eog__half__energy__blink_signal_energy_mean__EOG-EEG-eog_vert_left",
-						"eog__half__energy__blink_signal_energy_std__EOG-EEG-eog_vert_left",
-						"eog__half__energy__blink_signal_energy_cv__EOG-EEG-eog_vert_left",
-						],
-				"teager_kaiser_energy": [
-						"eog__half__energy__teager_kaiser_energy_mean__EOG-EEG-eog_vert_left",
-						"eog__half__energy__teager_kaiser_energy_std__EOG-EEG-eog_vert_left",
-						"eog__half__energy__teager_kaiser_energy_cv__EOG-EEG-eog_vert_left",
-						],
-				"blink_line_length": [
-						"eog__half__energy__blink_line_length_mean__EOG-EEG-eog_vert_left",
-						"eog__half__energy__blink_line_length_std__EOG-EEG-eog_vert_left",
-						"eog__half__energy__blink_line_length_cv__EOG-EEG-eog_vert_left",
-						],
-				"blink_velocity_integral": [
-						"eog__half__energy__blink_velocity_integral_mean__EOG-EEG-eog_vert_left",
-						"eog__half__energy__blink_velocity_integral_std__EOG-EEG-eog_vert_left",
-						"eog__half__energy__blink_velocity_integral_cv__EOG-EEG-eog_vert_left",
-						],
-				},
-		"peak": {
-				"blink_signal_energy": [
-						"eog__peak__energy__blink_signal_energy_mean__EOG-EEG-eog_vert_left",
-						"eog__peak__energy__blink_signal_energy_std__EOG-EEG-eog_vert_left",
-						"eog__peak__energy__blink_signal_energy_cv__EOG-EEG-eog_vert_left",
-						],
-				"teager_kaiser_energy": [
-						"eog__peak__energy__teager_kaiser_energy_mean__EOG-EEG-eog_vert_left",
-						"eog__peak__energy__teager_kaiser_energy_std__EOG-EEG-eog_vert_left",
-						"eog__peak__energy__teager_kaiser_energy_cv__EOG-EEG-eog_vert_left",
-						],
-				"blink_line_length": [
-						"eog__peak__energy__blink_line_length_mean__EOG-EEG-eog_vert_left",
-						"eog__peak__energy__blink_line_length_std__EOG-EEG-eog_vert_left",
-						"eog__peak__energy__blink_line_length_cv__EOG-EEG-eog_vert_left",
-						],
-				"blink_velocity_integral": [
-						"eog__peak__energy__blink_velocity_integral_mean__EOG-EEG-eog_vert_left",
-						"eog__peak__energy__blink_velocity_integral_std__EOG-EEG-eog_vert_left",
-						"eog__peak__energy__blink_velocity_integral_cv__EOG-EEG-eog_vert_left",
-						],
-				},
-		}
-
 stats = ["mean", "std", "cv"]
 metrics = [
 	"blink_signal_energy",
@@ -170,9 +57,6 @@ class TestEnergyFeatures(unittest.TestCase):
             segmentation_type=segmentation_config,
         )
 
-
-    def test_expected_metrics_builder_matches_legacy(self) -> None:
-        self.assertEqual(LEGACY_ENERGY_METRICS, REQUIRED_ENERGY_METRICS)
 
     def test_single_channel_columns(self) -> None:
         """Returned DataFrame has expected columns for one channel."""

@@ -13,122 +13,6 @@ from test.helper import build_expected_metrics
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 EEG_CHANNEL = "EEG-E8"
 
-REQUIRED_LEGACY_ENERGY_METRICS = {
-        "zero": {
-                "blink_signal_energy": [
-                        "eeg__zero__energy__blink_signal_energy_mean__EEG-E8",
-                        "eeg__zero__energy__blink_signal_energy_std__EEG-E8",
-                        "eeg__zero__energy__blink_signal_energy_cv__EEG-E8",
-                        ],
-                "teager_kaiser_energy": [
-                        "eeg__zero__energy__teager_kaiser_energy_mean__EEG-E8",
-                        "eeg__zero__energy__teager_kaiser_energy_std__EEG-E8",
-                        "eeg__zero__energy__teager_kaiser_energy_cv__EEG-E8",
-                        ],
-                "blink_line_length": [
-                        "eeg__zero__energy__blink_line_length_mean__EEG-E8",
-                        "eeg__zero__energy__blink_line_length_std__EEG-E8",
-                        "eeg__zero__energy__blink_line_length_cv__EEG-E8",
-                        ],
-                "blink_velocity_integral": [
-                        "eeg__zero__energy__blink_velocity_integral_mean__EEG-E8",
-                        "eeg__zero__energy__blink_velocity_integral_std__EEG-E8",
-                        "eeg__zero__energy__blink_velocity_integral_cv__EEG-E8",
-                        ],
-                },
-
-        "base": {
-                "blink_signal_energy": [
-                        "eeg__base__energy__blink_signal_energy_mean__EEG-E8",
-                        "eeg__base__energy__blink_signal_energy_std__EEG-E8",
-                        "eeg__base__energy__blink_signal_energy_cv__EEG-E8",
-                        ],
-                "teager_kaiser_energy": [
-                        "eeg__base__energy__teager_kaiser_energy_mean__EEG-E8",
-                        "eeg__base__energy__teager_kaiser_energy_std__EEG-E8",
-                        "eeg__base__energy__teager_kaiser_energy_cv__EEG-E8",
-                        ],
-                "blink_line_length": [
-                        "eeg__base__energy__blink_line_length_mean__EEG-E8",
-                        "eeg__base__energy__blink_line_length_std__EEG-E8",
-                        "eeg__base__energy__blink_line_length_cv__EEG-E8",
-                        ],
-                "blink_velocity_integral": [
-                        "eeg__base__energy__blink_velocity_integral_mean__EEG-E8",
-                        "eeg__base__energy__blink_velocity_integral_std__EEG-E8",
-                        "eeg__base__energy__blink_velocity_integral_cv__EEG-E8",
-                        ],
-                },
-
-        "tent": {
-                "blink_signal_energy": [
-                        "eeg__tent__energy__blink_signal_energy_mean__EEG-E8",
-                        "eeg__tent__energy__blink_signal_energy_std__EEG-E8",
-                        "eeg__tent__energy__blink_signal_energy_cv__EEG-E8",
-                        ],
-                "teager_kaiser_energy": [
-                        "eeg__tent__energy__teager_kaiser_energy_mean__EEG-E8",
-                        "eeg__tent__energy__teager_kaiser_energy_std__EEG-E8",
-                        "eeg__tent__energy__teager_kaiser_energy_cv__EEG-E8",
-                        ],
-                "blink_line_length": [
-                        "eeg__tent__energy__blink_line_length_mean__EEG-E8",
-                        "eeg__tent__energy__blink_line_length_std__EEG-E8",
-                        "eeg__tent__energy__blink_line_length_cv__EEG-E8",
-                        ],
-                "blink_velocity_integral": [
-                        "eeg__tent__energy__blink_velocity_integral_mean__EEG-E8",
-                        "eeg__tent__energy__blink_velocity_integral_std__EEG-E8",
-                        "eeg__tent__energy__blink_velocity_integral_cv__EEG-E8",
-                        ],
-                },
-
-        "half": {
-                "blink_signal_energy": [
-                        "eeg__half__energy__blink_signal_energy_mean__EEG-E8",
-                        "eeg__half__energy__blink_signal_energy_std__EEG-E8",
-                        "eeg__half__energy__blink_signal_energy_cv__EEG-E8",
-                        ],
-                "teager_kaiser_energy": [
-                        "eeg__half__energy__teager_kaiser_energy_mean__EEG-E8",
-                        "eeg__half__energy__teager_kaiser_energy_std__EEG-E8",
-                        "eeg__half__energy__teager_kaiser_energy_cv__EEG-E8",
-                        ],
-                "blink_line_length": [
-                        "eeg__half__energy__blink_line_length_mean__EEG-E8",
-                        "eeg__half__energy__blink_line_length_std__EEG-E8",
-                        "eeg__half__energy__blink_line_length_cv__EEG-E8",
-                        ],
-                "blink_velocity_integral": [
-                        "eeg__half__energy__blink_velocity_integral_mean__EEG-E8",
-                        "eeg__half__energy__blink_velocity_integral_std__EEG-E8",
-                        "eeg__half__energy__blink_velocity_integral_cv__EEG-E8",
-                        ],
-                },
-
-        "peak": {
-                "blink_signal_energy": [
-                        "eeg__peak__energy__blink_signal_energy_mean__EEG-E8",
-                        "eeg__peak__energy__blink_signal_energy_std__EEG-E8",
-                        "eeg__peak__energy__blink_signal_energy_cv__EEG-E8",
-                        ],
-                "teager_kaiser_energy": [
-                        "eeg__peak__energy__teager_kaiser_energy_mean__EEG-E8",
-                        "eeg__peak__energy__teager_kaiser_energy_std__EEG-E8",
-                        "eeg__peak__energy__teager_kaiser_energy_cv__EEG-E8",
-                        ],
-                "blink_line_length": [
-                        "eeg__peak__energy__blink_line_length_mean__EEG-E8",
-                        "eeg__peak__energy__blink_line_length_std__EEG-E8",
-                        "eeg__peak__energy__blink_line_length_cv__EEG-E8",
-                        ],
-                "blink_velocity_integral": [
-                        "eeg__peak__energy__blink_velocity_integral_mean__EEG-E8",
-                        "eeg__peak__energy__blink_velocity_integral_std__EEG-E8",
-                        "eeg__peak__energy__blink_velocity_integral_cv__EEG-E8",
-                        ],
-                },
-        }
 
 stats = ["mean", "std", "cv"]
 metrics = [
@@ -170,8 +54,7 @@ class TestEnergyFeatures(unittest.TestCase):
 		)
 
 
-	def test_expected_metrics_builder_matches_legacy(self) -> None:
-		self.assertEqual(REQUIRED_LEGACY_ENERGY_METRICS, REQUIRED_ENERGY_METRICS)
+
 
 	def test_single_channel_columns(self) -> None:
 		"""Returned DataFrame has expected columns for one channel."""

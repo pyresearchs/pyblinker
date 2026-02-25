@@ -31,274 +31,32 @@ energy_metrics = [
 ]
 landmarks = ["zero", "base", "tent", "half", "peak"]
 
-REQUIRED_EAR_COLUMNS = []
-for metric in build_expected_metrics(
+REQUIRED_EAR_COLUMNS = build_expected_metrics(
     landmark="th_point",
     metrics=["blink_signal_energy"],
     stats=stats,
     modality="ear",
     feature="energy",
-    channel="EAR-AVG_EAR",
-)["th_point"].values():
-    REQUIRED_EAR_COLUMNS.extend(metric)
+    channel="EAR-AVG_EAR")
 
-REQUIRED_EEG_METRICS = {}
-for lm in landmarks:
-    REQUIRED_EEG_METRICS.update(
-        build_expected_metrics(
-            landmark=lm,
+REQUIRED_EEG_METRICS =  build_expected_metrics(
+            landmark=landmarks,
             metrics=energy_metrics,
             stats=stats,
             modality="eeg",
             feature="energy",
             channel=EEG_CHANNEL,
         )
-    )
 
-REQUIRED_EOG_METRICS = {}
-for lm in landmarks:
-    REQUIRED_EOG_METRICS.update(
-        build_expected_metrics(
-            landmark=lm,
+
+REQUIRED_EOG_METRICS =   build_expected_metrics(
+            landmark=landmarks,
             metrics=energy_metrics,
             stats=stats,
             modality="eog",
             feature="energy",
             channel=EOG_CHANNEL,
         )
-    )
-
-LEGACY_REQUIRED_EAR_COLUMNS = [
-    "ear__th_point__energy__blink_signal_energy_mean__EAR-AVG_EAR",
-    "ear__th_point__energy__blink_signal_energy_std__EAR-AVG_EAR",
-    "ear__th_point__energy__blink_signal_energy_cv__EAR-AVG_EAR",
-]
-
-LEGACY_REQUIRED_EEG_METRICS = {
-    "zero": {
-        "blink_signal_energy": [
-            "eeg__zero__energy__blink_signal_energy_mean__EEG-E8",
-            "eeg__zero__energy__blink_signal_energy_std__EEG-E8",
-            "eeg__zero__energy__blink_signal_energy_cv__EEG-E8",
-        ],
-        "teager_kaiser_energy": [
-            "eeg__zero__energy__teager_kaiser_energy_mean__EEG-E8",
-            "eeg__zero__energy__teager_kaiser_energy_std__EEG-E8",
-            "eeg__zero__energy__teager_kaiser_energy_cv__EEG-E8",
-        ],
-        "blink_line_length": [
-            "eeg__zero__energy__blink_line_length_mean__EEG-E8",
-            "eeg__zero__energy__blink_line_length_std__EEG-E8",
-            "eeg__zero__energy__blink_line_length_cv__EEG-E8",
-        ],
-        "blink_velocity_integral": [
-            "eeg__zero__energy__blink_velocity_integral_mean__EEG-E8",
-            "eeg__zero__energy__blink_velocity_integral_std__EEG-E8",
-            "eeg__zero__energy__blink_velocity_integral_cv__EEG-E8",
-        ],
-    },
-    "base": {
-        "blink_signal_energy": [
-            "eeg__base__energy__blink_signal_energy_mean__EEG-E8",
-            "eeg__base__energy__blink_signal_energy_std__EEG-E8",
-            "eeg__base__energy__blink_signal_energy_cv__EEG-E8",
-        ],
-        "teager_kaiser_energy": [
-            "eeg__base__energy__teager_kaiser_energy_mean__EEG-E8",
-            "eeg__base__energy__teager_kaiser_energy_std__EEG-E8",
-            "eeg__base__energy__teager_kaiser_energy_cv__EEG-E8",
-        ],
-        "blink_line_length": [
-            "eeg__base__energy__blink_line_length_mean__EEG-E8",
-            "eeg__base__energy__blink_line_length_std__EEG-E8",
-            "eeg__base__energy__blink_line_length_cv__EEG-E8",
-        ],
-        "blink_velocity_integral": [
-            "eeg__base__energy__blink_velocity_integral_mean__EEG-E8",
-            "eeg__base__energy__blink_velocity_integral_std__EEG-E8",
-            "eeg__base__energy__blink_velocity_integral_cv__EEG-E8",
-        ],
-    },
-    "tent": {
-        "blink_signal_energy": [
-            "eeg__tent__energy__blink_signal_energy_mean__EEG-E8",
-            "eeg__tent__energy__blink_signal_energy_std__EEG-E8",
-            "eeg__tent__energy__blink_signal_energy_cv__EEG-E8",
-        ],
-        "teager_kaiser_energy": [
-            "eeg__tent__energy__teager_kaiser_energy_mean__EEG-E8",
-            "eeg__tent__energy__teager_kaiser_energy_std__EEG-E8",
-            "eeg__tent__energy__teager_kaiser_energy_cv__EEG-E8",
-        ],
-        "blink_line_length": [
-            "eeg__tent__energy__blink_line_length_mean__EEG-E8",
-            "eeg__tent__energy__blink_line_length_std__EEG-E8",
-            "eeg__tent__energy__blink_line_length_cv__EEG-E8",
-        ],
-        "blink_velocity_integral": [
-            "eeg__tent__energy__blink_velocity_integral_mean__EEG-E8",
-            "eeg__tent__energy__blink_velocity_integral_std__EEG-E8",
-            "eeg__tent__energy__blink_velocity_integral_cv__EEG-E8",
-        ],
-    },
-    "half": {
-        "blink_signal_energy": [
-            "eeg__half__energy__blink_signal_energy_mean__EEG-E8",
-            "eeg__half__energy__blink_signal_energy_std__EEG-E8",
-            "eeg__half__energy__blink_signal_energy_cv__EEG-E8",
-        ],
-        "teager_kaiser_energy": [
-            "eeg__half__energy__teager_kaiser_energy_mean__EEG-E8",
-            "eeg__half__energy__teager_kaiser_energy_std__EEG-E8",
-            "eeg__half__energy__teager_kaiser_energy_cv__EEG-E8",
-        ],
-        "blink_line_length": [
-            "eeg__half__energy__blink_line_length_mean__EEG-E8",
-            "eeg__half__energy__blink_line_length_std__EEG-E8",
-            "eeg__half__energy__blink_line_length_cv__EEG-E8",
-        ],
-        "blink_velocity_integral": [
-            "eeg__half__energy__blink_velocity_integral_mean__EEG-E8",
-            "eeg__half__energy__blink_velocity_integral_std__EEG-E8",
-            "eeg__half__energy__blink_velocity_integral_cv__EEG-E8",
-        ],
-    },
-    "peak": {
-        "blink_signal_energy": [
-            "eeg__peak__energy__blink_signal_energy_mean__EEG-E8",
-            "eeg__peak__energy__blink_signal_energy_std__EEG-E8",
-            "eeg__peak__energy__blink_signal_energy_cv__EEG-E8",
-        ],
-        "teager_kaiser_energy": [
-            "eeg__peak__energy__teager_kaiser_energy_mean__EEG-E8",
-            "eeg__peak__energy__teager_kaiser_energy_std__EEG-E8",
-            "eeg__peak__energy__teager_kaiser_energy_cv__EEG-E8",
-        ],
-        "blink_line_length": [
-            "eeg__peak__energy__blink_line_length_mean__EEG-E8",
-            "eeg__peak__energy__blink_line_length_std__EEG-E8",
-            "eeg__peak__energy__blink_line_length_cv__EEG-E8",
-        ],
-        "blink_velocity_integral": [
-            "eeg__peak__energy__blink_velocity_integral_mean__EEG-E8",
-            "eeg__peak__energy__blink_velocity_integral_std__EEG-E8",
-            "eeg__peak__energy__blink_velocity_integral_cv__EEG-E8",
-        ],
-    },
-}
-
-LEGACY_REQUIRED_EOG_METRICS = {
-    "zero": {
-        "blink_signal_energy": [
-            "eog__zero__energy__blink_signal_energy_mean__EOG-EEG-eog_vert_left",
-            "eog__zero__energy__blink_signal_energy_std__EOG-EEG-eog_vert_left",
-            "eog__zero__energy__blink_signal_energy_cv__EOG-EEG-eog_vert_left",
-        ],
-        "teager_kaiser_energy": [
-            "eog__zero__energy__teager_kaiser_energy_mean__EOG-EEG-eog_vert_left",
-            "eog__zero__energy__teager_kaiser_energy_std__EOG-EEG-eog_vert_left",
-            "eog__zero__energy__teager_kaiser_energy_cv__EOG-EEG-eog_vert_left",
-        ],
-        "blink_line_length": [
-            "eog__zero__energy__blink_line_length_mean__EOG-EEG-eog_vert_left",
-            "eog__zero__energy__blink_line_length_std__EOG-EEG-eog_vert_left",
-            "eog__zero__energy__blink_line_length_cv__EOG-EEG-eog_vert_left",
-        ],
-        "blink_velocity_integral": [
-            "eog__zero__energy__blink_velocity_integral_mean__EOG-EEG-eog_vert_left",
-            "eog__zero__energy__blink_velocity_integral_std__EOG-EEG-eog_vert_left",
-            "eog__zero__energy__blink_velocity_integral_cv__EOG-EEG-eog_vert_left",
-        ],
-    },
-    "base": {
-        "blink_signal_energy": [
-            "eog__base__energy__blink_signal_energy_mean__EOG-EEG-eog_vert_left",
-            "eog__base__energy__blink_signal_energy_std__EOG-EEG-eog_vert_left",
-            "eog__base__energy__blink_signal_energy_cv__EOG-EEG-eog_vert_left",
-        ],
-        "teager_kaiser_energy": [
-            "eog__base__energy__teager_kaiser_energy_mean__EOG-EEG-eog_vert_left",
-            "eog__base__energy__teager_kaiser_energy_std__EOG-EEG-eog_vert_left",
-            "eog__base__energy__teager_kaiser_energy_cv__EOG-EEG-eog_vert_left",
-        ],
-        "blink_line_length": [
-            "eog__base__energy__blink_line_length_mean__EOG-EEG-eog_vert_left",
-            "eog__base__energy__blink_line_length_std__EOG-EEG-eog_vert_left",
-            "eog__base__energy__blink_line_length_cv__EOG-EEG-eog_vert_left",
-        ],
-        "blink_velocity_integral": [
-            "eog__base__energy__blink_velocity_integral_mean__EOG-EEG-eog_vert_left",
-            "eog__base__energy__blink_velocity_integral_std__EOG-EEG-eog_vert_left",
-            "eog__base__energy__blink_velocity_integral_cv__EOG-EEG-eog_vert_left",
-        ],
-    },
-    "tent": {
-        "blink_signal_energy": [
-            "eog__tent__energy__blink_signal_energy_mean__EOG-EEG-eog_vert_left",
-            "eog__tent__energy__blink_signal_energy_std__EOG-EEG-eog_vert_left",
-            "eog__tent__energy__blink_signal_energy_cv__EOG-EEG-eog_vert_left",
-        ],
-        "teager_kaiser_energy": [
-            "eog__tent__energy__teager_kaiser_energy_mean__EOG-EEG-eog_vert_left",
-            "eog__tent__energy__teager_kaiser_energy_std__EOG-EEG-eog_vert_left",
-            "eog__tent__energy__teager_kaiser_energy_cv__EOG-EEG-eog_vert_left",
-        ],
-        "blink_line_length": [
-            "eog__tent__energy__blink_line_length_mean__EOG-EEG-eog_vert_left",
-            "eog__tent__energy__blink_line_length_std__EOG-EEG-eog_vert_left",
-            "eog__tent__energy__blink_line_length_cv__EOG-EEG-eog_vert_left",
-        ],
-        "blink_velocity_integral": [
-            "eog__tent__energy__blink_velocity_integral_mean__EOG-EEG-eog_vert_left",
-            "eog__tent__energy__blink_velocity_integral_std__EOG-EEG-eog_vert_left",
-            "eog__tent__energy__blink_velocity_integral_cv__EOG-EEG-eog_vert_left",
-        ],
-    },
-    "half": {
-        "blink_signal_energy": [
-            "eog__half__energy__blink_signal_energy_mean__EOG-EEG-eog_vert_left",
-            "eog__half__energy__blink_signal_energy_std__EOG-EEG-eog_vert_left",
-            "eog__half__energy__blink_signal_energy_cv__EOG-EEG-eog_vert_left",
-        ],
-        "teager_kaiser_energy": [
-            "eog__half__energy__teager_kaiser_energy_mean__EOG-EEG-eog_vert_left",
-            "eog__half__energy__teager_kaiser_energy_std__EOG-EEG-eog_vert_left",
-            "eog__half__energy__teager_kaiser_energy_cv__EOG-EEG-eog_vert_left",
-        ],
-        "blink_line_length": [
-            "eog__half__energy__blink_line_length_mean__EOG-EEG-eog_vert_left",
-            "eog__half__energy__blink_line_length_std__EOG-EEG-eog_vert_left",
-            "eog__half__energy__blink_line_length_cv__EOG-EEG-eog_vert_left",
-        ],
-        "blink_velocity_integral": [
-            "eog__half__energy__blink_velocity_integral_mean__EOG-EEG-eog_vert_left",
-            "eog__half__energy__blink_velocity_integral_std__EOG-EEG-eog_vert_left",
-            "eog__half__energy__blink_velocity_integral_cv__EOG-EEG-eog_vert_left",
-        ],
-    },
-    "peak": {
-        "blink_signal_energy": [
-            "eog__peak__energy__blink_signal_energy_mean__EOG-EEG-eog_vert_left",
-            "eog__peak__energy__blink_signal_energy_std__EOG-EEG-eog_vert_left",
-            "eog__peak__energy__blink_signal_energy_cv__EOG-EEG-eog_vert_left",
-        ],
-        "teager_kaiser_energy": [
-            "eog__peak__energy__teager_kaiser_energy_mean__EOG-EEG-eog_vert_left",
-            "eog__peak__energy__teager_kaiser_energy_std__EOG-EEG-eog_vert_left",
-            "eog__peak__energy__teager_kaiser_energy_cv__EOG-EEG-eog_vert_left",
-        ],
-        "blink_line_length": [
-            "eog__peak__energy__blink_line_length_mean__EOG-EEG-eog_vert_left",
-            "eog__peak__energy__blink_line_length_std__EOG-EEG-eog_vert_left",
-            "eog__peak__energy__blink_line_length_cv__EOG-EEG-eog_vert_left",
-        ],
-        "blink_velocity_integral": [
-            "eog__peak__energy__blink_velocity_integral_mean__EOG-EEG-eog_vert_left",
-            "eog__peak__energy__blink_velocity_integral_std__EOG-EEG-eog_vert_left",
-            "eog__peak__energy__blink_velocity_integral_cv__EOG-EEG-eog_vert_left",
-        ],
-    },
-}
 
 SEGMENT_CONFIG = {
     "ear": {
@@ -349,10 +107,7 @@ class TestFullModalityEnergyPipeline(unittest.TestCase):
     #         OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     #         self.df.to_pickle(BASELINE_PATH)
 
-    def test_expected_metrics_builder_matches_legacy(self) -> None:
-        self.assertEqual(LEGACY_REQUIRED_EAR_COLUMNS, REQUIRED_EAR_COLUMNS)
-        self.assertEqual(LEGACY_REQUIRED_EEG_METRICS, REQUIRED_EEG_METRICS)
-        self.assertEqual(LEGACY_REQUIRED_EOG_METRICS, REQUIRED_EOG_METRICS)
+
 
     def test_eeg(self) -> None:
         for style in REQUIRED_EEG_METRICS.values():
@@ -367,19 +122,23 @@ class TestFullModalityEnergyPipeline(unittest.TestCase):
                     self.assertIn(stat_name, self.df.columns)
 
     def test_ear(self) -> None:
-        for col in REQUIRED_EAR_COLUMNS:
-            self.assertIn(col, self.df.columns)
+        # for col in REQUIRED_EAR_COLUMNS:
+        #     self.assertIn(col, self.df.columns)
+        for style in REQUIRED_EAR_COLUMNS.values():
+            for metric in style.values():
+                for stat_name in metric:
+                    self.assertIn(stat_name, self.df.columns)
 
-    # def test_matches_baseline_pickle(self) -> None:
-    #     # self._maybe_write_baseline()
-    #     baseline = self._load_baseline()
-    #     pd.testing.assert_frame_equal(
-    #         self.df.sort_index(axis=1),
-    #         baseline.sort_index(axis=1),
-    #         check_dtype=False,
-    #         rtol=1e-6,
-    #         atol=1e-9,
-    #     )
+    def test_matches_baseline_pickle(self) -> None:
+        # self._maybe_write_baseline()
+        baseline = self._load_baseline()
+        pd.testing.assert_frame_equal(
+            self.df.sort_index(axis=1),
+            baseline.sort_index(axis=1),
+            check_dtype=False,
+            rtol=1e-6,
+            atol=1e-9,
+        )
 
 
 if __name__ == "__main__":
