@@ -1,7 +1,5 @@
 """EAR-only unit tests for wavelet-based blink frequency features."""
 
-from __future__ import annotations
-
 import unittest
 from pathlib import Path
 
@@ -11,29 +9,29 @@ from pyblinker.blink_features.frequency_domain import (
     aggregate_frequency_domain_features,
 )
 from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
+from test.helper import build_expected_metrics
 
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 
-required_columns = [
-        "ear__th_point__energy__wavelet_energy_d1_mean__EAR-AVG_EAR",
-        "ear__th_point__energy__wavelet_energy_d1_std__EAR-AVG_EAR",
-        "ear__th_point__energy__wavelet_energy_d1_cv__EAR-AVG_EAR",
+stats = ["mean", "std", "cv"]
+metrics = ["wavelet_energy_d1", "wavelet_energy_d2", "wavelet_energy_d3", "wavelet_energy_d4"]
 
-        "ear__th_point__energy__wavelet_energy_d2_mean__EAR-AVG_EAR",
-        "ear__th_point__energy__wavelet_energy_d2_std__EAR-AVG_EAR",
-        "ear__th_point__energy__wavelet_energy_d2_cv__EAR-AVG_EAR",
+modality = "ear"
+landmark = "th_point"
+feature = "energy"
+channel = "EAR-AVG_EAR"
 
-        "ear__th_point__energy__wavelet_energy_d3_mean__EAR-AVG_EAR",
-        "ear__th_point__energy__wavelet_energy_d3_std__EAR-AVG_EAR",
-        "ear__th_point__energy__wavelet_energy_d3_cv__EAR-AVG_EAR",
-
-        "ear__th_point__energy__wavelet_energy_d4_mean__EAR-AVG_EAR",
-        "ear__th_point__energy__wavelet_energy_d4_std__EAR-AVG_EAR",
-        "ear__th_point__energy__wavelet_energy_d4_cv__EAR-AVG_EAR",
-        ]
+EAR_ENERGY_METRICS = build_expected_metrics(
+    landmark=landmark,
+    metrics=metrics,
+    stats=stats,
+    modality=modality,
+    feature=feature,
+    channel=channel,
+)
 
 
 class TestFrequencyDomainBlinkFeaturesEAROnly(unittest.TestCase):
@@ -71,8 +69,10 @@ class TestFrequencyDomainBlinkFeaturesEAROnly(unittest.TestCase):
         df = aggregate_frequency_domain_features(
             self.epochs, picks=self.ear_channel, progress_bar=False
         )
-        for col in required_columns:
-            self.assertIn(col, df.columns)
+        for landmark in EAR_ENERGY_METRICS.values():
+            for metric in landmark.values():
+                for stat_name in metric:
+                    self.assertIn(stat_name, df.columns)
 
 
 
