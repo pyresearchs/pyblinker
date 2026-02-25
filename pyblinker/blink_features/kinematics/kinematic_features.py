@@ -479,20 +479,7 @@ class KinematicBlinkFeatureExtractor:
                     metrics_for_style = _metrics_for_style(style)
                     metrics_for_style.extend(_EXTENDED_KINEMATIC_METRICS)
                     windows = _style_windows(metadata_row, modality, style)
-                    # if use_fallback and not windows:
-                    #     onset_key = f"blink_onset_{modality}"
-                    #     duration_key = f"blink_duration_{modality}"
-                    #     onsets = ensure_list(metadata_row.get(onset_key)) if metadata_row.get(onset_key) is not None else []
-                    #     durations = (
-                    #         ensure_list(metadata_row.get(duration_key))
-                    #         if metadata_row.get(duration_key) is not None
-                    #         else []
-                    #     )
-                    #     windows = [
-                    #         (float(o), float(d))
-                    #         for o, d in zip(onsets, durations)
-                    #         if o is not None and d is not None and not (pd.isna(o) or pd.isna(d))
-                    #     ]
+
                     for ch in channels:
                         # calculate the legacy kinematics features
                         blink_df = _compute_extended_kinematic_metrics(
