@@ -374,7 +374,7 @@ class TestBlinkFeaturesAllModalities(unittest.TestCase):
 
     def test_matches_baseline_pickle(self) -> None:
         # self._maybe_write_baseline()
-        self.df.to_pickle(BASELINE_PATH)
+        # self.df.to_pickle(BASELINE_PATH)
         baseline = self._load_baseline()
 
         pd.testing.assert_frame_equal(
