@@ -50,7 +50,9 @@ class TestEarOnlyKinematicPipeline(unittest.TestCase):
 		df = compute_energy_features(self.epochs, picks=[EAR_CHANNEL])
 
 		for col in required_columns:
-			self.assertIn(col, df.columns)
+			for metric in style.values():
+				for stat_name in metric:
+					self.assertIn(stat_name, df.columns)
 
 
 

@@ -8,10 +8,10 @@ import mne
 from pyblinker.blink_features.energy.energy_features import compute_energy_features
 from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
 from test.segment_config import build_segment_config
-from test.blink_features.utils.helpers import assert_df_has_columns
+from test.helper import build_expected_metrics
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
-
+EOG_CHANNEL = "EOG-EEG-eog_vert_left"
 
 LEGACY_ENERGY_METRICS = {
 		"zero": {
@@ -126,6 +126,28 @@ LEGACY_ENERGY_METRICS = {
 				},
 		}
 
+stats = ["mean", "std", "cv"]
+metrics = [
+	"blink_signal_energy",
+	"teager_kaiser_energy",
+	"blink_line_length",
+	"blink_velocity_integral",
+]
+landmarks = ["zero", "base", "tent", "half", "peak"]
+
+REQUIRED_ENERGY_METRICS = {}
+for lm in landmarks:
+	REQUIRED_ENERGY_METRICS.update(
+		build_expected_metrics(
+			landmark=lm,
+			metrics=metrics,
+			stats=stats,
+			modality="eog",
+			feature="energy",
+			channel=EOG_CHANNEL,
+		)
+	)
+
 
 class TestEnergyFeatures(unittest.TestCase):
     """Verify energy metrics computed from :class:`mne.Epochs`."""
@@ -149,13 +171,16 @@ class TestEnergyFeatures(unittest.TestCase):
         )
 
 
+    def test_expected_metrics_builder_matches_legacy(self) -> None:
+        self.assertEqual(LEGACY_ENERGY_METRICS, REQUIRED_ENERGY_METRICS)
+
     def test_single_channel_columns(self) -> None:
         """Returned DataFrame has expected columns for one channel."""
-        ch = "EOG-EEG-eog_vert_left"
+        ch = EOG_CHANNEL
         df = compute_energy_features(self.epochs, picks=ch)
 
 
-        for style in LEGACY_ENERGY_METRICS.values():
+        for style in REQUIRED_ENERGY_METRICS.values():
             for metric in style.values():
                 for stat_name in metric:
                     self.assertIn(stat_name, df.columns)
