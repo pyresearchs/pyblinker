@@ -1,6 +1,4 @@
 """Aggregate blink morphology features from :class:`mne.Epochs`."""
-from __future__ import annotations
-
 from typing import Dict, List, Mapping, Sequence, Set, Tuple
 
 import mne
@@ -108,8 +106,6 @@ def _available_styles(metadata_columns: Sequence[str] | None, modality: str) -> 
         if start_key in metadata_columns and end_key in metadata_columns:
             styles.add(style)
 
-    # Generic start/end style discovery supports EAR-only metadata such as
-    # start__th_point__ear / end__th_point__ear.
     start_prefix = "start__"
     metadata_set = set(metadata_columns)
     for col in metadata_columns:

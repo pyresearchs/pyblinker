@@ -315,8 +315,6 @@ def _available_styles(metadata_columns: Sequence[str] | None, modality: str) -> 
         if start_col in metadata_columns and end_col in metadata_columns:
             styles.add(style)
 
-    # Generic style discovery supports EAR-only metadata such as
-    # start__th_point__ear / end__th_point__ear.
     start_prefix = "start__"
     modality_suffix = f"__{modality}"
     metadata_set = set(metadata_columns)
@@ -376,14 +374,6 @@ class KinematicBlinkFeatureExtractor:
     def __init__(self, epochs: mne.Epochs | None = None, raw: mne.io.BaseRaw | None = None):
         self.epochs = epochs
         self.raw = raw
-
-    # def _sampling_frequency(self) -> float:
-    #     """Return sampling frequency from available MNE object."""
-    #     if hasattr(self, "epochs") and self.epochs is not None:
-    #         return float(self.epochs.info["sfreq"])
-    #     if hasattr(self, "raw") and self.raw is not None:
-    #         return float(self.raw.info["sfreq"])
-    #     raise ValueError("Neither self.epochs nor self.raw defined (need MNE object).")
 
     def compute(self, picks: str | Sequence[str] | None = None) -> pd.DataFrame:
         """Compute kinematic blink features for each epoch and channel.
