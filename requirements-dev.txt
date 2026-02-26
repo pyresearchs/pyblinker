@@ -15,6 +15,7 @@ pooch
 
 # IO
 h5py
+openpyxl
 
 # Utilities
 gdown

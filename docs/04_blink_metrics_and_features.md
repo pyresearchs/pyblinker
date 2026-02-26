@@ -53,11 +53,11 @@ Unless noted otherwise:
 *   **`blink_line_length`**: Waveform complexity/fractal dimension.
 
 #### B. Frequency Domain
-*   **`wavelet_energy_d1..d4`** (per modality): Energy in discrete wavelet bands, computed separately for each modality and labeled as ``wavelet_energy_d{level}_{modality}`` (e.g., ``wavelet_energy_d2_ear``, ``wavelet_energy_d3_eeg``). Blinks are typically low-frequency (D3-D4); high-frequency energy (D1) suggests muscle noise.
-    *   Implementation: `pyblinker/blink_features/frequency_domain/aggregate.py` computes wavelet energies per channel and then aggregates them by modality without averaging channels together.
-    *   Unit tests: `test/blink_features/frequency_domain/test_frequency_domain_blink_features_ear_eeg_eog.py` verifies EAR/EEG/EOG outputs contain modality-specific wavelet energy columns.
+*   **`wavelet_energy_d1..d4`**: Energy in discrete wavelet bands, summarized per epoch with `mean`/`std`/`cv` over blink segments and exported as style-aware columns (e.g., `eeg__zero__energy__wavelet_energy_d2_mean__EEG-E8`, `ear__th_point__energy__wavelet_energy_d3_std__EAR-AVG_EAR`). Blinks are typically low-frequency (D3-D4); high-frequency energy (D1) suggests muscle noise.
+    *   Implementation: `pyblinker/blink_features/frequency_domain/aggregate.py` computes wavelet energies on frame-aligned segmentation windows. EEG/EOG use style landmarks (`zero`/`base`/`tent` and `half`/`peak` aliases), while EAR uses threshold interpolation windows (`th_interpolation` mapped to `th_point` output style).
+    *   Unit tests: `test/blink_features/frequency_domain/test_frequency_domain_blink_features_eeg_only.py` and `test/blink_features/frequency_domain/test_frequency_domain_blink_features_ear_only.py` validate required style/modality columns; `test/blink_features/morphology/test_morphology_ear_eeg_eog.py` is used as segmentation ground truth consistency coverage.
 
-*Frequency-domain aggregation change*: Channel selection, missing-channel validation, and sampling-frequency warnings for wavelet aggregation now live in a shared helper to keep the computation path consistent across callers.
+*Frequency-domain aggregation change*: Wavelet epoch aggregation now uses channel-aware, frame-based style segmentation and no longer extracts windows from deprecated onset/duration metadata.
 
 #### MATLAB parity definitions for BlinkProperties
 Below are the feature definitions from the BLINKER paper and the MATLAB reference, mapped to Python column names. In MATLAB output tables, columns use **camelCase** (e.g., `durationBase`), while the Python outputs use **snake_case** (e.g., `duration_base`). The comparison tests map MATLAB to Python via these names when validating parity.
@@ -182,6 +182,22 @@ Automatic modality inference per channel prevents EEG defaults when processing E
 *   `test/blink_features/kinematics/test_kinematics_eeg_only_config.py`
 *   `test/blink_features/kinematics/test_kinematics_eog_only_config.py`
 *   `test/blink_features/kinematics/test_kinematics_ear_eeg_eog.py`
+
+## EAR-only kinematic epoch routing and style discovery
+
+*Feature/change*: The kinematic epoch extractor now supports EAR-only inputs produced by `extractor.compute(picks=EAR_CHANNEL)` by resolving non-EEG segmentation styles from metadata (`start__<style>__ear`/`end__<style>__ear`) and reusing the same 1D per-channel kinematic computation path used in EEG mode. EEG channel behavior and style semantics remain unchanged.
+
+*Related Code*:
+*   `pyblinker/blink_features/kinematics/kinematic_features.py` (generic style discovery, EAR window extraction, and compatibility aliases for legacy EAR interpolation column names)
+
+*Tutorials*:
+*   `tutorial/06a_ear_kinematics_feature_tutorial.py`
+*   `tutorial/06b_eeg_kinematics_feature_tutorial.py`
+
+*Unit Tests*:
+*   `test/blink_features/kinematics/test_kinematics_ear_only_config.py`: validates EAR-only extraction and expected output columns.
+*   `test/blink_features/kinematics/test_kinematics_eeg_only_config.py`: validates unchanged EEG-only output behavior.
+*   `test/blink_features/morphology/test_epoch_morphology_features_aggregation.py`: validates cross-family epoch aggregation compatibility after the kinematic refactor.
 
 ## Morphology and kinematics metric split
 
@@ -325,3 +341,120 @@ The core helpers are structured to compute metrics one blink at a time so per-bl
     These validate the Wavelet decomposition (D1-D4 bands) across EAR, EEG, EOG, and combined modalities, ensuring the correct wavelet family (`db4`) is used and that the energy summation is correct. The EEG-only suite also checks that channel-level energies are aggregated per modality rather than averaging signals across channels.
 *   **`test/blink_features/open_eye/test_open_eye_features.py`**:
     Tests features derived from the "non-blink" periods, such as PERCLOS (percentage of time eyes are closed) and baseline drift.
+
+## Morphology legacy aggregation: mean/std/cv and new naming
+
+*Feature/change*: The epoch morphology pipeline now keeps legacy per-blink morphology computations unchanged, but expands epoch-level legacy aggregation from mean-only to `mean`, `std`, and `cv` using the shared `_safe_stats` conventions. Legacy aggregated outputs are emitted with the new morphology naming scheme (`{modality}__{style}__morphology__{metric}_{stat}__{channel}`), and the extractor raises a targeted runtime warning when required legacy columns are missing from `blink_df` so `_REQUIRED_LEGACY_MORPHOLOGY_METRICS` mismatches are easier to diagnose.
+
+*Related Code*:
+*   `pyblinker/blink_features/morphology/epoch_features.py`
+*   `pyblinker/blink_features/energy/helpers.py`
+
+*Tutorials*:
+*   `tutorial/verify_blink_properties_consistency.py` (closest existing parity-oriented walkthrough; no new tutorial added).
+
+*Unit Tests*:
+*   `test/blink_features/morphology/test_morphology_eeg_only_config.py`
+*   `test/blink_features/morphology/test_morphology_eog_only_config.py`
+*   `test/blink_features/morphology/test_morphology_ear_eeg_eog.py`
+
+
+## Energy epoch segmentation refactor (style-aware windows)
+
+*Feature/change*: Energy epoch aggregation now uses the same frame-based style segmentation strategy as the morphology/kinematics pipeline instead of deprecated `onset_s`/`duration_s` windows. EEG/EOG energy windows are now style-driven (`zero`, `base`, `tent`, plus `half`/`peak` aliases), while EAR energy windows follow threshold interpolation metadata (`th_point`/`th_interpolation`) when present.
+
+*Related Code*:
+*   `pyblinker/blink_features/energy/energy_features.py`
+*   `pyblinker/blink_features/kinematics/kinematic_features.py` (reference segmentation logic mirrored by energy)
+
+*Tutorials*:
+*   `tutorial/05a_ear_energy_feature_tutorial.py`
+
+*Unit Tests*:
+*   `test/blink_features/energy/test_energy_eeg_only_config.py`
+*   `test/blink_features/energy/test_energy_ear_only_config.py`
+*   `test/blink_features/morphology/test_morphology_ear_eeg_eog.py`
+
+
+## Refactor Update (Shared Feature Infrastructure)
+
+### The Feature/Change
+- Added shared blink-feature infrastructure for constants/config (`BlinkerConfig` + `DEFAULT_CONFIG`), reusable style-window extraction helpers, and a common compute skeleton scaffold for epoch/channel/style orchestration.
+- Preserved existing output naming and baseline behavior while forcing legacy object-typed DataFrame column indexes for compatibility with existing pickle-based baseline assertions.
+- Frequency-domain optional dependency handling was hardened so missing `PyWavelets` no longer crashes imports and instead yields informative warnings with NaN outputs.
+
+### Related Code
+- `pyblinker/blink_features/constants.py`
+- `pyblinker/blink_features/default_setting.py`
+- `pyblinker/blink_features/utils/style_windows.py`
+- `pyblinker/blink_features/compute_skeleton.py`
+- `pyblinker/blink_features/aggregate.py`
+- `pyblinker/blink_features/frequency_domain/features.py`
+- `pyblinker/blink_features/frequency_domain/aggregate.py`
+- `pyblinker/blink_features/morphology/epoch_features.py`
+- `pyblinker/blink_features/kinematics/kinematic_features.py`
+
+### Verification (Tutorials & Tests)
+- Tutorials: existing feature tutorials remain valid, notably:
+  - `tutorial/05c_minimal_blink_feature_tutorial.py`
+  - `tutorial/05a_ear_energy_feature_tutorial.py`
+  - `tutorial/05b_eeg_energy_feature_tutorial.py`
+- Unit tests:
+  - `test/blink_features/test_blink_features_ear_eeg_eog.py`
+  - `test/blink_features/frequency_domain/test_frequency_domain_blink_features_ear_eeg_eog.py`
+  - `test/blink_features/morphology/test_morphology_ear_eeg_eog.py`
+  - `test/run_all_tests.py`
+
+## Refactor update: shared epoch context across feature-family compute loops
+
+### The Feature/Change
+- Consolidated duplicated compute-setup logic (channel resolution, modality mapping, style discovery, metadata-row retrieval, and frame assembly) into a shared epoch-context helper module.
+- Updated energy, frequency-domain, and kinematics compute paths to use the shared epoch-context utilities while preserving existing output schemas and baseline compatibility.
+
+### Related Code
+- `pyblinker/blink_features/_epoch_context.py`
+- `pyblinker/blink_features/energy/energy_features.py`
+- `pyblinker/blink_features/frequency_domain/aggregate.py`
+- `pyblinker/blink_features/kinematics/kinematic_features.py`
+
+### Verification (Tutorials & Tests)
+- Unit tests:
+  - `test/run_all_tests.py`
+
+## Refactor update: morphology context alignment + shared style-window helper
+
+### The Feature/Change
+- Morphology epoch aggregation now uses the shared epoch-context utilities for channel resolution, modality mapping, style discovery, metadata-row access, and deterministic output frame construction (matching the existing energy/frequency-domain setup flow).
+- Energy and frequency-domain epoch aggregators now share a single style-window resolver module, removing duplicated modality/style window parsing logic while preserving modality-specific alias behavior (`half`, `peak`, and EAR mapping modes).
+
+### Related Code
+- `pyblinker/blink_features/morphology/epoch_features.py`
+- `pyblinker/blink_features/_style_windows.py`
+- `pyblinker/blink_features/energy/energy_features.py`
+- `pyblinker/blink_features/frequency_domain/aggregate.py`
+
+### Verification (Tutorials & Tests)
+- Tutorials:
+  - `tutorial/05c_minimal_blink_feature_tutorial.py` (existing end-to-end blink feature tutorial; no new tutorial added).
+- Unit tests:
+  - `test/blink_features/morphology/test_morphology_ear_eeg_eog.py`
+  - `test/blink_features/frequency_domain/test_frequency_domain_blink_features_ear_eeg_eog.py`
+  - `test/blink_features/test_blink_features_ear_eeg_eog.py`
+
+## Refactor follow-up fix: baseline-compatible style precedence and morphology style discovery
+
+### The Feature/Change
+- Adjusted shared EAR style-window resolution to support explicit priority ordering so frequency-domain aggregation keeps legacy behavior (`th_interpolation` is preferred and emitted as `th_point` when required).
+- Restored morphology epoch style discovery to its previous modality-specific helper path, preserving expected baseline column coverage after shared-context alignment.
+
+### Related Code
+- `pyblinker/blink_features/_style_windows.py`
+- `pyblinker/blink_features/frequency_domain/aggregate.py`
+- `pyblinker/blink_features/morphology/epoch_features.py`
+
+### Verification (Tutorials & Tests)
+- Unit tests:
+  - `test/blink_features/frequency_domain/test_frequency_domain_blink_features_ear_eeg_eog.py`
+  - `test/blink_features/morphology/test_morphology_ear_eeg_eog.py`
+  - `test/blink_features/test_blink_features_ear_eeg_eog.py`
+  - `test/run_all_tests.py`

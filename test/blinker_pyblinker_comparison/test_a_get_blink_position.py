@@ -1,20 +1,18 @@
-"Good to go"
 import unittest
 import pandas as pd
 import mne
 from pyblinker.blinker.get_blink_positions import get_blink_position
 import numpy as np
-from pathlib import Path
-
-
-
-from test.blinker_pyblinker_comparison.utils import load_matlab_blink_positions
+from test.blinker_pyblinker_comparison.utils import (
+    load_matlab_blink_positions,
+    get_test_file_path,
+)
 
 class TestCompareGetBlinkPosition(unittest.TestCase):
     def test_compare_blink_positions_with_matlab(self):
         # Paths
-        fif_path = Path("test/test_files/ear_eog_resamp-100_raw.fif")
-        mat_expected = Path("test/test_files/step_a_extract_blinks_resamp-100.mat")
+        fif_path = get_test_file_path("ear_eog_resamp-100_raw.fif")
+        mat_expected = get_test_file_path("step_a_extract_blinks_resamp-100.mat")
 
         # Load MATLAB positions (2 x N), convert to DataFrame with 0-based indices
         arr = load_matlab_blink_positions(mat_expected)
@@ -34,7 +32,7 @@ class TestCompareGetBlinkPosition(unittest.TestCase):
             lower_map = {c.lower(): c for c in raw.ch_names}
             ch_name = lower_map.get("eeg-e8", ch_name)
         
-        raw = raw.copy().pick_channels([ch_name])
+        raw = raw.copy().pick([ch_name])
         sfreq = 100
         if int(round(raw.info.get("sfreq", sfreq))) != sfreq:
             raw.resample(sfreq)

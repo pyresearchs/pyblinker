@@ -347,7 +347,7 @@ class EARThresholdBlinkRefiner:
                 return None
             return crossing_sample + distances[local_idx] / denom
 
-        left_cross = interpolate(left_index)
+        left_cross = interpolate(left_index)	# Since this interpolation,the output should be a float sample index representing the estimated crossing point, The same applies to the right_cross.
         right_cross = interpolate(right_index)
         if left_cross is None or right_cross is None:
             return result
@@ -356,15 +356,15 @@ class EARThresholdBlinkRefiner:
         right_time = right_cross / self.sfreq
         result.update(
             {
-                # "left_interpolated_threshold": float(left_time),
-                # "right_interpolated_threshold": float(right_time),
+                "start_interpolated_threshold": float(left_cross),
+                "end_interpolated_threshold": float(right_cross),
                 # "left_interpolated_threshold_sample": int(left_sample_int),
                 # "right_interpolated_threshold_sample": int(right_sample_int),
                 "left_interpolated_threshold_found": True,
                 "right_interpolated_threshold_found": True,
                 "interpolated_thresholds_found": True,
-                "onset__th_interpolation__ear": float(left_time),
-                "duration__th_interpolation__ear": float(right_time - left_time),
+                "onset__th_interpolation__ear": float(left_time), # To be removed as we will use only start_interpolated_threshold
+                "duration__th_interpolation__ear": float(right_time - left_time), # To be removed as we will use only start_interpolated_threshold and end_interpolated_threshold
             }
         )
         return result

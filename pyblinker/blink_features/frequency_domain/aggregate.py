@@ -1,7 +1,7 @@
 """Aggregate wavelet blink features across epochs."""
 
 from __future__ import annotations
-from typing import Dict, List, Mapping, Sequence
+from typing import Dict, List, Mapping, Sequence, Set
 
 import mne
 import numpy as np
@@ -11,63 +11,64 @@ from tqdm import tqdm
 from pyblinker.logging import get_logger
 
 from .features import _compute_wavelet_energies
-from ..energy.helpers import extract_blink_windows, segment_to_samples
+from ..energy.helpers import compute_basic_statistics
 from ..utils.aggregation import prepare_epoch_channel_data
+from ..constants import cast_columns_to_object
+from .._epoch_context import available_styles_by_modality, build_epoch_context, get_metadata_row, frame_from_records
+from .._style_windows import style_windows_from_metadata
 
 logger = get_logger(__name__)
 
 
-def _infer_modality(channel_name: str, info: mne.Info) -> str:
-    """Infer modality label (ear/eeg/eog) from channel metadata."""
+def _feature_channel_name(channel_name: str, modality: str) -> str:
+    """Return output-channel label for feature columns by modality."""
 
-    ch_type = info.get_channel_types(picks=[channel_name])[0]
-    ch_lower = channel_name.lower()
-    if "ear" in ch_lower:
-        return "ear"
-    if ch_type == "eog" or "eog" in ch_lower:
-        return "eog"
-    if ch_type == "eeg" or "eeg" in ch_lower:
-        return "eeg"
-    return ch_type.lower()
-
-
-def _compute_epoch_wavelet_record(
+    return channel_name if modality == "eog" else channel_name.upper()
+def _compute_epoch_record(
     *,
     epoch_index: int,
     metadata_row: pd.Series | Mapping[str, object],
     sfreq: float,
     n_times: int,
     channel_data: Dict[str, np.ndarray],
-    modality_channels: Dict[str, List[str]],
-    modality_order: List[str],
+    modality_by_channel: Dict[str, str],
+    available_styles_by_modality: Dict[str, Set[str]],
 ) -> Dict[str, float]:
-    """Compute modality-aggregated wavelet energies for a single epoch."""
+    """Compute style-aware wavelet energies for all channels in a single epoch."""
 
     record: Dict[str, float] = {}
-    for modality in modality_order:
-        modality_levels: Dict[int, List[float]] = {i: [] for i in range(1, 5)}
-        for ch in modality_channels[modality]:
-            windows = extract_blink_windows(metadata_row, ch, epoch_index)
-            level_vals: Dict[int, List[float]] = {i: [] for i in range(1, 5)}
-            for onset_s, duration_s in windows:
-                sl = segment_to_samples(onset_s, duration_s, sfreq, n_times)
-                segment = channel_data[ch]["raw"][epoch_index, sl]
+    for ch, modality in modality_by_channel.items():
+        style_windows = style_windows_from_metadata(
+            metadata_row=metadata_row,
+            modality=modality,
+            available_styles=available_styles_by_modality.get(modality, set()),
+            n_times=n_times,
+            include_half=True,
+            include_peak=True,
+            ear_mode="map_to_th_point",
+            ear_priority="th_interpolation_first",
+        )
+        signal = channel_data[ch]["raw"][epoch_index]
+        for style, windows in style_windows.items():
+            per_level: Dict[int, List[float]] = {i: [] for i in range(1, 5)}
+            for start_idx, end_idx in windows:
+                if start_idx >= n_times:
+                    continue
+                sl = slice(max(0, start_idx), min(end_idx, n_times))
+                if sl.stop <= sl.start:
+                    continue
+                segment = signal[sl]
+                if getattr(segment, "size", 0) == 0:
+                    continue
                 energies = _compute_wavelet_energies(segment, sfreq)
                 for lvl, val in enumerate(energies, start=1):
-                    level_vals[lvl].append(val)
+                    per_level[lvl].append(float(val))
+
             for lvl in range(1, 5):
-                vals = level_vals[lvl]
-                if not vals or np.all(np.isnan(vals)):
-                    modality_levels[lvl].append(float("nan"))
-                else:
-                    modality_levels[lvl].append(float(np.nanmean(vals)))
-        for lvl in range(1, 5):
-            vals = modality_levels[lvl]
-            key = f"wavelet_energy_d{lvl}_{modality}"
-            if not vals or np.all(np.isnan(vals)):
-                record[key] = float("nan")
-            else:
-                record[key] = float(np.nanmean(vals))
+                stats = compute_basic_statistics(per_level[lvl])
+                for stat_name, value in stats.items():
+                    key = f"{modality}__{style}__energy__wavelet_energy_d{lvl}_{stat_name}__{_feature_channel_name(ch, modality)}"
+                    record[key] = value
     return record
 
 
@@ -116,21 +117,19 @@ class FrequencyDomainBlinkFeatureExtractor:
         because wavelet features become unreliable at low rates.
         """
 
-        sfreq = self._sampling_frequency()
+        ctx = build_epoch_context(self.epochs, picks)
         ch_names, channel_data, index, n_epochs, n_times = prepare_epoch_channel_data(
             epochs=self.epochs,
-            picks=picks,
-            sfreq=sfreq,
+            picks=ctx.ch_names,
+            sfreq=ctx.sfreq,
         )
 
-        modality_channels: Dict[str, List[str]] = {}
-        modality_order: List[str] = []
-        for ch in ch_names:
-            modality = _infer_modality(ch, self.epochs.info)
-            if modality not in modality_channels:
-                modality_channels[modality] = []
-                modality_order.append(modality)
-            modality_channels[modality].append(ch)
+        modality_by_channel = ctx.modality_by_channel
+        available_styles_for_modality = available_styles_by_modality(
+            ctx.metadata_cols,
+            set(modality_by_channel.values()),
+            include_eeg_for_eog=True,
+        )
 
         records: List[Dict[str, float]] = []
         for ei in tqdm(
@@ -139,29 +138,22 @@ class FrequencyDomainBlinkFeatureExtractor:
             unit="epoch",
             disable=not progress_bar,
         ):
-            metadata_row = (
-                self.epochs.metadata.iloc[ei]
-                if isinstance(self.epochs.metadata, pd.DataFrame)
-                else pd.Series(dtype=float)
-            )
-            record = _compute_epoch_wavelet_record(
+            metadata_row = (get_metadata_row(self.epochs, ei))
+            record = _compute_epoch_record(
                 epoch_index=ei,
                 metadata_row=metadata_row,
-                sfreq=sfreq,
+                sfreq=ctx.sfreq,
                 n_times=n_times,
                 channel_data=channel_data,
-                modality_channels=modality_channels,
-                modality_order=modality_order,
+                modality_by_channel=modality_by_channel,
+                available_styles_by_modality=available_styles_for_modality,
             )
             record["ep"] = index[ei]
             records.append(record)
 
-        df = pd.DataFrame.from_records(
-            records,
-            index=index,
-        )
+        df = frame_from_records(records, index=index)
         logger.debug("Frequency-domain feature DataFrame shape: %s", df.shape)
-        return df
+        return cast_columns_to_object(df)
 
 
 def aggregate_frequency_domain_features(

@@ -110,7 +110,7 @@ class TestBlinkCount(unittest.TestCase):
                 continue
             self.assertEqual(df.loc[idx, "blink_count_eeg"], expected_val)
             self.assertTrue(np.isfinite(df.loc[idx, "blink_count_eeg"]))
-
+	#
     def test_modality_specific_columns(self) -> None:
         """Blink counting with modality-specific metadata columns."""
         epochs = self.epochs.copy()
@@ -127,7 +127,7 @@ class TestBlinkCount(unittest.TestCase):
         expected = self.expected_counts.drop(self.allowed_exception_rows, errors="ignore")
         computed = df["blink_count_eeg"].drop(self.allowed_exception_rows, errors="ignore")
         pd.testing.assert_series_equal(computed, expected, check_names=False)
-
+	#
     def test_generic_columns_without_picks(self) -> None:
         """Use generic blink metadata when no channel picks are provided."""
         df = blink_count(self.epochs)
@@ -135,7 +135,7 @@ class TestBlinkCount(unittest.TestCase):
         expected = self.expected_counts.drop(self.allowed_exception_rows, errors="ignore")
         computed = df["blink_count"].drop(self.allowed_exception_rows, errors="ignore")
         pd.testing.assert_series_equal(computed, expected, check_names=False)
-
+	#
     def test_multi_pick_modality_lookup(self) -> None:
         """Return separate blink counts for each modality when multiple picks."""
         epochs = self.epochs[:2].copy()

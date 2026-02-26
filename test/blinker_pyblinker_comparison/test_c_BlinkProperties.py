@@ -12,18 +12,9 @@ from pyblinker.blinker.get_blink_positions import get_blink_position
 from pyblinker.blink_features.waveform_features.extract_blink_properties import (
     BlinkProperties,
 )
-import pandas as pd
-from tqdm import tqdm
-
-from pyblinker.logging import get_logger
 from pyblinker.utils.statistics_utils import get_good_blink_mask, get_blink_statistic
-from pyblinker.blinker.fit_blink import FitBlinks
-from pyblinker.blink_features.waveform_features.extract_blink_properties import (
-    BlinkProperties,
-    )
-from pyblinker.blinker.get_blink_positions import get_blink_position
-from pyblinker.blinker.get_representative_channel import channel_selection
 from scipy.io import loadmat
+from test.blinker_pyblinker_comparison.utils import get_test_file_path
 
 # Configure the logger
 logging.basicConfig(level=logging.INFO)
@@ -37,7 +28,7 @@ class TestBlinkProperties(unittest.TestCase):
         Load test data, run FitBlinks, and compute BlinkProperties output.
         """
         base_path = Path(__file__).resolve().parents[1]
-        fif_path = Path("test/test_files/ear_eog_raw.fif")
+        fif_path = get_test_file_path("ear_eog_raw.fif")
 
         mat_path = base_path / "test_files/step_c_blink_properties.mat"
         mat_data = loadmat(
@@ -57,7 +48,7 @@ class TestBlinkProperties(unittest.TestCase):
             ch_map = {c.lower(): c for c in raw.ch_names}
             ch_name = ch_map.get(ch_name.lower(), ch_name)
 
-        raw = raw.copy().pick_channels([ch_name])
+        raw = raw.copy().pick([ch_name])
 
         if int(round(raw.info.get("sfreq", 100))) != 100:
             raw.resample(100)

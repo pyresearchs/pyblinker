@@ -1,173 +1,256 @@
-"""Blink energy feature calculations.
+"""Blink energy feature calculations."""
 
-Features are computed **per channel**, and column names are suffixed with
-``_<channel>`` to clearly indicate the source channel.
-
-
-"""
 from __future__ import annotations
-from pyblinker.logging import get_logger
 
-from typing import Dict, List, Sequence, Tuple
+from typing import Dict, List, Mapping, Sequence, Set
 
 import mne
 import pandas as pd
 
+from pyblinker.logging import get_logger
+
+from .._epoch_context import (
+    available_styles_by_modality,
+    build_epoch_context,
+    empty_feature_frame,
+    frame_from_records,
+    get_metadata_row,
+)
+from .._style_windows import style_windows_from_metadata
+from .column_headers import METRICS, build_output_columns, make_stat_column
 from .common import compute_energy_metrics
-from .helpers import extract_blink_windows, segment_to_samples, _safe_stats
+from .helpers import compute_basic_statistics
 
 logger = get_logger(__name__)
 
-_METRICS = (
-    "blink_signal_energy",
-    "teager_kaiser_energy",
-    "blink_line_length",
-    "blink_velocity_integral",
-)
-_STATS = ("mean", "std", "cv")
+
+def _normalize_styles_for_modality(styles: Set[str], modality: str) -> Set[str]:
+    if modality in {"eeg", "eog"}:
+        normalized_styles: Set[str] = set()
+        if "zero" in styles:
+            normalized_styles.add("zero")
+        if "base" in styles:
+            normalized_styles.add("base")
+        if "tent" in styles:
+            normalized_styles.add("tent")
+        if "half_base" in styles or "half_zero" in styles:
+            normalized_styles.add("half")
+        if "tent" in styles or "base" in styles:
+            normalized_styles.add("peak")
+        return normalized_styles
+
+    if modality == "ear":
+        if "th_point" in styles:
+            return {"th_point"}
+        if "th_interpolation" in styles:
+            return {"th_interpolation"}
+        return set()
+
+    return styles
 
 
-def _make_columns(ch_names: Sequence[str]) -> List[str]:
-    """Generate ordered column names for all metrics and statistics."""
-    columns: List[str] = []
-    for ch in ch_names:
-        for metric in _METRICS:
-            for stat in _STATS:
-                columns.append(f"{metric}_{stat}_{ch}")
-    return columns
+def _group_channels_by_modality(
+    modality_by_channel: Mapping[str, str],
+    ch_names: Sequence[str],
+) -> Dict[str, List[str]]:
+    grouped: Dict[str, List[str]] = {}
+    for channel_name in ch_names:
+        modality = modality_by_channel[channel_name]
+        grouped.setdefault(modality, []).append(channel_name)
+    return grouped
+
+
+def _compute_style_windows_for_modality(
+    *,
+    metadata_row: Mapping[str, object],
+    modality: str,
+    available_raw_styles: Set[str],
+    normalized_styles: Set[str],
+    n_times: int,
+) -> Dict[str, List[tuple[int, int]]]:
+    windows_by_style = style_windows_from_metadata(
+        metadata_row=metadata_row,
+        modality=modality,
+        available_styles=available_raw_styles,
+        n_times=n_times,
+        include_half=True,
+        include_peak=True,
+        ear_mode="keep",
+    )
+    return {
+        style: windows
+        for style, windows in windows_by_style.items()
+        if style in normalized_styles
+    }
 
 
 def _compute_epoch_channel_energy_stats(
     *,
-    metadata_row: pd.Series,
-    ch: str,
-    epoch_index: int,
+    style_windows: Dict[str, List[tuple[int, int]]],
     signal_1d,
     sfreq: float,
     n_times: int,
-) -> Dict[str, Dict[str, float]]:
-    """Compute per-metric summary stats for all blinks in one epoch/channel.
+) -> Dict[str, Dict[str, Dict[str, float]]]:
+    """Compute per-metric summary stats for all style windows in one epoch/channel."""
 
-    Returns
-    -------
-    dict
-        Mapping of metric name -> stats dict (mean/std/cv). Stats are NaN if
-        there are no valid blink segments.
-    """
-    windows: List[Tuple[float, float]] = extract_blink_windows(metadata_row, ch, epoch_index)
+    style_stats: Dict[str, Dict[str, Dict[str, float]]] = {}
+    for style, windows in style_windows.items():
+        energies: List[float] = []
+        tkeo_vals: List[float] = []
+        lengths: List[float] = []
+        vel_ints: List[float] = []
 
-    energies: List[float] = []
-    tkeo_vals: List[float] = []
-    lengths: List[float] = []
-    vel_ints: List[float] = []
+        for start_idx, end_idx in windows:
+            if start_idx >= n_times:
+                continue
+            sl = slice(max(0, start_idx), min(end_idx, n_times))
+            if sl.stop <= sl.start:
+                continue
+            segment = signal_1d[sl]
+            if getattr(segment, "size", 0) == 0:
+                continue
+            metrics = compute_energy_metrics(segment, sfreq)
+            energies.append(float(metrics["signal_energy"]))
+            tkeo_vals.append(float(metrics["teager_kaiser_energy"]))
+            lengths.append(float(metrics["line_length"]))
+            vel_ints.append(float(metrics["velocity_integral"]))
 
-    for onset_s, duration_s in windows:
-        sl = segment_to_samples(onset_s, duration_s, sfreq, n_times)
-        # Guard against zero/negative-length slices.
-        if getattr(sl, "stop", 0) <= getattr(sl, "start", 0):
-            continue
-        segment = signal_1d[sl]
-        if getattr(segment, "size", 0) == 0:
-            continue
-        metrics = compute_energy_metrics(segment, sfreq)
-        energies.append(float(metrics["signal_energy"]))
-        tkeo_vals.append(float(metrics["teager_kaiser_energy"]))
-        lengths.append(float(metrics["line_length"]))
-        vel_ints.append(float(metrics["velocity_integral"]))
+        style_stats[style] = {
+            METRICS[0]: compute_basic_statistics(energies),
+            METRICS[1]: compute_basic_statistics(tkeo_vals),
+            METRICS[2]: compute_basic_statistics(lengths),
+            METRICS[3]: compute_basic_statistics(vel_ints),
+        }
 
-    # Average the metrics over all blinks in the epoch.
-    stats_energy = _safe_stats(energies)
-    stats_tkeo = _safe_stats(tkeo_vals)
-    stats_len = _safe_stats(lengths)
-    stats_vel = _safe_stats(vel_ints)
+    return style_stats
 
-    return {
-        _METRICS[0]: stats_energy,
-        _METRICS[1]: stats_tkeo,
-        _METRICS[2]: stats_len,
-        _METRICS[3]: stats_vel,
-    }
+
+def _write_energy_style_stats_into_record(
+    *,
+    record: Dict[str, float],
+    modality: str,
+    style: str,
+    channel_name: str,
+    style_metrics: Dict[str, Dict[str, float]],
+) -> None:
+    for metric, stats in style_metrics.items():
+        for stat_name, value in stats.items():
+            record[
+                make_stat_column(
+                    modality=modality,
+                    style=style,
+                    metric=metric,
+                    stat=stat_name,
+                    channel=channel_name if modality == "eog" else channel_name.upper(),
+                )
+            ] = value
+
+
+def _compute_channel_record(
+    *,
+    record: Dict[str, float],
+    epoch_index: int,
+    modality: str,
+    channel_name: str,
+    signal_1d,
+    windows_by_style: Dict[str, List[tuple[int, int]]],
+    sfreq: float,
+    n_times: int,
+) -> None:
+    stats_by_style = _compute_epoch_channel_energy_stats(
+        style_windows=windows_by_style,
+        signal_1d=signal_1d,
+        sfreq=sfreq,
+        n_times=n_times,
+    )
+    for style, style_metrics in stats_by_style.items():
+        _write_energy_style_stats_into_record(
+            record=record,
+            modality=modality,
+            style=style,
+            channel_name=channel_name,
+            style_metrics=style_metrics,
+        )
+
+
+def _compute_epoch_record(
+    *,
+    epoch_index: int,
+    metadata_row: Mapping[str, object],
+    modality_channels: Dict[str, List[str]],
+    styles_by_modality: Dict[str, Set[str]],
+    available_raw_styles: Dict[str, Set[str]],
+    data,
+    ch_to_ci: Dict[str, int],
+    sfreq: float,
+    n_times: int,
+) -> Dict[str, float]:
+    record: Dict[str, float] = {}
+    for modality, channels in modality_channels.items():
+        windows_by_style = _compute_style_windows_for_modality(
+            metadata_row=metadata_row,
+            modality=modality,
+            available_raw_styles=available_raw_styles.get(modality, set()),
+            normalized_styles=styles_by_modality.get(modality, set()),
+            n_times=n_times,
+        )
+        for channel_name in channels:
+            ci = ch_to_ci[channel_name]
+            _compute_channel_record(
+                record=record,
+                epoch_index=epoch_index,
+                modality=modality,
+                channel_name=channel_name,
+                signal_1d=data[epoch_index, ci, :],
+                windows_by_style=windows_by_style,
+                sfreq=sfreq,
+                n_times=n_times,
+            )
+    return record
 
 
 def compute_energy_features(
     epochs: mne.Epochs, picks: str | Sequence[str] | None = None
 ) -> pd.DataFrame:
-    """Compute energy features for each epoch.
+    """Compute style-aware energy features for each epoch/channel."""
 
-    Parameters
-    ----------
-    epochs : mne.Epochs
-        Epochs with metadata containing ``blink_onset`` and
-        ``blink_duration`` columns.
-    picks : str | list of str | None, optional
-        Channel name or list of channel names to use. If ``None``, all
-        channels are processed.
-
-    Returns
-    -------
-    pandas.DataFrame
-        DataFrame indexed like ``epochs`` with one row per epoch and
-        statistics for each metric per channel.
-
-    Raises
-    ------
-    ValueError
-        If any requested channels are missing from ``epochs``.
-
-    Notes
-    -----
-    For epochs containing no blinks the returned statistics are ``NaN``.
-    Features are computed per channel and the resulting columns are
-    suffixed with ``_<channel>`` for clarity.
-    """
-    if picks is None:
-        ch_names = epochs.ch_names
-    elif isinstance(picks, str):
-        ch_names = [picks]
-    else:
-        ch_names = list(picks)
-
-    missing = [ch for ch in ch_names if ch not in epochs.ch_names]
-    if missing:
-        raise ValueError(f"Channels not found: {missing}")
-
-    sfreq = float(epochs.info["sfreq"])
-    n_epochs = len(epochs)
-    n_times = epochs.get_data(picks=[ch_names[0]]).shape[-1] if n_epochs else 0
-    columns = _make_columns(ch_names)
-    index = (
-        epochs.metadata.index
-        if isinstance(epochs.metadata, pd.DataFrame)
-        else pd.RangeIndex(n_epochs)
+    ctx = build_epoch_context(epochs, picks)
+    available = available_styles_by_modality(
+        ctx.metadata_cols,
+        set(ctx.modality_by_channel.values()),
+        include_eeg_for_eog=True,
     )
-    if n_epochs == 0:
-        return pd.DataFrame(index=index, columns=columns, dtype=float)
+    styles_by_modality: Dict[str, Set[str]] = {
+        modality: _normalize_styles_for_modality(raw_styles, modality)
+        for modality, raw_styles in available.items()
+    }
 
-    data = epochs.get_data(picks=ch_names)
-    logger.info("Computing energy features for %d epochs", n_epochs)
+    columns = build_output_columns(ctx.modality_by_channel, styles_by_modality)
+    if ctx.n_epochs == 0 or not columns:
+        return empty_feature_frame(index=ctx.index, columns=columns)
+
+    modality_channels = _group_channels_by_modality(ctx.modality_by_channel, ctx.ch_names)
+    data = epochs.get_data(picks=ctx.ch_names)
+    ch_to_ci = {ch: i for i, ch in enumerate(ctx.ch_names)}
+
+    logger.info("Computing energy features for %d epochs", ctx.n_epochs)
     records: List[Dict[str, float]] = []
 
-    for ei in range(n_epochs):
-        metadata_row = (
-            epochs.metadata.iloc[ei]
-            if isinstance(epochs.metadata, pd.DataFrame)
-            else pd.Series(dtype=float)
+    for ei in range(ctx.n_epochs):
+        metadata_row = get_metadata_row(epochs, ei)
+        record = _compute_epoch_record(
+            epoch_index=ei,
+            metadata_row=metadata_row,
+            modality_channels=modality_channels,
+            styles_by_modality=styles_by_modality,
+            available_raw_styles=available,
+            data=data,
+            ch_to_ci=ch_to_ci,
+            sfreq=ctx.sfreq,
+            n_times=ctx.n_times,
         )
-        record: Dict[str, float] = {}
-        for ci, ch in enumerate(ch_names):
-            stats_by_metric = _compute_epoch_channel_energy_stats(
-                metadata_row=metadata_row,
-                ch=ch,
-                epoch_index=ei,
-                signal_1d=data[ei, ci, :],
-                sfreq=sfreq,
-                n_times=n_times,
-            )
-            for metric, stats in stats_by_metric.items():
-                for stat_name, value in stats.items():
-                    record[f"{metric}_{stat_name}_{ch}"] = value
         records.append(record)
-
-    df = pd.DataFrame.from_records(records, index=index, columns=columns)
+    df =pd.DataFrame.from_records(records, index=ctx.index)
+    # df = frame_from_records(records, index=ctx.index, columns=columns)
     logger.debug("Energy feature DataFrame shape: %s", df.shape)
     return df
