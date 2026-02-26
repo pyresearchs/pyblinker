@@ -78,3 +78,21 @@ graph TD
     2.  Figures (matplotlib plots) are correctly added to the report.
     3.  The final HTML file can be saved to disk without errors.
     This ensures that the visualization tools remain compatible with the installed version of `matplotlib` and `mne`.
+
+## Refactor update: deprecated outside-annotation reporting package removal
+
+### The Feature/Change
+- Removed the legacy `pyblinker/outside_annotation` package from core source to reduce quarantined/unused maintenance surface as part of major-structure cleanup.
+
+### Related Code
+- Removed:
+  - `pyblinker/outside_annotation/__init__.py`
+  - `pyblinker/outside_annotation/cli.py`
+  - `pyblinker/outside_annotation/ear_energy_report.py`
+  - `pyblinker/outside_annotation/matlab_fitblink_report.py`
+  - `pyblinker/outside_annotation/refined_blink_flow.py`
+  - `pyblinker/outside_annotation/reporting_flow.py`
+
+### Verification (Tutorials & Tests)
+- Unit tests:
+  - `test/run_all_tests.py` (full suite)

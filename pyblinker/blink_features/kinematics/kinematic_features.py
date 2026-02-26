@@ -22,9 +22,11 @@ from .core_metrics import (
     compute_inter_blink_max_vel,
 )
 from .per_blink import compute_segment_kinematics
+from . import helpers as kin_helpers
 from ..energy.helpers import _safe_stats
 from ...utils.iter_utils import ensure_list
 from ..utils.aggregation import prepare_epoch_channel_data
+from ..constants import cast_columns_to_object
 
 logger = get_logger(__name__)
 
@@ -75,7 +77,10 @@ def _build_kinematic_blink_frame(
         "left_x_intercept": f"start__left_x_intercept__{modality}",
         "right_x_intercept": f"end__right_x_intercept__{modality}",
     }
-    data = {k: _coerce_numeric_list(metadata_row.get(col)) for k, col in landmark_keys.items()}
+    data = {
+        k: kin_helpers.coerce_numeric_list(metadata_row.get(col), ensure_list)
+        for k, col in landmark_keys.items()
+    }
 
     peak_key_candidates = (
         f"onset__refine_extremum__{modality}",
@@ -84,7 +89,7 @@ def _build_kinematic_blink_frame(
     peak_times_sec: List[float] = []
     for peak_key in peak_key_candidates:
         if metadata_row.get(peak_key) is not None:
-            peak_times_sec = _coerce_numeric_list(metadata_row.get(peak_key))
+            peak_times_sec = kin_helpers.coerce_numeric_list(metadata_row.get(peak_key), ensure_list)
             if peak_times_sec:
                 break
 
@@ -95,10 +100,10 @@ def _build_kinematic_blink_frame(
         return pd.DataFrame()
 
     for key, values in data.items():
-        data[key] = _pad(values, n_blinks)
+        data[key] = kin_helpers.pad(values, n_blinks)
 
     max_blink = [float("nan")] * n_blinks
-    for i, peak_time in enumerate(_pad(peak_times_sec, n_blinks)):
+    for i, peak_time in enumerate(kin_helpers.pad(peak_times_sec, n_blinks)):
         if not pd.isna(peak_time):
             max_blink[i] = float(round(peak_time * sfreq))
     data["max_blink"] = max_blink
@@ -512,14 +517,14 @@ class KinematicBlinkFeatureExtractor:
         df = pd.DataFrame.from_records(records, index=index, columns=columns)
         # df = _add_legacy_ear_interpolation_aliases(df) # If there is error, this is the place to check for the column names in the test and make sure they match the expected format.
         logger.debug("Kinematic feature DataFrame shape: %s", df.shape)
-        return df
+        return cast_columns_to_object(df)
 
 
 def _add_legacy_ear_interpolation_aliases(df: pd.DataFrame) -> pd.DataFrame:
     """Expose historical EAR interpolation column aliases used by old tests."""
 
     if df.empty:
-        return df
+        return cast_columns_to_object(df)
 
     alias_updates: Dict[str, pd.Series] = {}
     for col in df.columns:
@@ -532,9 +537,9 @@ def _add_legacy_ear_interpolation_aliases(df: pd.DataFrame) -> pd.DataFrame:
         alias_updates[alias_col] = df[col]
 
     if not alias_updates:
-        return df
+        return cast_columns_to_object(df)
 
-    return df.assign(**alias_updates)
+    return cast_columns_to_object(df).assign(**alias_updates)
 
 
 def compute_kinematic_features(

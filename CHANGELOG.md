@@ -6,6 +6,9 @@
 - Extend epoch-level legacy morphology aggregation to compute `mean`, `std`, and `cv` for each legacy metric via the shared `_safe_stats` convention.
 
 ### Changed
+- Remove temporary `test/blink_features/test_shared_refactor_helpers.py` helper script and keep validation through the canonical full-suite runner.
+- Remove onset/duration-style discovery from shared style helpers and standardize on frame-based start/end metadata windows.
+- Extract kinematics low-level numeric helper routines into `pyblinker/blink_features/kinematics/helpers.py` and consume them from the epoch extractor.
 - Align EAR-only kinematics expected columns with threshold-interpolation landmarks (`th_interpolation`, `th_point`, and legacy ` interpolated_threshold`) and assert the full generated metric set via `build_expected_metrics`.
 - Correct EAR-only kinematics expected-metric schema to use `modality="ear"` in `build_expected_metrics`, matching EAR feature column prefixes.
 - Refactor EAR-only kinematics test to define `REQUIRED_KINEMATICS_METRICS` via `build_expected_metrics` and shared/style-suffixed metric generation for parity with EEG/EOG kinematics tests.
@@ -15,10 +18,15 @@
 - Refactor frequency-domain wavelet epoch aggregation to use channel-aware frame-based segmentation windows (EEG/EOG style landmarks plus `half`/`peak` aliases, and EAR threshold interpolation mapped to `th_point`) instead of deprecated onset/duration windows.
 - Rename aggregated legacy morphology outputs to the new fully qualified naming format (`{modality}__{style}__morphology__{metric}_{stat}__{channel}`) for EEG/EOG legacy metric exports.
 - Update morphology integration tests to assert the new legacy naming convention with mean/std/cv variants in full-modality and EEG-only coverage.
+- Add shared refactor scaffolding for blink features: `BlinkerConfig`/`DEFAULT_CONFIG`, shared constants, style-window helpers, and a reusable compute skeleton module.
+- Preserve legacy DataFrame-column compatibility by forcing object-typed column indexes in feature outputs used by baseline regression pickles.
+- Harden optional wavelet dependency behavior so missing `PyWavelets` now degrades gracefully with warnings and NaN outputs instead of import-time failure.
 
 ### Fixed
 - Emit an actionable runtime warning when required legacy morphology columns are missing from `blink_df`, including the missing column names and guidance to review `_REQUIRED_LEGACY_MORPHOLOGY_METRICS`.
 
+### Removed
+- Remove deprecated `pyblinker/outside_annotation/` modules from the core package.
 
 ## [0.3.5] - 2026-02-25
 
@@ -52,6 +60,9 @@
 - Extend epoch-level legacy morphology aggregation to compute `mean`, `std`, and `cv` for each legacy metric via the shared `_safe_stats` convention.
 
 ### Changed
+- Remove temporary `test/blink_features/test_shared_refactor_helpers.py` helper script and keep validation through the canonical full-suite runner.
+- Remove onset/duration-style discovery from shared style helpers and standardize on frame-based start/end metadata windows.
+- Extract kinematics low-level numeric helper routines into `pyblinker/blink_features/kinematics/helpers.py` and consume them from the epoch extractor.
 - Rename aggregated legacy morphology outputs to the new fully qualified naming format (`{modality}__{style}__morphology__{metric}_{stat}__{channel}`) for EEG/EOG legacy metric exports.
 - Update morphology integration tests to assert the new legacy naming convention with mean/std/cv variants in full-modality and EEG-only coverage.
 
@@ -76,6 +87,9 @@
 - Add a dedicated `test/README.md` documenting supported single-module and batch test commands, with `python -m unittest <dotted.module>` as the recommended single-test workflow.
 
 ### Changed
+- Remove temporary `test/blink_features/test_shared_refactor_helpers.py` helper script and keep validation through the canonical full-suite runner.
+- Remove onset/duration-style discovery from shared style helpers and standardize on frame-based start/end metadata windows.
+- Extract kinematics low-level numeric helper routines into `pyblinker/blink_features/kinematics/helpers.py` and consume them from the epoch extractor.
 - Rebuild `test/run_all_tests.py` to restore runnable discovery, enforce deterministic ordering by test id, and print clear per-module plus per-test execution progress in CI-friendly output.
 - Keep batch discovery rooted at `test/` with repository root as `top_level_dir`, and ensure repository-root import path setup is applied consistently before discovery/runs.
 
@@ -89,6 +103,9 @@
 ## [0.1.10] - 2026-02-11
 
 ### Changed
+- Remove temporary `test/blink_features/test_shared_refactor_helpers.py` helper script and keep validation through the canonical full-suite runner.
+- Remove onset/duration-style discovery from shared style helpers and standardize on frame-based start/end metadata windows.
+- Extract kinematics low-level numeric helper routines into `pyblinker/blink_features/kinematics/helpers.py` and consume them from the epoch extractor.
 - Refactor kinematic epoch extraction to discover generic modality styles from `start__<style>__<modality>`/`end__<style>__<modality>` metadata, enabling EAR-only kinematic windows while preserving EEG style handling.
 - Add EAR interpolation compatibility aliases for legacy kinematic column names used by downstream checks.
 - Move inter-blink max velocity epoch assertions into kinematics coverage and keep morphology epoch extraction focused on morphology-only legacy fields.
@@ -131,6 +148,9 @@
 ## [0.1.5] - 2026-02-11
 
 ### Changed
+- Remove temporary `test/blink_features/test_shared_refactor_helpers.py` helper script and keep validation through the canonical full-suite runner.
+- Remove onset/duration-style discovery from shared style helpers and standardize on frame-based start/end metadata windows.
+- Extract kinematics low-level numeric helper routines into `pyblinker/blink_features/kinematics/helpers.py` and consume them from the epoch extractor.
 - Refactor kinematic epoch extraction to discover generic modality styles from `start__<style>__<modality>`/`end__<style>__<modality>` metadata, enabling EAR-only kinematic windows while preserving EEG style handling.
 - Add EAR interpolation compatibility aliases for legacy kinematic column names used by downstream checks.
 - Refactor blink-position detection and blink-property extraction flows into MATLAB-aligned helper stages for clearer parity-oriented maintenance.
@@ -144,6 +164,9 @@
 ## [0.1.4] - 2026-01-20
 
 ### Changed
+- Remove temporary `test/blink_features/test_shared_refactor_helpers.py` helper script and keep validation through the canonical full-suite runner.
+- Remove onset/duration-style discovery from shared style helpers and standardize on frame-based start/end metadata windows.
+- Extract kinematics low-level numeric helper routines into `pyblinker/blink_features/kinematics/helpers.py` and consume them from the epoch extractor.
 - Refactor kinematic epoch extraction to discover generic modality styles from `start__<style>__<modality>`/`end__<style>__<modality>` metadata, enabling EAR-only kinematic windows while preserving EEG style handling.
 - Add EAR interpolation compatibility aliases for legacy kinematic column names used by downstream checks.
 - Expand blink-property metric definitions and MATLAB-to-Python column mapping documentation.
@@ -154,6 +177,9 @@
 ## [0.1.3] - 2026-01-19
 
 ### Changed
+- Remove temporary `test/blink_features/test_shared_refactor_helpers.py` helper script and keep validation through the canonical full-suite runner.
+- Remove onset/duration-style discovery from shared style helpers and standardize on frame-based start/end metadata windows.
+- Extract kinematics low-level numeric helper routines into `pyblinker/blink_features/kinematics/helpers.py` and consume them from the epoch extractor.
 - Refactor kinematic epoch extraction to discover generic modality styles from `start__<style>__<modality>`/`end__<style>__<modality>` metadata, enabling EAR-only kinematic windows while preserving EEG style handling.
 - Add EAR interpolation compatibility aliases for legacy kinematic column names used by downstream checks.
 - Render FitBlinks tutorial waveforms as scatter points with a faint line trace behind them and pad report windows on the left by 10 samples for clearer landmark visibility.
@@ -204,6 +230,9 @@
 - Match MATLAB blink position separation handling by allowing candidates exactly at the minimum separation threshold.
 
 ### Changed
+- Remove temporary `test/blink_features/test_shared_refactor_helpers.py` helper script and keep validation through the canonical full-suite runner.
+- Remove onset/duration-style discovery from shared style helpers and standardize on frame-based start/end metadata windows.
+- Extract kinematics low-level numeric helper routines into `pyblinker/blink_features/kinematics/helpers.py` and consume them from the epoch extractor.
 - Refactor kinematic epoch extraction to discover generic modality styles from `start__<style>__<modality>`/`end__<style>__<modality>` metadata, enabling EAR-only kinematic windows while preserving EEG style handling.
 - Add EAR interpolation compatibility aliases for legacy kinematic column names used by downstream checks.
 - Refactor blink position detection into vectorized helpers for improved efficiency without altering behavior.
@@ -211,6 +240,9 @@
 ## [0.0.67] - 2026-01-15
 
 ### Changed
+- Remove temporary `test/blink_features/test_shared_refactor_helpers.py` helper script and keep validation through the canonical full-suite runner.
+- Remove onset/duration-style discovery from shared style helpers and standardize on frame-based start/end metadata windows.
+- Extract kinematics low-level numeric helper routines into `pyblinker/blink_features/kinematics/helpers.py` and consume them from the epoch extractor.
 - Refactor kinematic epoch extraction to discover generic modality styles from `start__<style>__<modality>`/`end__<style>__<modality>` metadata, enabling EAR-only kinematic windows while preserving EEG style handling.
 - Add EAR interpolation compatibility aliases for legacy kinematic column names used by downstream checks.
 - Compute morphology epoch metrics with shared core duration/shut-time helpers while emitting both legacy flat column names and fully-qualified style-aware names.
