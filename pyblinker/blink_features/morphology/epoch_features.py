@@ -493,7 +493,6 @@ class MorphologyBlinkFeatureExtractor:
         If an epoch contains no valid blink windows, all values for that epoch
         will be NaN for the affected metrics.
         """
-        self._validate_inputs()
         logger.info("Computing morphology features for epochs")
 
         ctx = build_epoch_context(self.epochs, picks, default=_default_morphology_channels)
@@ -539,15 +538,7 @@ class MorphologyBlinkFeatureExtractor:
         logger.debug("Morphology feature DataFrame shape: %s", df.shape)
         return cast_columns_to_object(df)
 
-    # ------------------------------------------------------------------
-    # Input preparation & validation
-    # ------------------------------------------------------------------
-    def _validate_inputs(self) -> None:
-        """Validate that the required MNE objects and metadata exist."""
-        if self.epochs is None:
-            raise ValueError("self.epochs is required for feature computation")
-        if self.epochs.metadata is None:
-            raise ValueError("epochs.metadata must be provided")
+
 
     def _prepare_inputs(
         self,
