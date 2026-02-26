@@ -422,11 +422,9 @@ class KinematicBlinkFeatureExtractor:
             styles_by_modality[mod] = _available_styles(ctx.metadata_cols, mod)
 
         columns = build_output_columns(modality_channels, styles_by_modality)
-        if n_epochs == 0:
-            return empty_feature_frame(index, columns)
+
 
         records: List[Dict[str, float]] = []
-        logger.info("Computing kinematic features for %d epochs", n_epochs)
 
         for ei in range(n_epochs):
             metadata_row = (

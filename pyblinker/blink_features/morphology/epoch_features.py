@@ -512,12 +512,6 @@ class MorphologyBlinkFeatureExtractor:
         columns = build_output_columns(modality_channels, styles_by_modality)
         logger.debug("Morphology output columns: %d", len(columns))
 
-        if n_epochs == 0:
-            logger.info("No epochs available. Returning empty DataFrame.")
-            return empty_feature_frame(index, columns)
-
-        logger.info("Computing morphology features for %d epochs", n_epochs)
-
         records: List[Dict[str, float]] = []
         for ei in range(n_epochs):
             metadata_row = get_metadata_row(self.epochs, ei)
