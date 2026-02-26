@@ -16,6 +16,7 @@ def style_windows_from_metadata(
     include_half: bool = True,
     include_peak: bool = True,
     ear_mode: str = "keep",
+    ear_priority: str = "th_point_first",
 ) -> Dict[str, List[tuple[int, int]]]:
     """Resolve output style names to frame windows for one modality.
 
@@ -24,6 +25,9 @@ def style_windows_from_metadata(
     ear_mode:
         ``"keep"`` keeps ``th_interpolation`` as key.
         ``"map_to_th_point"`` maps EAR interpolation windows to ``th_point``.
+    ear_priority:
+        ``"th_point_first"`` checks ``th_point`` before ``th_interpolation``.
+        ``"th_interpolation_first"`` checks ``th_interpolation`` before ``th_point``.
     """
 
     style_windows: Dict[str, List[tuple[int, int]]] = {}
@@ -48,10 +52,15 @@ def style_windows_from_metadata(
                 style_windows["peak"] = style_windows["base"]
 
     elif modality == "ear":
-        if "th_point" in available_styles:
-            style_windows["th_point"] = extract_windows(metadata_row, modality, "th_point", n_times)
-        elif "th_interpolation" in available_styles:
-            key = "th_point" if ear_mode == "map_to_th_point" else "th_interpolation"
-            style_windows[key] = extract_windows(metadata_row, modality, "th_interpolation", n_times)
+        ordered_ear_styles = ("th_point", "th_interpolation")
+        if ear_priority == "th_interpolation_first":
+            ordered_ear_styles = ("th_interpolation", "th_point")
+
+        selected_style = next((s for s in ordered_ear_styles if s in available_styles), None)
+        if selected_style is not None:
+            out_key = selected_style
+            if selected_style == "th_interpolation" and ear_mode == "map_to_th_point":
+                out_key = "th_point"
+            style_windows[out_key] = extract_windows(metadata_row, modality, selected_style, n_times)
 
     return style_windows

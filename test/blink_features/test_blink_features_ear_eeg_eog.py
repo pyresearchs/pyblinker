@@ -7,7 +7,6 @@ import unittest
 from pathlib import Path
 
 import mne
-import numpy as np
 import pandas as pd
 
 from pyblinker.blink_features.energy.energy_features import compute_energy_features

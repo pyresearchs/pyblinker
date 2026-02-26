@@ -25,6 +25,7 @@
 - Align morphology epoch feature extraction with shared `_epoch_context` setup utilities and deduplicate energy/frequency-domain window parsing through new `pyblinker/blink_features/_style_windows.py`.
 
 ### Fixed
+- Restore baseline-compatible EAR style-window precedence for frequency-domain aggregation (`th_interpolation` preferred over `th_point`) and restore morphology style discovery behavior in epoch aggregation after the shared-context refactor.
 - Emit an actionable runtime warning when required legacy morphology columns are missing from `blink_df`, including the missing column names and guidance to review `_REQUIRED_LEGACY_MORPHOLOGY_METRICS`.
 
 ### Removed

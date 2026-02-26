@@ -440,3 +440,21 @@ The core helpers are structured to compute metrics one blink at a time so per-bl
   - `test/blink_features/morphology/test_morphology_ear_eeg_eog.py`
   - `test/blink_features/frequency_domain/test_frequency_domain_blink_features_ear_eeg_eog.py`
   - `test/blink_features/test_blink_features_ear_eeg_eog.py`
+
+## Refactor follow-up fix: baseline-compatible style precedence and morphology style discovery
+
+### The Feature/Change
+- Adjusted shared EAR style-window resolution to support explicit priority ordering so frequency-domain aggregation keeps legacy behavior (`th_interpolation` is preferred and emitted as `th_point` when required).
+- Restored morphology epoch style discovery to its previous modality-specific helper path, preserving expected baseline column coverage after shared-context alignment.
+
+### Related Code
+- `pyblinker/blink_features/_style_windows.py`
+- `pyblinker/blink_features/frequency_domain/aggregate.py`
+- `pyblinker/blink_features/morphology/epoch_features.py`
+
+### Verification (Tutorials & Tests)
+- Unit tests:
+  - `test/blink_features/frequency_domain/test_frequency_domain_blink_features_ear_eeg_eog.py`
+  - `test/blink_features/morphology/test_morphology_ear_eeg_eog.py`
+  - `test/blink_features/test_blink_features_ear_eeg_eog.py`
+  - `test/run_all_tests.py`

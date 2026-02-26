@@ -21,7 +21,6 @@ from .._blink_metrics_shared import ALL_METHODS
 from ..energy.helpers import _safe_stats, segment_to_samples
 from ..utils.aggregation import prepare_epoch_channel_data
 from .._epoch_context import (
-    available_styles_by_modality,
     build_epoch_context,
     empty_feature_frame,
     frame_from_records,
@@ -572,10 +571,9 @@ class MorphologyBlinkFeatureExtractor:
 
         modality_map = ctx.modality_by_channel
         modality_channels = self._group_channels_by_modality(modality_map)
-        styles_by_modality = available_styles_by_modality(
-            ctx.metadata_cols,
-            set(modality_channels.keys()),
-            include_eeg_for_eog=True,
+        styles_by_modality = self._build_styles_by_modality(
+            modalities=set(modality_channels.keys()),
+            metadata_cols=ctx.metadata_cols,
         )
 
         columns = self._build_output_columns(modality_channels, styles_by_modality)
@@ -699,11 +697,14 @@ class MorphologyBlinkFeatureExtractor:
         metadata_cols: Sequence[str] | None,
     ) -> Dict[str, Set[str]]:
         """Determine available waveform styles per modality based on metadata."""
-        return available_styles_by_modality(
-            metadata_cols,
-            modalities,
-            include_eeg_for_eog=True,
-        )
+        styles_by_modality: Dict[str, Set[str]] = {}
+        eeg_styles = _available_styles(metadata_cols, "eeg")
+        for mod in modalities:
+            styles = _available_styles(metadata_cols, mod)
+            if mod == "eog" and eeg_styles:
+                styles = styles | eeg_styles
+            styles_by_modality[mod] = styles
+        return styles_by_modality
 
     def _should_emit_legacy_metrics(self, modality_channels: Dict[str, List[str]]) -> bool:
         """Emit legacy morphology metrics whenever EEG or EOG channels are present."""

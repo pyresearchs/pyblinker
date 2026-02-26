@@ -46,6 +46,7 @@ def _compute_epoch_wavelet_record(
             include_half=True,
             include_peak=True,
             ear_mode="map_to_th_point",
+            ear_priority="th_interpolation_first",
         )
         signal = channel_data[ch]["raw"][epoch_index]
         for style, windows in style_windows.items():
