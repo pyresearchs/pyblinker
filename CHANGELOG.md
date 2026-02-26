@@ -34,6 +34,7 @@
 
 ### Removed
 - Remove deprecated `pyblinker/outside_annotation/` modules from the core package.
+- Remove temporary morphology regression test `test_morphology_refine_window_selection.py` and rely on existing morphology suite coverage.
 
 ## [0.3.6] - 2026-02-26
 
