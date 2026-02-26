@@ -6,8 +6,6 @@ import unittest
 from pathlib import Path
 
 import mne
-import numpy as np
-import pandas as pd
 
 from pyblinker.blink_features.morphology import compute_epoch_morphology_features
 from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
