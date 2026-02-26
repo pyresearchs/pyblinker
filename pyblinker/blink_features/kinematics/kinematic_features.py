@@ -12,9 +12,13 @@ from typing import Dict, List, Mapping, Sequence, Set
 import mne
 import pandas as pd
 
+from .column_headers import (
+    EXTENDED_METRICS,
+    build_output_columns,
+    make_stat_column,
+    metrics_for_style,
+)
 from .core_metrics import (
-    KINEMATIC_METRIC_STEMS,
-    KINEMATIC_METRICS_NO_STYLE,
     compute_amp_vel_ratio_base,
     compute_amp_vel_ratio_tent,
     compute_amp_vel_ratio_zero_to_max,
@@ -30,21 +34,6 @@ from .._epoch_context import build_epoch_context, empty_feature_frame, get_metad
 from ..constants import cast_columns_to_object
 
 logger = get_logger(__name__)
-
-# Base statistic names (kinematics defaults to base per modality)
-_STATS = ("mean", "std", "cv")
-_EXTENDED_KINEMATIC_METRICS = (
-    "aver_left_velocity",
-    "aver_right_velocity",
-    "neg_amp_vel_ratio_base",
-    "pos_amp_vel_ratio_base",
-    "neg_amp_vel_ratio_zero",
-    "pos_amp_vel_ratio_zero",
-    "neg_amp_vel_ratio_tent",
-    "pos_amp_vel_ratio_tent",
-    "inter_blink_max_vel_base",
-    "inter_blink_max_vel_zero",
-)
 
 
 def _coerce_numeric_list(value: object) -> List[float]:
@@ -264,7 +253,7 @@ def _compute_metrics_over_windows(
             modality=modality,
         )
         for metric_name in metrics_for_style:
-            if metric_name in _EXTENDED_KINEMATIC_METRICS:
+            if metric_name in EXTENDED_METRICS:
                 continue
             metric_value = metrics.get(metric_name)
             if metric_value is None and style not in {"base", "zero", "tent"} and metric_name.endswith("_base"):
@@ -288,14 +277,20 @@ def _write_style_stats_into_record(
 ) -> None:
     """Merge legacy extended metrics and write style statistics into an epoch record."""
 
-    for metric_name in _EXTENDED_KINEMATIC_METRICS:
+    for metric_name in EXTENDED_METRICS:
         if metric_name in blink_df.columns:
             per_metric[metric_name] = blink_df[metric_name].tolist()
 
     for metric_name, values in per_metric.items():
         stats = compute_basic_statistics(values)
         for stat_name, value in stats.items():
-            column = f"{modality}__{style}__kinematic__{metric_name}_{stat_name}__{channel_name}"
+            column = make_stat_column(
+                modality=modality,
+                style=style,
+                metric=metric_name,
+                stat=stat_name,
+                channel=channel_name,
+            )
             record[column] = value
 
 
@@ -337,15 +332,6 @@ def _available_styles(metadata_columns: Sequence[str] | None, modality: str) -> 
 
     return styles
 
-
-def _metrics_for_style(style: str) -> List[str]:
-    """Return output metric names for a segmentation style."""
-
-    metric_suffix = style if style in {"base", "zero", "tent"} else "base"
-    return [
-        stem if stem in KINEMATIC_METRICS_NO_STYLE else f"{stem}_{metric_suffix}"
-        for stem in KINEMATIC_METRIC_STEMS
-    ]
 
 def _style_windows(
     metadata_row: Mapping[str, object],
@@ -435,16 +421,7 @@ class KinematicBlinkFeatureExtractor:
         for mod in set(modality_map.values()):
             styles_by_modality[mod] = _available_styles(ctx.metadata_cols, mod)
 
-        column_set: Set[str] = set()
-        for mod, channels in modality_channels.items():
-            for style in sorted(styles_by_modality.get(mod) or {"base"}):
-                metrics_for_style = _metrics_for_style(style)
-                metrics_for_style.extend(_EXTENDED_KINEMATIC_METRICS)
-                for metric in metrics_for_style:
-                    for stat in _STATS:
-                        for ch in channels:
-                            column_set.add(f"{mod}__{style}__kinematic__{metric}_{stat}__{ch}")
-        columns = sorted(column_set)
+        columns = build_output_columns(modality_channels, styles_by_modality)
         if n_epochs == 0:
             return empty_feature_frame(index, columns)
 
@@ -460,8 +437,8 @@ class KinematicBlinkFeatureExtractor:
                 styles = styles_by_modality.get(modality) or {"base"}
                 # use_fallback = fallback_styles.get(modality, False)
                 for style in sorted(styles):
-                    metrics_for_style = _metrics_for_style(style)
-                    metrics_for_style.extend(_EXTENDED_KINEMATIC_METRICS)
+                    style_metrics = metrics_for_style(style)
+                    style_metrics.extend(EXTENDED_METRICS)
                     windows = _style_windows(metadata_row, modality, style)
 
                     for ch in channels:
@@ -481,7 +458,7 @@ class KinematicBlinkFeatureExtractor:
                             sfreq=ctx.sfreq,
                             style=style,
                             modality=modality,
-                            metrics_for_style=metrics_for_style,
+                            metrics_for_style=style_metrics,
                         )
                         _write_style_stats_into_record(
                             record=record,
@@ -494,31 +471,9 @@ class KinematicBlinkFeatureExtractor:
             records.append(record)
 
         df = pd.DataFrame.from_records(records, index=index, columns=columns)
-        # df = _add_legacy_ear_interpolation_aliases(df) # If there is error, this is the place to check for the column names in the test and make sure they match the expected format.
+        # df = add_legacy_alias_columns(df) # If there is error, this is the place to check for the column names in the test and make sure they match the expected format.
         logger.debug("Kinematic feature DataFrame shape: %s", df.shape)
         return cast_columns_to_object(df)
-
-
-def _add_legacy_ear_interpolation_aliases(df: pd.DataFrame) -> pd.DataFrame:
-    """Expose historical EAR interpolation column aliases used by old tests."""
-
-    if df.empty:
-        return cast_columns_to_object(df)
-
-    alias_updates: Dict[str, pd.Series] = {}
-    for col in df.columns:
-        if "ear__th_interpolation__kinematic__" not in col:
-            continue
-        alias_col = col.replace("ear__th_interpolation__", "ear__ interpolated_threshold__")
-        if "__" in alias_col:
-            head, tail = alias_col.rsplit("__", 1)
-            alias_col = f"{head}____{tail}"
-        alias_updates[alias_col] = df[col]
-
-    if not alias_updates:
-        return cast_columns_to_object(df)
-
-    return cast_columns_to_object(df).assign(**alias_updates)
 
 
 def compute_kinematic_features(
