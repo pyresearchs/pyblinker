@@ -8,15 +8,23 @@ import numpy as np
 import pandas as pd
 from pyblinker.logging import get_logger
 
+from .column_headers import (
+    DURATION_STYLE_MAP,
+    LEGACY_MORPHOLOGY_METRICS,
+    add_legacy_alias_columns,
+    build_output_columns,
+    make_stat_column,
+    metric_method_for_style,
+    metrics_for_style,
+    rename_metric_column_name,
+)
 from .core_metrics import (
-    MORPHOLOGY_METRIC_STEMS,
     compute_blink_durations,
     compute_blink_peak_times,
     compute_time_base_shut,
     compute_time_zero_shut,
 )
 from .per_blink import compute_blink_waveform_metrics
-from .._blink_metrics_shared import ALL_METHODS
 from ..energy.helpers import compute_basic_statistics, segment_to_samples
 from ..utils.aggregation import prepare_epoch_channel_data
 from .._epoch_context import (
@@ -25,94 +33,19 @@ from .._epoch_context import (
     frame_from_records,
     get_metadata_row,
 )
-from ..constants import cast_columns_to_object
+from ..constants import cast_columns_to_object, infer_modality
 from ...utils.epoch_utils import resolve_channels
 from ...utils.iter_utils import ensure_list
 
 logger = get_logger(__name__)
 
-_STATS = ("mean", "std", "cv")
 _SHUT_AMP_FRACTION = 0.9
-_LEGACY_MORPHOLOGY_METRICS = (
-    "duration_zero",
-    "duration_base",
-    "duration_tent",
-    "duration_half_base",
-    "duration_half_zero",
-    "closing_time_zero",
-    "reopening_time_zero",
-    "time_shut_zero",
-    "time_shut_base",
-    "closing_time_tent",
-    "reopening_time_tent",
-    "time_shut_tent",
-    "peak_time_blink",
-    "peak_time_tent",
-    "peak_max_blink",
-    "peak_max_tent",
-    "inter_blink_max_amp",
-)
-_LEGACY_METRIC_STYLE_MAP = {
-    "duration_zero": "zero",
-    "closing_time_zero": "zero",
-    "reopening_time_zero": "zero",
-    "time_shut_zero": "zero",
-    "duration_base": "base",
-    "time_shut_base": "base",
-    "duration_tent": "tent",
-    "closing_time_tent": "tent",
-    "reopening_time_tent": "tent",
-    "time_shut_tent": "tent",
-    "duration_half_base": "half",
-    "duration_half_zero": "half",
-    "peak_time_blink": "peak",
-    "peak_time_tent": "peak",
-    "peak_max_blink": "peak",
-    "peak_max_tent": "peak",
-    "inter_blink_max_amp": "inter_blink",
-}
-_DURATION_STYLE_MAP = {
-    "base": "duration_base",
-    "zero": "duration_zero",
-    "tent": "duration_tent",
-    "half_base": "duration_half_base",
-    "half_zero": "duration_half_zero",
-}
-_REQUIRED_LEGACY_MORPHOLOGY_METRICS = frozenset(_LEGACY_METRIC_STYLE_MAP)
-
-
-def rename_metric_column_name(
-    modality: str,
-    metric: str,
-    stat_name: str,
-    channel_name: str,
-) -> str:
-    """
-    We need to extract the landmark from the old mapping, and rename the column with the new convention
-    """
-    landmark = _LEGACY_METRIC_STYLE_MAP[metric]
-    return f"{modality}__{landmark}__morphology__{metric}_{stat_name}__{channel_name}"
-
-
-def _infer_modality(channel_name: str, info: mne.Info) -> str:
-    """Infer modality label (ear/eeg/eog) from channel metadata."""
-
-    ch_type = info.get_channel_types(picks=[channel_name])[0]
-    ch_lower = channel_name.lower()
-    if "ear" in ch_lower:
-        return "ear"
-    if ch_type == "eog" or "eog" in ch_lower:
-        return "eog"
-    if ch_type == "eeg" or "eeg" in ch_lower:
-        return "eeg"
-    return ch_type.lower()
-
 
 def _default_morphology_channels(epochs: mne.Epochs) -> List[str]:
     """Select default morphology channels with deterministic EEG/EAR/EOG precedence."""
 
     ch_types = {
-        ch: _infer_modality(ch, epochs.info)
+        ch: infer_modality(ch, epochs.info)
         for ch in epochs.ch_names
     }
 
@@ -577,7 +510,7 @@ class MorphologyBlinkFeatureExtractor:
             metadata_cols=ctx.metadata_cols,
         )
 
-        columns = self._build_output_columns(modality_channels, styles_by_modality)
+        columns = build_output_columns(modality_channels, styles_by_modality)
         logger.debug("Morphology output columns: %d", len(columns))
 
         if n_epochs == 0:
@@ -602,7 +535,7 @@ class MorphologyBlinkFeatureExtractor:
             records.append(record)
 
         df = frame_from_records(records, index=index, columns=columns)
-        df = _add_legacy_ear_channel_aliases(df)
+        df = add_legacy_alias_columns(df)
         logger.debug("Morphology feature DataFrame shape: %s", df.shape)
         return cast_columns_to_object(df)
 
@@ -682,7 +615,7 @@ class MorphologyBlinkFeatureExtractor:
     # ------------------------------------------------------------------
     def _build_modality_map(self, ch_names: Sequence[str]) -> Dict[str, str]:
         """Infer modality for each channel (e.g., eeg/eog/ear)."""
-        return {ch: _infer_modality(ch, self.epochs.info) for ch in ch_names}
+        return {ch: infer_modality(ch, self.epochs.info) for ch in ch_names}
 
     def _group_channels_by_modality(self, modality_map: Dict[str, str]) -> Dict[str, List[str]]:
         """Group channels by modality."""
@@ -710,76 +643,6 @@ class MorphologyBlinkFeatureExtractor:
     def _should_emit_legacy_metrics(self, modality_channels: Dict[str, List[str]]) -> bool:
         """Emit legacy morphology metrics whenever EEG or EOG channels are present."""
         return bool(modality_channels.get("eeg") or modality_channels.get("eog"))
-
-    def _build_output_columns(
-        self,
-        modality_channels: Dict[str, List[str]],
-        styles_by_modality: Dict[str, Set[str]],
-    ) -> List[str]:
-        """
-        Build the full list of output column names upfront.
-
-        Why this exists
-        ---------------
-        Building all columns first ensures the output DataFrame has a stable shape
-        even when some epochs have no blinks/windows.
-
-        Pipeline (functions called)
-        ---------------------------
-        - _metrics_for_style(style)
-        - uses constants: MORPHOLOGY_METRIC_STEMS, _STATS
-        - adds legacy metrics: _LEGACY_MORPHOLOGY_METRICS (EEG only)
-
-        Parameters
-        ----------
-        modality_channels : dict[str, list[str]]
-            Mapping of modality -> list of channel names.
-        styles_by_modality : dict[str, set[str]]
-            Mapping of modality -> waveform metric styles to compute.
-
-        Returns
-        -------
-        columns : list[str]
-            Sorted list of unique output column names.
-        """
-        column_set: Set[str] = set()
-
-        for mod, channels in modality_channels.items():
-            styles = sorted(styles_by_modality.get(mod) or {"base"})
-            for style in styles:
-                metric_names = self._metrics_for_style(style)
-                for metric in metric_names:
-                    for stat in _STATS:
-                        for ch in channels:
-                            column_set.add(
-                                f"{mod}__{style}__morphology__{metric}_{stat}__{ch}"
-                            )
-
-            if channels and mod in {"eeg", "eog"}:
-                primary_channel = channels[0]
-                for legacy_metric in _LEGACY_MORPHOLOGY_METRICS:
-                    for stat_name in _STATS:
-                        column_set.add(
-                            rename_metric_column_name(
-                                modality=mod,
-                                metric=legacy_metric,
-                                stat_name=stat_name,
-                                channel_name=primary_channel,
-                            )
-                        )
-
-        return sorted(column_set)
-
-    def _metrics_for_style(self, style: str) -> List[str]:
-        """Return list of metrics for a given style (including duration)."""
-        metric_suffix = style if style in ALL_METHODS else "base"
-        metric_names = [f"{stem}_{metric_suffix}" for stem in MORPHOLOGY_METRIC_STEMS]
-        metric_names.append("duration")
-        return metric_names
-
-    def _metric_method_for_style(self, style: str) -> str:
-        """Map metadata style names to waveform metric methods."""
-        return style if style in ALL_METHODS else "base"
 
     # ------------------------------------------------------------------
     # Core computation (epoch/modality/channel/style)
@@ -963,7 +826,7 @@ class MorphologyBlinkFeatureExtractor:
     ) -> pd.DataFrame:
         """Build and enrich the blink landmark dataframe.
         This function will return
-        _REQUIRED_LEGACY_MORPHOLOGY_METRICS = {
+        REQUIRED_LEGACY_MORPHOLOGY_METRICS = {
         "zero": (
             "duration_zero",
             "closing_time_zero",
@@ -1064,8 +927,8 @@ class MorphologyBlinkFeatureExtractor:
             This function does not return anything. It updates `record` in-place.
         """
         windows = _style_windows(metadata_row, modality, style, sfreq, n_times)
-        metric_method = self._metric_method_for_style(style)
-        metric_names = [f"{stem}_{metric_method}" for stem in MORPHOLOGY_METRIC_STEMS]
+        metric_method = metric_method_for_style(style)
+        metric_names = metrics_for_style(style)
 
         logger.debug(
             "Style compute: modality=%s style=%s channel=%s windows=%d",
@@ -1175,7 +1038,7 @@ class MorphologyBlinkFeatureExtractor:
         style: str,
     ) -> List[float]:
         """Extract duration list from blink_df for the given style."""
-        duration_key = _DURATION_STYLE_MAP.get(style)
+        duration_key = DURATION_STYLE_MAP.get(style)
         if duration_key and duration_key in blink_df.columns:
             return blink_df[duration_key].tolist()
         return []
@@ -1192,8 +1055,12 @@ class MorphologyBlinkFeatureExtractor:
         for metric, values in per_metric_values.items():
             stats = compute_basic_statistics(values)
             for stat_name, value in stats.items():
-                col = (
-                    f"{modality}__{style}__morphology__{metric}_{stat_name}__{channel_name}"
+                col = make_stat_column(
+                    modality=modality,
+                    style=style,
+                    metric=metric,
+                    stat=stat_name,
+                    channel=channel_name,
                 )
                 record[col] = value
 
@@ -1207,7 +1074,7 @@ class MorphologyBlinkFeatureExtractor:
         if blink_df.empty:
             return {}
         record = {}   # empty dict
-        for legacy_metric in _LEGACY_MORPHOLOGY_METRICS:
+        for legacy_metric in LEGACY_MORPHOLOGY_METRICS:
             if legacy_metric in blink_df.columns:
                 stats = compute_basic_statistics(blink_df[legacy_metric].tolist())
                 for stat_name, stat_value in stats.items():
@@ -1218,29 +1085,6 @@ class MorphologyBlinkFeatureExtractor:
         return record
 
 
-
-def _add_legacy_ear_channel_aliases(df: pd.DataFrame) -> pd.DataFrame:
-    """Expose uppercase EAR channel aliases used by historical tests."""
-
-    if df.empty:
-        return cast_columns_to_object(df)
-
-    alias_updates: Dict[str, pd.Series] = {}
-    for col in df.columns:
-        if not col.startswith("ear__"):
-            continue
-        if "__" not in col:
-            continue
-        head, channel = col.rsplit("__", 1)
-        alias_channel = channel.upper()
-        if alias_channel == channel:
-            continue
-        alias_col = f"{head}__{alias_channel}"
-        alias_updates[alias_col] = df[col]
-
-    if not alias_updates:
-        return cast_columns_to_object(df)
-    return cast_columns_to_object(df).assign(**alias_updates)
 
 def compute_morphology_features(
         epochs: mne.Epochs, picks: str | Sequence[str] | None = None

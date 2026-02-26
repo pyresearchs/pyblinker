@@ -17,19 +17,11 @@ from .._epoch_context import (
     frame_from_records,
 )
 from .._style_windows import style_windows_from_metadata
+from .column_headers import METRICS, build_output_columns, make_stat_column
 from .common import compute_energy_metrics
 from .helpers import compute_basic_statistics
 
 logger = get_logger(__name__)
-
-_METRICS = (
-    "blink_signal_energy",
-    "teager_kaiser_energy",
-    "blink_line_length",
-    "blink_velocity_integral",
-)
-_STATS = ("mean", "std", "cv")
-
 
 def _normalize_styles_for_modality(styles: Set[str], modality: str) -> Set[str]:
     if modality in {"eeg", "eog"}:
@@ -54,25 +46,6 @@ def _normalize_styles_for_modality(styles: Set[str], modality: str) -> Set[str]:
         return set()
 
     return styles
-
-
-
-def _feature_channel_name(channel_name: str, modality: str) -> str:
-    """Return output-channel label for feature columns by modality."""
-
-    return channel_name if modality == "eog" else channel_name.upper()
-
-def _make_columns(modality_by_channel: Dict[str, str], styles_by_modality: Dict[str, Set[str]]) -> List[str]:
-    """Generate ordered output columns for modality/style/metric/stat combinations."""
-
-    columns: List[str] = []
-    for ch, modality in modality_by_channel.items():
-        for style in sorted(styles_by_modality.get(modality, set())):
-            for metric in _METRICS:
-                for stat in _STATS:
-                    columns.append(f"{modality}__{style}__energy__{metric}_{stat}__{_feature_channel_name(ch, modality)}")
-    return columns
-
 
 def _compute_epoch_channel_energy_stats(
     *,
@@ -106,10 +79,10 @@ def _compute_epoch_channel_energy_stats(
             vel_ints.append(float(metrics["velocity_integral"]))
 
         style_stats[style] = {
-            _METRICS[0]: compute_basic_statistics(energies),
-            _METRICS[1]: compute_basic_statistics(tkeo_vals),
-            _METRICS[2]: compute_basic_statistics(lengths),
-            _METRICS[3]: compute_basic_statistics(vel_ints),
+            METRICS[0]: compute_basic_statistics(energies),
+            METRICS[1]: compute_basic_statistics(tkeo_vals),
+            METRICS[2]: compute_basic_statistics(lengths),
+            METRICS[3]: compute_basic_statistics(vel_ints),
         }
 
     return style_stats
@@ -131,7 +104,7 @@ def compute_energy_features(
         for modality, raw_styles in available.items()
     }
 
-    columns = _make_columns(ctx.modality_by_channel, styles_by_modality)
+    columns = build_output_columns(ctx.modality_by_channel, styles_by_modality)
     if ctx.n_epochs == 0:
         return empty_feature_frame(ctx.index, columns)
 
@@ -164,7 +137,13 @@ def compute_energy_features(
                 for metric, stats in style_metrics.items():
                     for stat_name, value in stats.items():
                         record[
-                            f"{modality}__{style}__energy__{metric}_{stat_name}__{_feature_channel_name(ch, modality)}"
+                            make_stat_column(
+                                modality=modality,
+                                style=style,
+                                metric=metric,
+                                stat=stat_name,
+                                channel=ch if modality == "eog" else ch.upper(),
+                            )
                         ] = value
         records.append(record)
 
