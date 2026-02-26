@@ -27,7 +27,7 @@ from ..energy.helpers import compute_basic_statistics
 from ..utils.aggregation import prepare_epoch_channel_data
 from .._epoch_context import (
     build_epoch_context,
-    frame_from_records,
+    # frame_from_records,
     get_metadata_row,
 )
 from ..constants import cast_columns_to_object, infer_modality
@@ -486,8 +486,8 @@ class MorphologyBlinkFeatureExtractor:
                 n_epochs=n_epochs,
             )
             records.append(record)
-        # df =pd.DataFrame.from_records(records, index=index)
-        df = frame_from_records(records, index=index, columns=columns) # TODO: To remove and directly use pd.DataFrame.from_records(records, index=index)
+        df =pd.DataFrame.from_records(records, index=index)
+        # df = frame_from_records(records, index=index, columns=columns) # TODO: To remove and directly use pd.DataFrame.from_records(records, index=index)
         df = add_legacy_alias_columns(df)
         logger.debug("Morphology feature DataFrame shape: %s", df.shape)
         return cast_columns_to_object(df)

@@ -13,8 +13,8 @@ from pyblinker.logging import get_logger
 from .features import _compute_wavelet_energies
 from ..energy.helpers import compute_basic_statistics
 from ..utils.aggregation import prepare_epoch_channel_data
-from ..constants import cast_columns_to_object
-from .._epoch_context import available_styles_by_modality, build_epoch_context, get_metadata_row, frame_from_records
+# from ..constants import cast_columns_to_object
+from .._epoch_context import available_styles_by_modality, build_epoch_context, get_metadata_row
 from .._style_windows import style_windows_from_metadata
 
 logger = get_logger(__name__)
@@ -150,10 +150,11 @@ class FrequencyDomainBlinkFeatureExtractor:
             )
             record["ep"] = index[ei]
             records.append(record)
-
-        df = frame_from_records(records, index=index)
+        df =pd.DataFrame.from_records(records, index=index)
+        # df = frame_from_records(records, index=index)
         logger.debug("Frequency-domain feature DataFrame shape: %s", df.shape)
-        return cast_columns_to_object(df)
+        # return cast_columns_to_object(df)
+        return df
 
 
 def aggregate_frequency_domain_features(

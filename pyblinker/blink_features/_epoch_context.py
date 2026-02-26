@@ -92,14 +92,14 @@ def empty_feature_frame(index: pd.Index, columns: Sequence[str]) -> pd.DataFrame
     return pd.DataFrame(index=index, columns=list(columns), dtype=float)
 
 
-def frame_from_records(
-    records: list[dict[str, float]],
-    *,
-    index: pd.Index,
-    columns: Sequence[str] | None = None,
-) -> pd.DataFrame:
-    """Build a DataFrame from epoch records with optional explicit columns."""
-
-    if columns is None:
-        return pd.DataFrame.from_records(records, index=index)
-    return pd.DataFrame.from_records(records, index=index, columns=list(columns))
+# def frame_from_records(
+#     records: list[dict[str, float]],
+#     *,
+#     index: pd.Index,
+#     columns: Sequence[str] | None = None,
+# ) -> pd.DataFrame:
+#     """Build a DataFrame from epoch records with optional explicit columns."""
+#
+#     if columns is None:
+#         return pd.DataFrame.from_records(records, index=index)
+#     return pd.DataFrame.from_records(records, index=index, columns=list(columns))
