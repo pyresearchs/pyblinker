@@ -471,7 +471,6 @@ class KinematicBlinkFeatureExtractor:
             records.append(record)
 
         df = pd.DataFrame.from_records(records, index=index, columns=columns)
-        # df = add_legacy_alias_columns(df) # If there is error, this is the place to check for the column names in the test and make sure they match the expected format.
         logger.debug("Kinematic feature DataFrame shape: %s", df.shape)
         return cast_columns_to_object(df)
 
