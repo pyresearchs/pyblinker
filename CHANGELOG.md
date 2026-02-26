@@ -6,6 +6,7 @@
 - Extend epoch-level legacy morphology aggregation to compute `mean`, `std`, and `cv` for each legacy metric via the shared `_safe_stats` convention.
 
 ### Changed
+- Refactor kinematics epoch aggregation to mirror morphology’s `compute -> _compute_epoch_record -> _compute_channel_record` call graph, including modality/style planning helpers and single per-channel/per-epoch blink-frame construction reused across style stats.
 - Refactor energy, kinematics, and morphology feature schema/header generation into dedicated `column_headers.py` modules backed by a shared `blink_features/utils/column_headers_common.py` helper, while preserving legacy column names/order/alias behavior and existing feature computations.
 - Refactor feature-family compute setup to use shared epoch-context utilities (`_epoch_context.py`) across energy, frequency-domain, and kinematics extractors.
 - Remove temporary `test/blink_features/test_shared_refactor_helpers.py` helper script and keep validation through the canonical full-suite runner.
