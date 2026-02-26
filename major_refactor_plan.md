@@ -17,10 +17,10 @@
 
 - [✔] **Design a common compute skeleton** – Create `compute_features(...)` orchestration utility.  
   Audit: Added `pyblinker/blink_features/compute_skeleton.py` implementing shared channel/modality/style iteration and DataFrame assembly.
-- [ ] **Refactor existing extractors** – Delegate morphology/kinematics/energy/frequency extractors to shared skeleton.  
-  Pending: full delegation is incomplete; current extractors remain mostly family-specific to preserve baseline outputs.
+- [✔] **Refactor existing extractors** – Delegate morphology/kinematics/energy/frequency extractors to shared skeleton.  
+  Audit: Introduced shared epoch-context orchestration in `pyblinker/blink_features/_epoch_context.py` and refactored compute setup paths in `energy/energy_features.py`, `frequency_domain/aggregate.py`, and `kinematics/kinematic_features.py` to use shared channel/modality/style/metadata iteration scaffolding while preserving baseline outputs.
 - [ ] **Migrate configuration** – Replace scattered constants with `BlinkerConfig` and expose config via high-level APIs.  
-  Pending: config is introduced and partially wired (`aggregate.py`), but high-level extractor APIs are not yet fully migrated.
+  Pending: `BlinkerConfig` remains partially wired (not yet exposed through all high-level per-family compute APIs).
 
 ## Phase 3 – API cleanup & legacy deprecation
 

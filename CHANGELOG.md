@@ -6,6 +6,7 @@
 - Extend epoch-level legacy morphology aggregation to compute `mean`, `std`, and `cv` for each legacy metric via the shared `_safe_stats` convention.
 
 ### Changed
+- Refactor feature-family compute setup to use shared epoch-context utilities (`_epoch_context.py`) across energy, frequency-domain, and kinematics extractors.
 - Remove temporary `test/blink_features/test_shared_refactor_helpers.py` helper script and keep validation through the canonical full-suite runner.
 - Remove onset/duration-style discovery from shared style helpers and standardize on frame-based start/end metadata windows.
 - Extract kinematics low-level numeric helper routines into `pyblinker/blink_features/kinematics/helpers.py` and consume them from the epoch extractor.
@@ -60,6 +61,7 @@
 - Extend epoch-level legacy morphology aggregation to compute `mean`, `std`, and `cv` for each legacy metric via the shared `_safe_stats` convention.
 
 ### Changed
+- Refactor feature-family compute setup to use shared epoch-context utilities (`_epoch_context.py`) across energy, frequency-domain, and kinematics extractors.
 - Remove temporary `test/blink_features/test_shared_refactor_helpers.py` helper script and keep validation through the canonical full-suite runner.
 - Remove onset/duration-style discovery from shared style helpers and standardize on frame-based start/end metadata windows.
 - Extract kinematics low-level numeric helper routines into `pyblinker/blink_features/kinematics/helpers.py` and consume them from the epoch extractor.
@@ -87,6 +89,7 @@
 - Add a dedicated `test/README.md` documenting supported single-module and batch test commands, with `python -m unittest <dotted.module>` as the recommended single-test workflow.
 
 ### Changed
+- Refactor feature-family compute setup to use shared epoch-context utilities (`_epoch_context.py`) across energy, frequency-domain, and kinematics extractors.
 - Remove temporary `test/blink_features/test_shared_refactor_helpers.py` helper script and keep validation through the canonical full-suite runner.
 - Remove onset/duration-style discovery from shared style helpers and standardize on frame-based start/end metadata windows.
 - Extract kinematics low-level numeric helper routines into `pyblinker/blink_features/kinematics/helpers.py` and consume them from the epoch extractor.
@@ -103,6 +106,7 @@
 ## [0.1.10] - 2026-02-11
 
 ### Changed
+- Refactor feature-family compute setup to use shared epoch-context utilities (`_epoch_context.py`) across energy, frequency-domain, and kinematics extractors.
 - Remove temporary `test/blink_features/test_shared_refactor_helpers.py` helper script and keep validation through the canonical full-suite runner.
 - Remove onset/duration-style discovery from shared style helpers and standardize on frame-based start/end metadata windows.
 - Extract kinematics low-level numeric helper routines into `pyblinker/blink_features/kinematics/helpers.py` and consume them from the epoch extractor.
@@ -148,6 +152,7 @@
 ## [0.1.5] - 2026-02-11
 
 ### Changed
+- Refactor feature-family compute setup to use shared epoch-context utilities (`_epoch_context.py`) across energy, frequency-domain, and kinematics extractors.
 - Remove temporary `test/blink_features/test_shared_refactor_helpers.py` helper script and keep validation through the canonical full-suite runner.
 - Remove onset/duration-style discovery from shared style helpers and standardize on frame-based start/end metadata windows.
 - Extract kinematics low-level numeric helper routines into `pyblinker/blink_features/kinematics/helpers.py` and consume them from the epoch extractor.
@@ -164,6 +169,7 @@
 ## [0.1.4] - 2026-01-20
 
 ### Changed
+- Refactor feature-family compute setup to use shared epoch-context utilities (`_epoch_context.py`) across energy, frequency-domain, and kinematics extractors.
 - Remove temporary `test/blink_features/test_shared_refactor_helpers.py` helper script and keep validation through the canonical full-suite runner.
 - Remove onset/duration-style discovery from shared style helpers and standardize on frame-based start/end metadata windows.
 - Extract kinematics low-level numeric helper routines into `pyblinker/blink_features/kinematics/helpers.py` and consume them from the epoch extractor.
@@ -177,6 +183,7 @@
 ## [0.1.3] - 2026-01-19
 
 ### Changed
+- Refactor feature-family compute setup to use shared epoch-context utilities (`_epoch_context.py`) across energy, frequency-domain, and kinematics extractors.
 - Remove temporary `test/blink_features/test_shared_refactor_helpers.py` helper script and keep validation through the canonical full-suite runner.
 - Remove onset/duration-style discovery from shared style helpers and standardize on frame-based start/end metadata windows.
 - Extract kinematics low-level numeric helper routines into `pyblinker/blink_features/kinematics/helpers.py` and consume them from the epoch extractor.
@@ -230,6 +237,7 @@
 - Match MATLAB blink position separation handling by allowing candidates exactly at the minimum separation threshold.
 
 ### Changed
+- Refactor feature-family compute setup to use shared epoch-context utilities (`_epoch_context.py`) across energy, frequency-domain, and kinematics extractors.
 - Remove temporary `test/blink_features/test_shared_refactor_helpers.py` helper script and keep validation through the canonical full-suite runner.
 - Remove onset/duration-style discovery from shared style helpers and standardize on frame-based start/end metadata windows.
 - Extract kinematics low-level numeric helper routines into `pyblinker/blink_features/kinematics/helpers.py` and consume them from the epoch extractor.
@@ -240,6 +248,7 @@
 ## [0.0.67] - 2026-01-15
 
 ### Changed
+- Refactor feature-family compute setup to use shared epoch-context utilities (`_epoch_context.py`) across energy, frequency-domain, and kinematics extractors.
 - Remove temporary `test/blink_features/test_shared_refactor_helpers.py` helper script and keep validation through the canonical full-suite runner.
 - Remove onset/duration-style discovery from shared style helpers and standardize on frame-based start/end metadata windows.
 - Extract kinematics low-level numeric helper routines into `pyblinker/blink_features/kinematics/helpers.py` and consume them from the epoch extractor.

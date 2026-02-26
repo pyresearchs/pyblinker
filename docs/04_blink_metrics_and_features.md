@@ -404,3 +404,19 @@ The core helpers are structured to compute metrics one blink at a time so per-bl
   - `test/blink_features/frequency_domain/test_frequency_domain_blink_features_ear_eeg_eog.py`
   - `test/blink_features/morphology/test_morphology_ear_eeg_eog.py`
   - `test/run_all_tests.py`
+
+## Refactor update: shared epoch context across feature-family compute loops
+
+### The Feature/Change
+- Consolidated duplicated compute-setup logic (channel resolution, modality mapping, style discovery, metadata-row retrieval, and frame assembly) into a shared epoch-context helper module.
+- Updated energy, frequency-domain, and kinematics compute paths to use the shared epoch-context utilities while preserving existing output schemas and baseline compatibility.
+
+### Related Code
+- `pyblinker/blink_features/_epoch_context.py`
+- `pyblinker/blink_features/energy/energy_features.py`
+- `pyblinker/blink_features/frequency_domain/aggregate.py`
+- `pyblinker/blink_features/kinematics/kinematic_features.py`
+
+### Verification (Tutorials & Tests)
+- Unit tests:
+  - `test/run_all_tests.py`

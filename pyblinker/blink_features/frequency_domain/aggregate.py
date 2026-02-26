@@ -15,24 +15,9 @@ from .features import _compute_wavelet_energies
 from ..energy.helpers import _safe_stats
 from ..utils.aggregation import prepare_epoch_channel_data
 from ..constants import cast_columns_to_object
+from .._epoch_context import available_styles_by_modality, build_epoch_context, get_metadata_row, frame_from_records
 
 logger = get_logger(__name__)
-
-
-def _infer_modality(channel_name: str, info: mne.Info) -> str:
-    """Infer modality label (ear/eeg/eog) from channel metadata."""
-
-    ch_type = info.get_channel_types(picks=[channel_name])[0]
-    ch_lower = channel_name.lower()
-    if "ear" in ch_lower:
-        return "ear"
-    if ch_type == "eog" or "eog" in ch_lower:
-        return "eog"
-    if ch_type == "eeg" or "eeg" in ch_lower:
-        return "eeg"
-    return ch_type.lower()
-
-
 
 
 def _feature_channel_name(channel_name: str, modality: str) -> str:
@@ -81,41 +66,6 @@ def _compute_epoch_wavelet_record(
                     key = f"{modality}__{style}__energy__wavelet_energy_d{lvl}_{stat_name}__{_feature_channel_name(ch, modality)}"
                     record[key] = value
     return record
-
-
-def _available_styles(metadata_columns: Sequence[str] | None, modality: str) -> Set[str]:
-    """Return frame-based segmentation styles present in metadata for a modality."""
-
-    if metadata_columns is None:
-        return set()
-
-    styles: Set[str] = set()
-    landmark_styles = {
-        "base": ("start__left_base", "end__right_base"),
-        "zero": ("start__left_zero", "end__right_zero"),
-        "tent": ("start__left_x_intercept", "end__right_x_intercept"),
-        "half_base": ("start__left_base_half_height", "end__right_base_half_height"),
-        "half_zero": ("start__left_zero_half_height", "end__right_zero_half_height"),
-    }
-    for style, (start_key, end_key) in landmark_styles.items():
-        start_col = f"{start_key}__{modality}"
-        end_col = f"{end_key}__{modality}"
-        if start_col in metadata_columns and end_col in metadata_columns:
-            styles.add(style)
-
-    start_prefix = "start__"
-    modality_suffix = f"__{modality}"
-    metadata_set = set(metadata_columns)
-    for col in metadata_columns:
-        if not col.startswith(start_prefix) or not col.endswith(modality_suffix):
-            continue
-        style = col[len(start_prefix) : -len(modality_suffix)]
-        if not style:
-            continue
-        end_col = f"end__{style}__{modality}"
-        if end_col in metadata_set:
-            styles.add(style)
-    return styles
 
 
 def _style_windows(metadata_row: Mapping[str, object], modality: str, style: str, n_times: int) -> List[tuple[int, int]]:
@@ -233,24 +183,19 @@ class FrequencyDomainBlinkFeatureExtractor:
         because wavelet features become unreliable at low rates.
         """
 
-        sfreq = self._sampling_frequency()
+        ctx = build_epoch_context(self.epochs, picks)
         ch_names, channel_data, index, n_epochs, n_times = prepare_epoch_channel_data(
             epochs=self.epochs,
-            picks=picks,
-            sfreq=sfreq,
+            picks=ctx.ch_names,
+            sfreq=ctx.sfreq,
         )
 
-        modality_by_channel = {ch: _infer_modality(ch, self.epochs.info) for ch in ch_names}
-        metadata_cols: Sequence[str] | None = (
-            tuple(self.epochs.metadata.columns) if isinstance(self.epochs.metadata, pd.DataFrame) else None
+        modality_by_channel = ctx.modality_by_channel
+        available_styles_for_modality = available_styles_by_modality(
+            ctx.metadata_cols,
+            set(modality_by_channel.values()),
+            include_eeg_for_eog=True,
         )
-        eeg_styles = _available_styles(metadata_cols, "eeg")
-        available_styles_by_modality: Dict[str, Set[str]] = {}
-        for modality in set(modality_by_channel.values()):
-            styles = _available_styles(metadata_cols, modality)
-            if modality == "eog" and eeg_styles:
-                styles = styles | eeg_styles
-            available_styles_by_modality[modality] = styles
 
         records: List[Dict[str, float]] = []
         for ei in tqdm(
@@ -260,23 +205,21 @@ class FrequencyDomainBlinkFeatureExtractor:
             disable=not progress_bar,
         ):
             metadata_row = (
-                self.epochs.metadata.iloc[ei]
-                if isinstance(self.epochs.metadata, pd.DataFrame)
-                else pd.Series(dtype=float)
+                get_metadata_row(self.epochs, ei)
             )
             record = _compute_epoch_wavelet_record(
                 epoch_index=ei,
                 metadata_row=metadata_row,
-                sfreq=sfreq,
+                sfreq=ctx.sfreq,
                 n_times=n_times,
                 channel_data=channel_data,
                 modality_by_channel=modality_by_channel,
-                available_styles_by_modality=available_styles_by_modality,
+                available_styles_by_modality=available_styles_for_modality,
             )
             record["ep"] = index[ei]
             records.append(record)
 
-        df = pd.DataFrame.from_records(records, index=index)
+        df = frame_from_records(records, index=index)
         logger.debug("Frequency-domain feature DataFrame shape: %s", df.shape)
         return cast_columns_to_object(df)
 

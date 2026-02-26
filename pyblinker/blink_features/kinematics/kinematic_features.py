@@ -26,6 +26,7 @@ from . import helpers as kin_helpers
 from ..energy.helpers import _safe_stats
 from ...utils.iter_utils import ensure_list
 from ..utils.aggregation import prepare_epoch_channel_data
+from .._epoch_context import build_epoch_context, empty_feature_frame, get_metadata_row
 from ..constants import cast_columns_to_object
 
 logger = get_logger(__name__)
@@ -297,18 +298,6 @@ def _write_style_stats_into_record(
             column = f"{modality}__{style}__kinematic__{metric_name}_{stat_name}__{channel_name}"
             record[column] = value
 
-def _infer_modality(channel_name: str, info: mne.Info) -> str:
-    """Infer modality label (ear/eeg/eog) from channel metadata."""
-
-    ch_type = info.get_channel_types(picks=[channel_name])[0]
-    ch_lower = channel_name.lower()
-    if "ear" in ch_lower:
-        return "ear"
-    if ch_type == "eog" or "eog" in ch_lower:
-        return "eog"
-    if ch_type == "eeg" or "eeg" in ch_lower:
-        return "eeg"
-    return ch_type.lower()
 
 
 def _available_styles(metadata_columns: Sequence[str] | None, modality: str) -> Set[str]:
@@ -347,8 +336,6 @@ def _available_styles(metadata_columns: Sequence[str] | None, modality: str) -> 
             styles.add(style)
 
     return styles
-
-
 
 
 def _metrics_for_style(style: str) -> List[str]:
@@ -433,26 +420,20 @@ class KinematicBlinkFeatureExtractor:
         are ``NaN``.
         """
 
-        sfreq = self._sampling_frequency()
+        ctx = build_epoch_context(self.epochs, picks)
         ch_names, channel_data, index, n_epochs, n_times = prepare_epoch_channel_data(
             epochs=self.epochs,
-            picks=picks,
-            sfreq=sfreq,
+            picks=ctx.ch_names,
+            sfreq=ctx.sfreq,
         )
 
-        modality_map: Dict[str, str] = {ch: _infer_modality(ch, self.epochs.info) for ch in ch_names}
+        modality_map: Dict[str, str] = ctx.modality_by_channel
         modality_channels: Dict[str, List[str]] = {}
         for ch, mod in modality_map.items():
             modality_channels.setdefault(mod, []).append(ch)
-        metadata_cols: Sequence[str] | None = (
-            tuple(self.epochs.metadata.columns) if isinstance(self.epochs.metadata, pd.DataFrame) else None
-        )
         styles_by_modality: Dict[str, Set[str]] = {}
-        # fallback_styles: Dict[str, bool] = {}
         for mod in set(modality_map.values()):
-            styles = _available_styles(metadata_cols, mod)
-            # fallback_styles[mod] = not styles
-            styles_by_modality[mod] = styles
+            styles_by_modality[mod] = _available_styles(ctx.metadata_cols, mod)
 
         column_set: Set[str] = set()
         for mod, channels in modality_channels.items():
@@ -465,16 +446,14 @@ class KinematicBlinkFeatureExtractor:
                             column_set.add(f"{mod}__{style}__kinematic__{metric}_{stat}__{ch}")
         columns = sorted(column_set)
         if n_epochs == 0:
-            return pd.DataFrame(index=index, columns=columns, dtype=float)
+            return empty_feature_frame(index, columns)
 
         records: List[Dict[str, float]] = []
         logger.info("Computing kinematic features for %d epochs", n_epochs)
 
         for ei in range(n_epochs):
             metadata_row = (
-                self.epochs.metadata.iloc[ei]
-                if isinstance(self.epochs.metadata, pd.DataFrame)
-                else pd.Series(dtype=float)
+                get_metadata_row(self.epochs, ei)
             )
             record: Dict[str, float] = {}
             for modality, channels in modality_channels.items():
@@ -488,9 +467,9 @@ class KinematicBlinkFeatureExtractor:
                     for ch in channels:
                         # calculate the legacy kinematics features
                         blink_df = _compute_extended_kinematic_metrics(
-                            _build_kinematic_blink_frame(metadata_row, modality=modality, sfreq=sfreq),
+                            _build_kinematic_blink_frame(metadata_row, modality=modality, sfreq=ctx.sfreq),
                             channel_data[ch]["raw"][ei],
-                            sfreq,
+                            ctx.sfreq,
                             modality=modality,
                         )
                         per_metric = _compute_metrics_over_windows(
@@ -499,7 +478,7 @@ class KinematicBlinkFeatureExtractor:
                             channel_data=channel_data,
                             channel_name=ch,
                             epoch_index=ei,
-                            sfreq=sfreq,
+                            sfreq=ctx.sfreq,
                             style=style,
                             modality=modality,
                             metrics_for_style=metrics_for_style,
