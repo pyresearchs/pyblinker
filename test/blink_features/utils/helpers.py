@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 
 from pyblinker.blink_features.morphology.core_metrics import MORPHOLOGY_METRIC_STEMS
-from pyblinker.blink_features.energy.helpers import _safe_stats
+from pyblinker.blink_features.energy.helpers import compute_basic_statistics
 from pyblinker.utils.modality import infer_modality
 
 
@@ -27,7 +27,7 @@ def assert_df_has_columns(testcase, df: pd.DataFrame, columns: Sequence[str]) ->
 def morphology_column_names(channels: Sequence[str]) -> List[str]:
     """Return expected morphology feature columns for given channels."""
     metrics = tuple(f"{stem}_base" for stem in MORPHOLOGY_METRIC_STEMS) + ("duration",)
-    stats = tuple(_safe_stats([]).keys())
+    stats = tuple(compute_basic_statistics([]).keys())
     columns = []
     for ch in channels:
         modality = infer_modality(ch)

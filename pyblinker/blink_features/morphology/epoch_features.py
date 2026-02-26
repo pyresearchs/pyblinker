@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import warnings
+from typing import Any
 from typing import Dict, List, Mapping, Sequence, Set, Tuple
 
 import mne
@@ -18,7 +19,7 @@ from .core_metrics import (
 )
 from .per_blink import compute_blink_waveform_metrics
 from .._blink_metrics_shared import ALL_METHODS
-from ..energy.helpers import _safe_stats, segment_to_samples
+from ..energy.helpers import compute_basic_statistics, segment_to_samples
 from ..utils.aggregation import prepare_epoch_channel_data
 from .._epoch_context import (
     build_epoch_context,
@@ -82,15 +83,17 @@ _DURATION_STYLE_MAP = {
 _REQUIRED_LEGACY_MORPHOLOGY_METRICS = frozenset(_LEGACY_METRIC_STYLE_MAP)
 
 
-def _legacy_metric_column_name(
-    *,
+def rename_metric_column_name(
     modality: str,
     metric: str,
     stat_name: str,
     channel_name: str,
 ) -> str:
-    style = _LEGACY_METRIC_STYLE_MAP[metric]
-    return f"{modality}__{style}__morphology__{metric}_{stat_name}__{channel_name}"
+    """
+    We need to extract the landmark from the old mapping, and rename the column with the new convention
+    """
+    landmark = _LEGACY_METRIC_STYLE_MAP[metric]
+    return f"{modality}__{landmark}__morphology__{metric}_{stat_name}__{channel_name}"
 
 
 def _infer_modality(channel_name: str, info: mne.Info) -> str:
@@ -759,7 +762,7 @@ class MorphologyBlinkFeatureExtractor:
                 for legacy_metric in _LEGACY_MORPHOLOGY_METRICS:
                     for stat_name in _STATS:
                         column_set.add(
-                            _legacy_metric_column_name(
+                            rename_metric_column_name(
                                 modality=mod,
                                 metric=legacy_metric,
                                 stat_name=stat_name,
@@ -872,13 +875,11 @@ class MorphologyBlinkFeatureExtractor:
         epoch_index: int,
         modality: str,
         channel_name: str,
-        channel_index_in_modality: int,
         metadata_row: pd.Series,
         signal: np.ndarray,
         sfreq: float,
         n_times: int,
         styles: Sequence[str],
-        include_legacy_metrics: bool,
     ) -> None:
         """
         Compute morphology features for one (epoch, modality, channel).
@@ -924,23 +925,17 @@ class MorphologyBlinkFeatureExtractor:
         None
             This function does not return anything. It updates `record` in-place.
         """
-        logger.debug(
-            "Epoch %d: channel=%s modality=%s",
-            epoch_index + 1,
-            channel_name,
-            modality,
-        )
-        blink_df = self._build_blink_df(
-            # Build per-blink landmark frame first; this is then calculate legacy morphology features for given an EEG input. This is a backward-compatible with the MATLAB implementation of BLINKER
-			#
-			# . See the test/blink_features/morphology/test_morphology_eeg_only_config.py for list of outputed features when only EEG is present.
-            metadata_row=metadata_row,
-            signal=signal,
-            sfreq=sfreq,
-            n_times=n_times,
+        logger.debug("Epoch %d: channel=%s modality=%s",epoch_index + 1,channel_name,modality)
+
+        # Next  Build per-blink landmark frame first; this is then calculate legacy morphology features for given an EEG input. This is a backward-compatible with the MATLAB implementation of BLINKER
+        # 			#
+        # 			# . See the test/blink_features/morphology/test_morphology_eeg_only_config.py for list of outputed features when only EEG is present.
+        blink_df = self._build_blink_df(metadata_row=metadata_row,signal=signal, sfreq=sfreq, n_times=n_times, modality=modality, styles=styles)
+
+        legacy_record=self.build_legacy_morphology_stat_features(
+            blink_df,
             modality=modality,
-            styles=styles,
-        )
+            channel_name=channel_name)
 
         for style in styles:
             self._compute_style_stats_into_record(
@@ -955,13 +950,8 @@ class MorphologyBlinkFeatureExtractor:
                 blink_df=blink_df,
             )
 
-        if include_legacy_metrics and channel_index_in_modality == 0:
-            self._add_legacy_metrics_if_available(
-                record,
-                blink_df,
-                modality=modality,
-                channel_name=channel_name,
-            )
+
+        record.update(legacy_record)
 
     def _build_blink_df(
         self,
@@ -975,39 +965,39 @@ class MorphologyBlinkFeatureExtractor:
         """Build and enrich the blink landmark dataframe.
         This function will return
         _REQUIRED_LEGACY_MORPHOLOGY_METRICS = {
-		"zero": (
-			"duration_zero",
-			"closing_time_zero",
-			"reopening_time_zero",
-			"time_shut_zero",
-		),
-		"base": (
-			"duration_base",
-			"time_shut_base",
-		),
-		"tent": (
-			"duration_tent",
-			"closing_time_tent",
-			"reopening_time_tent",
-			"time_shut_tent",
-		),
-		"half": (
-			"duration_half_base",
-			"duration_half_zero",
-		),
-		"peak": (
-			"peak_time_blink",
-			"peak_time_tent",
-			"peak_max_blink",
-			"peak_max_tent",
-		),
-		"inter_blink": (
-			"inter_blink_max_amp",
-		),
-	}
+        "zero": (
+            "duration_zero",
+            "closing_time_zero",
+            "reopening_time_zero",
+            "time_shut_zero",
+        ),
+        "base": (
+            "duration_base",
+            "time_shut_base",
+        ),
+        "tent": (
+            "duration_tent",
+            "closing_time_tent",
+            "reopening_time_tent",
+            "time_shut_tent",
+        ),
+        "half": (
+            "duration_half_base",
+            "duration_half_zero",
+        ),
+        "peak": (
+            "peak_time_blink",
+            "peak_time_tent",
+            "peak_max_blink",
+            "peak_max_tent",
+        ),
+        "inter_blink": (
+            "inter_blink_max_amp",
+        ),
+    }
 
 
-	"""
+    """
         blink_df = _build_blink_landmark_frame(
             metadata_row,
             signal,
@@ -1201,53 +1191,32 @@ class MorphologyBlinkFeatureExtractor:
     ) -> None:
         """Aggregate each metric list and write into the feature record."""
         for metric, values in per_metric_values.items():
-            stats = _safe_stats(values)
+            stats = compute_basic_statistics(values)
             for stat_name, value in stats.items():
                 col = (
                     f"{modality}__{style}__morphology__{metric}_{stat_name}__{channel_name}"
                 )
                 record[col] = value
 
-    def _add_legacy_metrics_if_available(
+    def build_legacy_morphology_stat_features(
         self,
-        record: Dict[str, float],
         blink_df: pd.DataFrame,
         modality: str,
         channel_name: str,
-    ) -> None:
+    ) -> dict:
         """Preserve legacy morphology metrics behavior with mean/std/cv stats."""
         if blink_df.empty:
             return
-
-        missing_required = sorted(
-            metric
-            for metric in _REQUIRED_LEGACY_MORPHOLOGY_METRICS
-            if metric not in blink_df.columns
-        )
-        if missing_required:
-            warnings.warn(
-                "Missing required legacy morphology columns in blink_df "
-                f"for {modality}/{channel_name}: {missing_required}. "
-                "Review _REQUIRED_LEGACY_MORPHOLOGY_METRICS because the "
-                "required list may be out of sync.",
-                RuntimeWarning,
-                stacklevel=2,
-            )
-
+        record = {}   # empty dict
         for legacy_metric in _LEGACY_MORPHOLOGY_METRICS:
             if legacy_metric in blink_df.columns:
-                stats = _safe_stats(blink_df[legacy_metric].tolist())
+                stats = compute_basic_statistics(blink_df[legacy_metric].tolist())
                 for stat_name, stat_value in stats.items():
-                    record[
-                        _legacy_metric_column_name(
-                            modality=modality,
-                            metric=legacy_metric,
-                            stat_name=stat_name,
-                            channel_name=channel_name,
-                        )
-                    ] = stat_value
+                    column_name=rename_metric_column_name(modality=modality,metric=legacy_metric,stat_name=stat_name,
+                        channel_name=channel_name)
+                    record[column_name] = stat_value
 
-
+        return record
 
 
 
@@ -1275,12 +1244,12 @@ def _add_legacy_ear_channel_aliases(df: pd.DataFrame) -> pd.DataFrame:
     return cast_columns_to_object(df).assign(**alias_updates)
 
 def compute_morphology_features(
-		epochs: mne.Epochs, picks: str | Sequence[str] | None = None
-		) -> pd.DataFrame:
-	"""Compute blink morphology features for each epoch and channel."""
+        epochs: mne.Epochs, picks: str | Sequence[str] | None = None
+        ) -> pd.DataFrame:
+    """Compute blink morphology features for each epoch and channel."""
 
-	extractor = MorphologyBlinkFeatureExtractor(epochs=epochs)
-	return extractor.compute(picks=picks)
+    extractor = MorphologyBlinkFeatureExtractor(epochs=epochs)
+    return extractor.compute(picks=picks)
 
 def compute_epoch_morphology_features(
     epochs: mne.Epochs, picks: str | Sequence[str] | None = None

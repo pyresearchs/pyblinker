@@ -17,7 +17,7 @@ from pyblinker.utils.metadata_utils import extract_blink_windows, segment_to_sam
 logger = get_logger(__name__)
 
 
-def _safe_stats(values: Sequence[float]) -> Dict[str, float]:
+def compute_basic_statistics(values: Sequence[float]) -> Dict[str, float]:
     """Compute basic statistics while handling empty input safely.
 
     Parameters
@@ -51,4 +51,4 @@ def _tkeo(x: np.ndarray) -> np.ndarray:
         psi[1:-1] = x[1:-1] ** 2 - x[:-2] * x[2:]
     return psi
 
-__all__ = ["extract_blink_windows", "segment_to_samples", "_safe_stats", "_tkeo"]
+__all__ = ["extract_blink_windows", "segment_to_samples", "compute_basic_statistics", "_tkeo"]

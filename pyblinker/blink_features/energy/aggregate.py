@@ -5,7 +5,7 @@ from pyblinker.logging import get_logger
 from typing import Any, Dict, Iterable, List
 import pandas as pd
 
-from .helpers import _safe_stats
+from .helpers import compute_basic_statistics
 from .per_blink import compute_blink_energy
 
 logger = get_logger(__name__)
@@ -59,10 +59,10 @@ def aggregate_energy_features(
             tkeo_vals.append(metrics["teager_kaiser_energy"])
             lengths.append(metrics["blink_line_length"])
             vel_ints.append(metrics["blink_velocity_integral"])
-        stats_energy = _safe_stats(energies)
-        stats_tkeo = _safe_stats(tkeo_vals)
-        stats_len = _safe_stats(lengths)
-        stats_vel = _safe_stats(vel_ints)
+        stats_energy = compute_basic_statistics(energies)
+        stats_tkeo = compute_basic_statistics(tkeo_vals)
+        stats_len = compute_basic_statistics(lengths)
+        stats_vel = compute_basic_statistics(vel_ints)
         record: Dict[str, float] = {}
         for metric, stats in zip(
             _METRICS, (stats_energy, stats_tkeo, stats_len, stats_vel)

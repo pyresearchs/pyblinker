@@ -23,7 +23,7 @@ from .core_metrics import (
 )
 from .per_blink import compute_segment_kinematics
 from . import helpers as kin_helpers
-from ..energy.helpers import _safe_stats
+from ..energy.helpers import compute_basic_statistics
 from ...utils.iter_utils import ensure_list
 from ..utils.aggregation import prepare_epoch_channel_data
 from .._epoch_context import build_epoch_context, empty_feature_frame, get_metadata_row
@@ -293,7 +293,7 @@ def _write_style_stats_into_record(
             per_metric[metric_name] = blink_df[metric_name].tolist()
 
     for metric_name, values in per_metric.items():
-        stats = _safe_stats(values)
+        stats = compute_basic_statistics(values)
         for stat_name, value in stats.items():
             column = f"{modality}__{style}__kinematic__{metric_name}_{stat_name}__{channel_name}"
             record[column] = value
@@ -391,13 +391,13 @@ class KinematicBlinkFeatureExtractor:
         self.epochs = epochs
         self.raw = raw
 
-    def _sampling_frequency(self) -> float:
-        """Return sampling frequency from available MNE object."""
-        if hasattr(self, "epochs") and self.epochs is not None:
-            return float(self.epochs.info["sfreq"])
-        if hasattr(self, "raw") and self.raw is not None:
-            return float(self.raw.info["sfreq"])
-        raise ValueError("Neither self.epochs nor self.raw defined (need MNE object).")
+    # def _sampling_frequency(self) -> float:
+    #     """Return sampling frequency from available MNE object."""
+    #     if hasattr(self, "epochs") and self.epochs is not None:
+    #         return float(self.epochs.info["sfreq"])
+    #     if hasattr(self, "raw") and self.raw is not None:
+    #         return float(self.raw.info["sfreq"])
+    #     raise ValueError("Neither self.epochs nor self.raw defined (need MNE object).")
 
     def compute(self, picks: str | Sequence[str] | None = None) -> pd.DataFrame:
         """Compute kinematic blink features for each epoch and channel.

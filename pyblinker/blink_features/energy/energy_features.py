@@ -18,7 +18,7 @@ from .._epoch_context import (
 )
 from .._style_windows import style_windows_from_metadata
 from .common import compute_energy_metrics
-from .helpers import _safe_stats
+from .helpers import compute_basic_statistics
 
 logger = get_logger(__name__)
 
@@ -61,6 +61,7 @@ def _feature_channel_name(channel_name: str, modality: str) -> str:
     """Return output-channel label for feature columns by modality."""
 
     return channel_name if modality == "eog" else channel_name.upper()
+
 def _make_columns(modality_by_channel: Dict[str, str], styles_by_modality: Dict[str, Set[str]]) -> List[str]:
     """Generate ordered output columns for modality/style/metric/stat combinations."""
 
@@ -105,10 +106,10 @@ def _compute_epoch_channel_energy_stats(
             vel_ints.append(float(metrics["velocity_integral"]))
 
         style_stats[style] = {
-            _METRICS[0]: _safe_stats(energies),
-            _METRICS[1]: _safe_stats(tkeo_vals),
-            _METRICS[2]: _safe_stats(lengths),
-            _METRICS[3]: _safe_stats(vel_ints),
+            _METRICS[0]: compute_basic_statistics(energies),
+            _METRICS[1]: compute_basic_statistics(tkeo_vals),
+            _METRICS[2]: compute_basic_statistics(lengths),
+            _METRICS[3]: compute_basic_statistics(vel_ints),
         }
 
     return style_stats
