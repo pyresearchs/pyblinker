@@ -30,7 +30,7 @@ from . import helpers as kin_helpers
 from ..energy.helpers import compute_basic_statistics
 from ...utils.iter_utils import ensure_list
 from ..utils.aggregation import prepare_epoch_channel_data
-from .._epoch_context import build_epoch_context, empty_feature_frame, frame_from_records, get_metadata_row
+from .._epoch_context import build_epoch_context, empty_feature_frame, get_metadata_row
 from ..constants import cast_columns_to_object
 
 logger = get_logger(__name__)

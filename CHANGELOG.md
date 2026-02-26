@@ -28,11 +28,14 @@
 - Align morphology epoch feature extraction with shared `_epoch_context` setup utilities and deduplicate energy/frequency-domain window parsing through new `pyblinker/blink_features/_style_windows.py`.
 
 ### Fixed
+- Remove unused `frame_from_records` import in kinematics feature extraction to satisfy Ruff F401 lint checks.
 - Restore baseline-compatible EAR style-window precedence for frequency-domain aggregation (`th_interpolation` preferred over `th_point`) and restore morphology style discovery behavior in epoch aggregation after the shared-context refactor.
+- Remove style-priority window fallback from morphology blink-landmark frame building so `_build_blink_landmark_frame` no longer derives `max_blink`/`max_value` from style windows when no explicit peak metadata is present.
 - Emit an actionable runtime warning when required legacy morphology columns are missing from `blink_df`, including the missing column names and guidance to review `_REQUIRED_LEGACY_MORPHOLOGY_METRICS`.
 
 ### Removed
 - Remove deprecated `pyblinker/outside_annotation/` modules from the core package.
+- Remove temporary morphology regression test `test_morphology_refine_window_selection.py` and rely on existing morphology suite coverage.
 
 ## [0.3.6] - 2026-02-26
 

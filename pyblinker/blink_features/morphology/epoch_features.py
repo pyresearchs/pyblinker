@@ -23,7 +23,7 @@ from .core_metrics import (
     compute_time_zero_shut,
 )
 from .per_blink import compute_blink_waveform_metrics
-from ..energy.helpers import compute_basic_statistics, segment_to_samples
+from ..energy.helpers import compute_basic_statistics
 from ..utils.aggregation import prepare_epoch_channel_data
 from .._epoch_context import (
     build_epoch_context,
@@ -124,7 +124,6 @@ def _style_windows(
     metadata_row: Mapping[str, object],
     modality: str,
     style: str,
-    sfreq: float,
     n_times: int,
 ) -> List[tuple[int, int]]:
     """Extract blink windows for a modality/style pair as sample-frame bounds."""
@@ -172,29 +171,7 @@ def _style_windows(
     if windows_from_generic_frames:
         return windows_from_generic_frames
 
-    onset_key = f"onset__{style}__{modality}"
-    duration_key = f"duration__{style}__{modality}"
-    onsets = (
-        ensure_list(metadata_row.get(onset_key))
-        if metadata_row.get(onset_key) is not None
-        else []
-    )
-    durations = (
-        ensure_list(metadata_row.get(duration_key))
-        if metadata_row.get(duration_key) is not None
-        else []
-    )
-    windows: List[tuple[int, int]] = []
-    for onset, duration in zip(onsets, durations):
-        if onset is None or duration is None:
-            continue
-        if pd.isna(onset) or pd.isna(duration):
-            continue
-        sl = segment_to_samples(float(onset), float(duration), sfreq, n_times)
-        if sl.stop <= sl.start:
-            continue
-        windows.append((int(sl.start), int(sl.stop)))
-    return windows
+    return []
 
 
 def _coerce_list(value: object) -> List[float]:
@@ -239,7 +216,6 @@ def _build_blink_landmark_frame(
     n_times: int,
     *,
     modality: str,
-    styles: Sequence[str],
 ) -> pd.DataFrame:
     landmark_keys = {
         "left_base": f"start__left_base__{modality}",
@@ -268,18 +244,7 @@ def _build_blink_landmark_frame(
             if peak_times_sec:
                 break
 
-    window_style = None
-    for candidate in ("refine", "outer"):
-        if candidate in styles:
-            window_style = candidate
-            break
-    if window_style is None and styles:
-        window_style = styles[0]
-    windows = (
-        _style_windows(metadata_row, modality, window_style, sfreq, n_times)
-        if window_style is not None
-        else []
-    )
+    windows: List[tuple[int, int]] = []
 
     lengths = [len(values) for values in landmark_lists.values()]
     lengths.append(len(peak_times_sec))
@@ -758,7 +723,7 @@ class MorphologyBlinkFeatureExtractor:
         # Next  Build per-blink landmark frame first; this is then calculate legacy morphology features for given an EEG input. This is a backward-compatible with the MATLAB implementation of BLINKER
         # 			#
         # 			# . See the test/blink_features/morphology/test_morphology_eeg_only_config.py for list of outputed features when only EEG is present.
-        blink_df = self._build_blink_df(metadata_row=metadata_row,signal=signal, sfreq=sfreq, n_times=n_times, modality=modality, styles=styles)
+        blink_df = self._build_blink_df(metadata_row=metadata_row,signal=signal, sfreq=sfreq, n_times=n_times, modality=modality)
         legacy_record=self.build_legacy_morphology_stat_features(
             blink_df,
             modality=modality,
@@ -787,7 +752,6 @@ class MorphologyBlinkFeatureExtractor:
         sfreq: float,
         n_times: int,
         modality: str,
-        styles: Sequence[str],
     ) -> pd.DataFrame:
         """Build and enrich the blink landmark dataframe.
         This function will return
@@ -831,7 +795,6 @@ class MorphologyBlinkFeatureExtractor:
             sfreq,
             n_times,
             modality=modality,
-            styles=styles,
         )
         blink_df = _apply_morphology_properties(
             blink_df,
@@ -858,7 +821,7 @@ class MorphologyBlinkFeatureExtractor:
 
         Pipeline (functions called)
         ---------------------------
-        1) windows = _style_windows(metadata_row, modality, style, sfreq, n_times)
+        1) windows = _style_windows(metadata_row, modality, style, n_times)
         2) per_metric_values = _compute_metrics_over_windows(...)
             -> compute_blink_waveform_metrics(...)
         3) per_metric_values["duration"] = _duration_values_from_blink_df(...)
@@ -891,7 +854,7 @@ class MorphologyBlinkFeatureExtractor:
         None
             This function does not return anything. It updates `record` in-place.
         """
-        windows = _style_windows(metadata_row, modality, style, sfreq, n_times)
+        windows = _style_windows(metadata_row, modality, style, n_times)
         metric_method = metric_method_for_style(style)
         metric_names = metrics_for_style(style)
 
