@@ -216,7 +216,6 @@ def _build_blink_landmark_frame(
     n_times: int,
     *,
     modality: str,
-    styles: Sequence[str],
 ) -> pd.DataFrame:
     landmark_keys = {
         "left_base": f"start__left_base__{modality}",
@@ -245,12 +244,7 @@ def _build_blink_landmark_frame(
             if peak_times_sec:
                 break
 
-    window_style = styles[0] if styles else None
-    windows = (
-        _style_windows(metadata_row, modality, window_style, n_times)
-        if window_style is not None
-        else []
-    )
+    windows: List[tuple[int, int]] = []
 
     lengths = [len(values) for values in landmark_lists.values()]
     lengths.append(len(peak_times_sec))
@@ -729,7 +723,7 @@ class MorphologyBlinkFeatureExtractor:
         # Next  Build per-blink landmark frame first; this is then calculate legacy morphology features for given an EEG input. This is a backward-compatible with the MATLAB implementation of BLINKER
         # 			#
         # 			# . See the test/blink_features/morphology/test_morphology_eeg_only_config.py for list of outputed features when only EEG is present.
-        blink_df = self._build_blink_df(metadata_row=metadata_row,signal=signal, sfreq=sfreq, n_times=n_times, modality=modality, styles=styles)
+        blink_df = self._build_blink_df(metadata_row=metadata_row,signal=signal, sfreq=sfreq, n_times=n_times, modality=modality)
         legacy_record=self.build_legacy_morphology_stat_features(
             blink_df,
             modality=modality,
@@ -758,7 +752,6 @@ class MorphologyBlinkFeatureExtractor:
         sfreq: float,
         n_times: int,
         modality: str,
-        styles: Sequence[str],
     ) -> pd.DataFrame:
         """Build and enrich the blink landmark dataframe.
         This function will return
@@ -802,7 +795,6 @@ class MorphologyBlinkFeatureExtractor:
             sfreq,
             n_times,
             modality=modality,
-            styles=styles,
         )
         blink_df = _apply_morphology_properties(
             blink_df,

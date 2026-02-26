@@ -29,15 +29,11 @@
 
 ### Fixed
 - Restore baseline-compatible EAR style-window precedence for frequency-domain aggregation (`th_interpolation` preferred over `th_point`) and restore morphology style discovery behavior in epoch aggregation after the shared-context refactor.
+- Remove style-priority window fallback from morphology blink-landmark frame building so `_build_blink_landmark_frame` no longer derives `max_blink`/`max_value` from style windows when no explicit peak metadata is present.
 - Emit an actionable runtime warning when required legacy morphology columns are missing from `blink_df`, including the missing column names and guidance to review `_REQUIRED_LEGACY_MORPHOLOGY_METRICS`.
 
 ### Removed
 - Remove deprecated `pyblinker/outside_annotation/` modules from the core package.
-
-## [0.3.7] - 2026-02-26
-
-### Fixed
-- Update morphology epoch-style window extraction to rely on frame-based `start__...`/`end__...` metadata only (including `start__refine__...`/`end__refine__...`), removing onset/duration fallback paths and dropping hardcoded `refine` style preference when building blink landmark windows.
 
 ## [0.3.6] - 2026-02-26
 

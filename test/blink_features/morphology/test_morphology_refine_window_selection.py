@@ -22,16 +22,13 @@ def test_style_windows_ignores_onset_duration_fallback() -> None:
     assert windows == []
 
 
-def test_build_blink_landmark_frame_uses_first_style_without_refine_priority() -> None:
+def test_build_blink_landmark_frame_does_not_use_style_windows() -> None:
     metadata_row = {
         "start__outer__eeg": [10],
         "end__outer__eeg": [20],
-        "start__refine__eeg": [30],
-        "end__refine__eeg": [40],
     }
     signal = np.zeros(50)
     signal[15] = 5.0
-    signal[35] = 8.0
 
     blink_df = _build_blink_landmark_frame(
         metadata_row=metadata_row,
@@ -39,8 +36,6 @@ def test_build_blink_landmark_frame_uses_first_style_without_refine_priority() -
         sfreq=100.0,
         n_times=50,
         modality="eeg",
-        styles=["outer", "refine"],
     )
 
-    assert int(blink_df.loc[0, "max_blink"]) == 15
-    assert float(blink_df.loc[0, "max_value"]) == 5.0
+    assert blink_df.empty
