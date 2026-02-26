@@ -1,9 +1,5 @@
 """Build an HTML report plotting epoch EEG landmarks with EAR overlay."""
 
-from __future__ import annotations
-
-# ruff: noqa: E402
-
 import logging
 from pathlib import Path
 from typing import Iterable
