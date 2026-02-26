@@ -138,9 +138,7 @@ class FrequencyDomainBlinkFeatureExtractor:
             unit="epoch",
             disable=not progress_bar,
         ):
-            metadata_row = (
-                get_metadata_row(self.epochs, ei)
-            )
+            metadata_row = (get_metadata_row(self.epochs, ei))
             record = _compute_epoch_wavelet_record(
                 epoch_index=ei,
                 metadata_row=metadata_row,

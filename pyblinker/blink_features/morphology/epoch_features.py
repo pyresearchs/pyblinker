@@ -686,14 +686,6 @@ class MorphologyBlinkFeatureExtractor:
 
         for modality, channels in modality_channels.items():
             styles = sorted(styles_by_modality.get(modality) or {"base"})
-            logger.debug(
-                "Epoch %d: modality=%s styles=%s channels=%s",
-                epoch_index + 1,
-                modality,
-                styles,
-                channels,
-            )
-
             for ch_index, ch in enumerate(channels):
                 signal = channel_data[ch]["raw"][epoch_index]
                 self._compute_channel_record(
@@ -701,16 +693,11 @@ class MorphologyBlinkFeatureExtractor:
                     epoch_index=epoch_index,
                     modality=modality,
                     channel_name=ch,
-                    channel_index_in_modality=ch_index,
                     metadata_row=metadata_row,
                     signal=signal,
                     sfreq=sfreq,
                     n_times=n_times,
                     styles=styles,
-                    include_legacy_metrics=(
-                        self._should_emit_legacy_metrics(modality_channels)
-                        and modality in {"eeg", "eog"}
-                    ),
                 )
 
         return record
@@ -721,13 +708,11 @@ class MorphologyBlinkFeatureExtractor:
         epoch_index: int,
         modality: str,
         channel_name: str,
-        channel_index_in_modality: int,
         metadata_row: pd.Series,
         signal: np.ndarray,
         sfreq: float,
         n_times: int,
         styles: Sequence[str],
-        include_legacy_metrics: bool,
     ) -> None:
         """
         Compute morphology features for one (epoch, modality, channel).

@@ -431,7 +431,6 @@ class KinematicBlinkFeatureExtractor:
             record: Dict[str, float] = {}
             for modality, channels in modality_channels.items():
                 styles = styles_by_modality.get(modality) or {"base"}
-                # use_fallback = fallback_styles.get(modality, False)
                 for style in sorted(styles):
                     style_metrics = metrics_for_style(style)
                     style_metrics.extend(EXTENDED_METRICS)

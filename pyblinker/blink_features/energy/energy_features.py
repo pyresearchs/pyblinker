@@ -105,8 +105,6 @@ def compute_energy_features(
     }
 
     columns = build_output_columns(ctx.modality_by_channel, styles_by_modality)
-    if ctx.n_epochs == 0:
-        return empty_feature_frame(ctx.index, columns)
 
     data = epochs.get_data(picks=ctx.ch_names)
     logger.info("Computing energy features for %d epochs", ctx.n_epochs)
