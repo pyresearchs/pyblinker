@@ -420,3 +420,23 @@ The core helpers are structured to compute metrics one blink at a time so per-bl
 ### Verification (Tutorials & Tests)
 - Unit tests:
   - `test/run_all_tests.py`
+
+## Refactor update: morphology context alignment + shared style-window helper
+
+### The Feature/Change
+- Morphology epoch aggregation now uses the shared epoch-context utilities for channel resolution, modality mapping, style discovery, metadata-row access, and deterministic output frame construction (matching the existing energy/frequency-domain setup flow).
+- Energy and frequency-domain epoch aggregators now share a single style-window resolver module, removing duplicated modality/style window parsing logic while preserving modality-specific alias behavior (`half`, `peak`, and EAR mapping modes).
+
+### Related Code
+- `pyblinker/blink_features/morphology/epoch_features.py`
+- `pyblinker/blink_features/_style_windows.py`
+- `pyblinker/blink_features/energy/energy_features.py`
+- `pyblinker/blink_features/frequency_domain/aggregate.py`
+
+### Verification (Tutorials & Tests)
+- Tutorials:
+  - `tutorial/05c_minimal_blink_feature_tutorial.py` (existing end-to-end blink feature tutorial; no new tutorial added).
+- Unit tests:
+  - `test/blink_features/morphology/test_morphology_ear_eeg_eog.py`
+  - `test/blink_features/frequency_domain/test_frequency_domain_blink_features_ear_eeg_eog.py`
+  - `test/blink_features/test_blink_features_ear_eeg_eog.py`

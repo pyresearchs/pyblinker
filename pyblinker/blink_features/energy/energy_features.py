@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, Mapping, Sequence, Set
+from typing import Dict, List, Sequence, Set
 
 import mne
 import pandas as pd
 
 from pyblinker.logging import get_logger
 
-from ...utils.iter_utils import ensure_list
 from .._epoch_context import (
     available_styles_by_modality,
     build_epoch_context,
@@ -17,6 +16,7 @@ from .._epoch_context import (
     get_metadata_row,
     frame_from_records,
 )
+from .._style_windows import style_windows_from_metadata
 from .common import compute_energy_metrics
 from .helpers import _safe_stats
 
@@ -29,46 +29,6 @@ _METRICS = (
     "blink_velocity_integral",
 )
 _STATS = ("mean", "std", "cv")
-
-
-def _style_windows(
-    metadata_row: Mapping[str, object],
-    modality: str,
-    style: str,
-    n_times: int,
-) -> List[tuple[int, int]]:
-    """Extract frame-aligned blink windows as ``(start_sample, end_sample)`` tuples."""
-
-    landmark_style_keys = {
-        "base": ("start__left_base", "end__right_base"),
-        "zero": ("start__left_zero", "end__right_zero"),
-        "tent": ("start__left_x_intercept", "end__right_x_intercept"),
-        "half_base": ("start__left_base_half_height", "end__right_base_half_height"),
-        "half_zero": ("start__left_zero_half_height", "end__right_zero_half_height"),
-    }
-    if style in landmark_style_keys:
-        start_prefix, end_prefix = landmark_style_keys[style]
-        start_key = f"{start_prefix}__{modality}"
-        end_key = f"{end_prefix}__{modality}"
-    else:
-        start_key = f"start__{style}__{modality}"
-        end_key = f"end__{style}__{modality}"
-
-    starts = ensure_list(metadata_row.get(start_key))
-    ends = ensure_list(metadata_row.get(end_key))
-
-    windows: List[tuple[int, int]] = []
-    for start_frame, end_frame in zip(starts, ends):
-        if start_frame is None or end_frame is None:
-            continue
-        if pd.isna(start_frame) or pd.isna(end_frame):
-            continue
-        start_idx = max(0, int(round(float(start_frame))))
-        end_idx = min(n_times, int(round(float(end_frame))))
-        if end_idx <= start_idx:
-            continue
-        windows.append((start_idx, end_idx))
-    return windows
 
 
 def _normalize_styles_for_modality(styles: Set[str], modality: str) -> Set[str]:
@@ -94,44 +54,6 @@ def _normalize_styles_for_modality(styles: Set[str], modality: str) -> Set[str]:
         return set()
 
     return styles
-
-
-def _channel_style_windows(
-    *,
-    metadata_row: Mapping[str, object],
-    modality: str,
-    available_styles: Set[str],
-    n_times: int,
-) -> Dict[str, List[tuple[int, int]]]:
-    """Resolve output energy styles to frame windows by modality."""
-
-    style_windows: Dict[str, List[tuple[int, int]]] = {}
-    if modality in {"eeg", "eog"}:
-        if "zero" in available_styles:
-            style_windows["zero"] = _style_windows(metadata_row, modality, "zero", n_times)
-        if "base" in available_styles:
-            style_windows["base"] = _style_windows(metadata_row, modality, "base", n_times)
-        if "tent" in available_styles:
-            style_windows["tent"] = _style_windows(metadata_row, modality, "tent", n_times)
-
-        if "half_base" in available_styles:
-            style_windows["half"] = _style_windows(metadata_row, modality, "half_base", n_times)
-        elif "half_zero" in available_styles:
-            style_windows["half"] = _style_windows(metadata_row, modality, "half_zero", n_times)
-
-        if "tent" in style_windows:
-            style_windows["peak"] = style_windows["tent"]
-        elif "base" in style_windows:
-            style_windows["peak"] = style_windows["base"]
-
-    elif modality == "ear":
-        if "th_point" in available_styles:
-            style_windows["th_point"] = _style_windows(metadata_row, modality, "th_point", n_times)
-        elif "th_interpolation" in available_styles:
-            style_windows["th_interpolation"] = _style_windows(metadata_row, modality, "th_interpolation", n_times)
-
-    return style_windows
-
 
 
 
@@ -224,11 +146,14 @@ def compute_energy_features(
         for ci, ch in enumerate(ctx.ch_names):
             modality = ctx.modality_by_channel[ch]
             stats_by_style = _compute_epoch_channel_energy_stats(
-                style_windows=_channel_style_windows(
+                style_windows=style_windows_from_metadata(
                     metadata_row=metadata_row,
                     modality=modality,
                     available_styles=available.get(modality, set()),
                     n_times=ctx.n_times,
+                    include_half=True,
+                    include_peak=True,
+                    ear_mode="keep",
                 ),
                 signal_1d=data[ei, ci, :],
                 sfreq=ctx.sfreq,

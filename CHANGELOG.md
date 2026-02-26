@@ -22,6 +22,7 @@
 - Add shared refactor scaffolding for blink features: `BlinkerConfig`/`DEFAULT_CONFIG`, shared constants, style-window helpers, and a reusable compute skeleton module.
 - Preserve legacy DataFrame-column compatibility by forcing object-typed column indexes in feature outputs used by baseline regression pickles.
 - Harden optional wavelet dependency behavior so missing `PyWavelets` now degrades gracefully with warnings and NaN outputs instead of import-time failure.
+- Align morphology epoch feature extraction with shared `_epoch_context` setup utilities and deduplicate energy/frequency-domain window parsing through new `pyblinker/blink_features/_style_windows.py`.
 
 ### Fixed
 - Emit an actionable runtime warning when required legacy morphology columns are missing from `blink_df`, including the missing column names and guidance to review `_REQUIRED_LEGACY_MORPHOLOGY_METRICS`.
