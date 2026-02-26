@@ -438,8 +438,8 @@ class KinematicBlinkFeatureExtractor:
                 n_epochs=n_epochs,
             )
             records.append(record)
-
-        df = frame_from_records(records, index=index, columns=columns)
+        df =pd.DataFrame.from_records(records, index=index)
+        # df = frame_from_records(records, index=index, columns=columns)
         logger.debug("Kinematic feature DataFrame shape: %s", df.shape)
         return cast_columns_to_object(df)
 

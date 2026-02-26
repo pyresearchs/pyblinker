@@ -250,7 +250,7 @@ def compute_energy_features(
             n_times=ctx.n_times,
         )
         records.append(record)
-
-    df = frame_from_records(records, index=ctx.index, columns=columns)
+    df =pd.DataFrame.from_records(records, index=ctx.index)
+    # df = frame_from_records(records, index=ctx.index, columns=columns)
     logger.debug("Energy feature DataFrame shape: %s", df.shape)
     return df

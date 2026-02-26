@@ -24,7 +24,7 @@ def _feature_channel_name(channel_name: str, modality: str) -> str:
     """Return output-channel label for feature columns by modality."""
 
     return channel_name if modality == "eog" else channel_name.upper()
-def _compute_epoch_wavelet_record(
+def _compute_epoch_record(
     *,
     epoch_index: int,
     metadata_row: pd.Series | Mapping[str, object],
@@ -139,7 +139,7 @@ class FrequencyDomainBlinkFeatureExtractor:
             disable=not progress_bar,
         ):
             metadata_row = (get_metadata_row(self.epochs, ei))
-            record = _compute_epoch_wavelet_record(
+            record = _compute_epoch_record(
                 epoch_index=ei,
                 metadata_row=metadata_row,
                 sfreq=ctx.sfreq,
