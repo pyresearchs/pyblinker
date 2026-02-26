@@ -427,9 +427,7 @@ class KinematicBlinkFeatureExtractor:
         records: List[Dict[str, float]] = []
 
         for ei in range(n_epochs):
-            metadata_row = (
-                get_metadata_row(self.epochs, ei)
-            )
+            metadata_row = (get_metadata_row(self.epochs, ei))
             record: Dict[str, float] = {}
             for modality, channels in modality_channels.items():
                 styles = styles_by_modality.get(modality) or {"base"}
