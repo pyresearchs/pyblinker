@@ -52,7 +52,7 @@ def _refine_epoch_peak_modality(
     blink_ends: List[int],
     sfreq: float,
     n_samp_epoch: int,
-    key_prefix: str,
+    modalities: str,
 ) -> None:
     if data_modality is None:
         return
@@ -60,7 +60,7 @@ def _refine_epoch_peak_modality(
     seg_raw = data_modality[epoch_index]
     if seg_raw.ndim != 2 or seg_raw.shape[0] != 1:
         raise ValueError(
-            f"{key_prefix.upper()} refinement expects a single channel, but epoch {epoch_index} contains shape {seg_raw.shape}."
+            f"{modalities.upper()} refinement expects a single channel, but epoch {epoch_index} contains shape {seg_raw.shape}."
         )
     seg = seg_raw.reshape(-1)
     _append_peak_refinements(
@@ -69,7 +69,7 @@ def _refine_epoch_peak_modality(
         blink_starts,
         blink_ends,
         sfreq,
-        key_prefix,
+		modalities,
         n_samp_epoch,
         modality_config,
     )
@@ -147,7 +147,7 @@ def _refine_epoch_modalities(
             blink_ends=blink_ends,
             sfreq=sfreq,
             n_samp_epoch=n_samp_epoch,
-            key_prefix="eeg",
+			modalities="eeg",
         )
 
     if have_eog and data_eog is not None:
@@ -160,7 +160,7 @@ def _refine_epoch_modalities(
             blink_ends=blink_ends,
             sfreq=sfreq,
             n_samp_epoch=n_samp_epoch,
-            key_prefix="eog",
+			modalities="eog",
         )
 
     return row_data

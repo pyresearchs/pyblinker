@@ -54,7 +54,7 @@ def _append_peak_refinements(
     blink_starts: Sequence[int],
     blink_ends: Sequence[int],
     sfreq: float,
-    key_prefix: str,
+    modality: str,
     n_samp_epoch: int,
     modality_config: Dict[str, Any] | None = None,
 ) -> None:
@@ -70,14 +70,8 @@ def _append_peak_refinements(
         peaks.append(int(peak))
         blink_entries.append(
             {
-                f"blink_onset_{key_prefix}": refined_start / sfreq,  # backward compatibility; slated for removal
-                f"blink_duration_{key_prefix}": max(0.0, (refined_end - refined_start) / sfreq),
-                f"blink_onset_extremum_{key_prefix}": peak / sfreq,
-                "onset__refine__eeg": refined_start / sfreq,
-                f"duration__refine__{key_prefix}": max(0.0, (refined_end - refined_start) / sfreq),
-                f"onset__refine_extremum__{key_prefix}": peak / sfreq,
-				f"start__refine__{key_prefix}": refined_start,
-				f"end__refine__{key_prefix}": refined_end,
+				f"start__refine__{modality}": refined_start,
+				f"end__refine__{modality}": refined_end,
             }
         )
 
@@ -95,10 +89,9 @@ def _append_peak_refinements(
         bounds = compute_outer_bounds(peaks, n_samp_epoch)
         blink_data: dict[str, Any]
         for blink_data, (outer_start, outer_end) in zip(blink_entries, bounds):
-            blink_data[f"blink_outer_start_{key_prefix}"] = outer_start
-            blink_data[f"blink_outer_end_{key_prefix}"] = outer_end
-            blink_data[f"onset__outer__{key_prefix}"] = outer_start / sfreq
-            blink_data[f"duration__outer__{key_prefix}"] = (outer_end - outer_start) / sfreq
+            blink_data[f"start__outer__{modality}"] = outer_start
+            blink_data[f"end__outer__{modality}"] = outer_end
+
 
     keys = blink_entries[0].keys()
     transposed = {key: [entry[key] for entry in blink_entries] for key in keys}
@@ -112,7 +105,7 @@ def _append_peak_refinements(
         blink_starts=blink_starts,
         blink_ends=blink_ends,
         n_samp_epoch=n_samp_epoch,
-        key_prefix=key_prefix,
+		modality=modality,
         base_fraction=base_fraction,
     )
     row_data.update(landmarks)
@@ -124,23 +117,23 @@ def _compute_epoch_landmarks(
     blink_starts: Sequence[int],
     blink_ends: Sequence[int],
     n_samp_epoch: int,
-    key_prefix: str,
+		modality: str,
     base_fraction: float,
 ) -> Dict[str, List[float]]:
     n_blinks = len(blink_starts)
     landmark_columns = [
-        f"start__left_base__{key_prefix}",
-        f"end__right_base__{key_prefix}",
-        f"start__left_zero__{key_prefix}",
-        f"end__right_zero__{key_prefix}",
-        f"start__left_x_intercept__{key_prefix}",
-        f"end__right_x_intercept__{key_prefix}",
-        f"start__left_base_half_height__{key_prefix}",
-        f"end__right_base_half_height__{key_prefix}",
-        f"start__left_zero_half_height__{key_prefix}",
-        f"end__right_zero_half_height__{key_prefix}",
-        f"x_intersect__{key_prefix}",
-        f"y_intersect__{key_prefix}",
+        f"start__left_base__{modality}",
+        f"end__right_base__{modality}",
+        f"start__left_zero__{modality}",
+        f"end__right_zero__{modality}",
+        f"start__left_x_intercept__{modality}",
+        f"end__right_x_intercept__{modality}",
+        f"start__left_base_half_height__{modality}",
+        f"end__right_base_half_height__{modality}",
+        f"start__left_zero_half_height__{modality}",
+        f"end__right_zero_half_height__{modality}",
+        f"x_intersect__{modality}",
+        f"y_intersect__{modality}",
     ]
 
     results: Dict[str, List[float]] = {col: [float("nan")] * n_blinks for col in landmark_columns}
@@ -170,7 +163,7 @@ def _compute_epoch_landmarks(
             row["max_blink"],
             row["outer_start"],
             row["outer_end"],
-            signal_type=key_prefix,
+            signal_type=modality,
         ),
         axis=1,
         result_type="expand",
@@ -178,8 +171,8 @@ def _compute_epoch_landmarks(
 
     for row in df.itertuples():
         idx = int(row.blink_index)
-        results[f"start__left_zero__{key_prefix}"][idx] = float(row.left_zero)
-        results[f"end__right_zero__{key_prefix}"][idx] = float(row.right_zero)
+        results[f"start__left_zero__{modality}"][idx] = float(row.left_zero)
+        results[f"end__right_zero__{modality}"][idx] = float(row.right_zero)
 
     try:
         df_base = create_left_right_base(segment, df)
@@ -188,8 +181,8 @@ def _compute_epoch_landmarks(
 
     for row in df_base.itertuples():
         idx = int(row.blink_index)
-        results[f"start__left_base__{key_prefix}"][idx] = float(row.left_base)
-        results[f"end__right_base__{key_prefix}"][idx] = float(row.right_base)
+        results[f"start__left_base__{modality}"][idx] = float(row.left_base)
+        results[f"end__right_base__{modality}"][idx] = float(row.right_base)
 
         (
             left_zero_half_height,
@@ -205,10 +198,10 @@ def _compute_epoch_landmarks(
             row.outer_end,
         )
 
-        results[f"start__left_base_half_height__{key_prefix}"][idx] = float(left_base_half_height)
-        results[f"end__right_base_half_height__{key_prefix}"][idx] = float(right_base_half_height)
-        results[f"start__left_zero_half_height__{key_prefix}"][idx] = float(left_zero_half_height)
-        results[f"end__right_zero_half_height__{key_prefix}"][idx] = float(right_zero_half_height)
+        results[f"start__left_base_half_height__{modality}"][idx] = float(left_base_half_height)
+        results[f"end__right_base_half_height__{modality}"][idx] = float(right_base_half_height)
+        results[f"start__left_zero_half_height__{modality}"][idx] = float(left_zero_half_height)
+        results[f"end__right_zero_half_height__{modality}"][idx] = float(right_zero_half_height)
 
         if int(row.left_zero) >= int(row.max_blink) or int(row.right_zero) <= int(row.max_blink):
             continue
@@ -244,10 +237,10 @@ def _compute_epoch_landmarks(
                 right_x_intercept,
             ) = lines_intersection(signal=segment, x_right=x_right, x_left=x_left)
 
-            results[f"start__left_x_intercept__{key_prefix}"][idx] = float(left_x_intercept)
-            results[f"end__right_x_intercept__{key_prefix}"][idx] = float(right_x_intercept)
-            results[f"x_intersect__{key_prefix}"][idx] = float(x_intersect)
-            results[f"y_intersect__{key_prefix}"][idx] = float(y_intersect)
+            results[f"start__left_x_intercept__{modality}"][idx] = float(left_x_intercept)
+            results[f"end__right_x_intercept__{modality}"][idx] = float(right_x_intercept)
+            results[f"x_intersect__{modality}"][idx] = float(x_intersect)
+            results[f"y_intersect__{modality}"][idx] = float(y_intersect)
 
     return results
 
