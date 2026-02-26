@@ -875,11 +875,13 @@ class MorphologyBlinkFeatureExtractor:
         epoch_index: int,
         modality: str,
         channel_name: str,
+        channel_index_in_modality: int,
         metadata_row: pd.Series,
         signal: np.ndarray,
         sfreq: float,
         n_times: int,
         styles: Sequence[str],
+        include_legacy_metrics: bool,
     ) -> None:
         """
         Compute morphology features for one (epoch, modality, channel).
@@ -931,7 +933,6 @@ class MorphologyBlinkFeatureExtractor:
         # 			#
         # 			# . See the test/blink_features/morphology/test_morphology_eeg_only_config.py for list of outputed features when only EEG is present.
         blink_df = self._build_blink_df(metadata_row=metadata_row,signal=signal, sfreq=sfreq, n_times=n_times, modality=modality, styles=styles)
-
         legacy_record=self.build_legacy_morphology_stat_features(
             blink_df,
             modality=modality,
