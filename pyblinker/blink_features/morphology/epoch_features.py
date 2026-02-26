@@ -1,8 +1,6 @@
 """Aggregate blink morphology features from :class:`mne.Epochs`."""
 from __future__ import annotations
 
-import warnings
-from typing import Any
 from typing import Dict, List, Mapping, Sequence, Set, Tuple
 
 import mne
@@ -1207,7 +1205,7 @@ class MorphologyBlinkFeatureExtractor:
     ) -> dict:
         """Preserve legacy morphology metrics behavior with mean/std/cv stats."""
         if blink_df.empty:
-            return
+            return {}
         record = {}   # empty dict
         for legacy_metric in _LEGACY_MORPHOLOGY_METRICS:
             if legacy_metric in blink_df.columns:

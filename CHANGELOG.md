@@ -31,6 +31,11 @@
 ### Removed
 - Remove deprecated `pyblinker/outside_annotation/` modules from the core package.
 
+## [0.3.6] - 2026-02-26
+
+### Fixed
+- Avoid `TypeError` in morphology epoch aggregation when a modality/channel has no detected blinks by returning an empty legacy-metrics mapping instead of `None`.
+
 ## [0.3.5] - 2026-02-25
 
 ### Fixed
