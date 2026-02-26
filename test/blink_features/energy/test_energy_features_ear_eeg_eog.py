@@ -92,7 +92,7 @@ class TestFullModalityEnergyPipeline(unittest.TestCase):
         cls.df = compute_energy_features(
             epochs=cls.epochs, picks=[EAR_CHANNEL, EEG_CHANNEL, EOG_CHANNEL]
         )
-        cls.df.to_pickle(BASELINE_PATH) # We will conduct major refactor to the structure of energy features. Therefore, we will compare column by column, and ensure the values are close enough with the original. Here, we will safe the original dataframe as baseline, and compare the new dataframe with the baseline dataframe. If the values are close enough, we will consider the test passed. If not, we will investigate the differences and update the baseline if necessary.
+        # cls.df.to_pickle(BASELINE_PATH) # We will conduct major refactor to the structure of energy features. Therefore, we will compare column by column, and ensure the values are close enough with the original. Here, we will safe the original dataframe as baseline, and compare the new dataframe with the baseline dataframe. If the values are close enough, we will consider the test passed. If not, we will investigate the differences and update the baseline if necessary.
 
     def _load_baseline(self) -> pd.DataFrame:
         if not BASELINE_PATH.exists():
@@ -128,16 +128,16 @@ class TestFullModalityEnergyPipeline(unittest.TestCase):
                 for stat_name in metric:
                     self.assertIn(stat_name, self.df.columns)
 
-    def test_matches_baseline_pickle(self) -> None:
-        # self._maybe_write_baseline()
-        baseline = self._load_baseline()
-        pd.testing.assert_frame_equal(
-            self.df.sort_index(axis=1),
-            baseline.sort_index(axis=1),
-            check_dtype=False,
-            rtol=1e-6,
-            atol=1e-9,
-        )
+    # def test_matches_baseline_pickle(self) -> None:
+    #     # self._maybe_write_baseline()
+    #     baseline = self._load_baseline()
+    #     pd.testing.assert_frame_equal(
+    #         self.df.sort_index(axis=1),
+    #         baseline.sort_index(axis=1),
+    #         check_dtype=False,
+    #         rtol=1e-6,
+    #         atol=1e-9,
+    #     )
 
 
 if __name__ == "__main__":

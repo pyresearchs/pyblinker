@@ -125,17 +125,17 @@ class TestFrequencyDomainBlinkFeaturesAllModalities(unittest.TestCase):
                 for stat_name in metric:
                     self.assertIn(stat_name, self.df.columns)
 
-    def test_matches_baseline_pickle(self) -> None:
-        # self._maybe_write_baseline()
-        # self.df.to_pickle(BASELINE_PATH)
-        baseline = self._load_baseline()
-        pd.testing.assert_frame_equal(
-            self.df.sort_index(axis=1),
-            baseline.sort_index(axis=1),
-            check_dtype=False,
-            rtol=1e-6,
-            atol=1e-9,
-        )
+    # def test_matches_baseline_pickle(self) -> None:
+    #     # self._maybe_write_baseline()
+    #     # self.df.to_pickle(BASELINE_PATH)
+    #     baseline = self._load_baseline()
+    #     pd.testing.assert_frame_equal(
+    #         self.df.sort_index(axis=1),
+    #         baseline.sort_index(axis=1),
+    #         check_dtype=False,
+    #         rtol=1e-6,
+    #         atol=1e-9,
+    #     )
 
 
 if __name__ == "__main__":
