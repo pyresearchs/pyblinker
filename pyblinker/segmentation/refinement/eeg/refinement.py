@@ -76,6 +76,8 @@ def _append_peak_refinements(
                 "onset__refine__eeg": refined_start / sfreq,
                 f"duration__refine__{key_prefix}": max(0.0, (refined_end - refined_start) / sfreq),
                 f"onset__refine_extremum__{key_prefix}": peak / sfreq,
+				f"start__refine__{key_prefix}": refined_start,
+				f"end__refine__{key_prefix}": refined_end,
             }
         )
 
