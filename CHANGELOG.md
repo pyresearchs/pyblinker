@@ -34,6 +34,11 @@
 ### Removed
 - Remove deprecated `pyblinker/outside_annotation/` modules from the core package.
 
+## [0.3.7] - 2026-02-26
+
+### Fixed
+- Update morphology epoch-style window extraction to rely on frame-based `start__...`/`end__...` metadata only (including `start__refine__...`/`end__refine__...`), removing onset/duration fallback paths and dropping hardcoded `refine` style preference when building blink landmark windows.
+
 ## [0.3.6] - 2026-02-26
 
 ### Fixed
