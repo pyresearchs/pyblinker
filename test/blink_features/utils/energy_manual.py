@@ -8,9 +8,9 @@ import pandas as pd
 
 from pyblinker.blink_features.energy.common import compute_energy_metrics
 from pyblinker.blink_features.energy.helpers import (
-    extract_blink_windows,
-    segment_to_samples,
-    _safe_stats,
+	extract_blink_windows,
+	segment_to_samples,
+	compute_basic_statistics,
 )
 
 
@@ -57,10 +57,10 @@ def manual_epoch_energy_features(
         tkeo_vals.append(float(metrics["teager_kaiser_energy"]))
         lengths.append(float(metrics["line_length"]))
         vel_ints.append(float(metrics["velocity_integral"]))
-    stats_energy = _safe_stats(energies)
-    stats_tkeo = _safe_stats(tkeo_vals)
-    stats_len = _safe_stats(lengths)
-    stats_vel = _safe_stats(vel_ints)
+    stats_energy = compute_basic_statistics(energies)
+    stats_tkeo = compute_basic_statistics(tkeo_vals)
+    stats_len = compute_basic_statistics(lengths)
+    stats_vel = compute_basic_statistics(vel_ints)
     record: Dict[str, float] = {}
     for metric, stats in zip(
         [

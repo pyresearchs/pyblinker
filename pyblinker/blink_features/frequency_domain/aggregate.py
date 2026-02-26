@@ -11,7 +11,7 @@ from tqdm import tqdm
 from pyblinker.logging import get_logger
 
 from .features import _compute_wavelet_energies
-from ..energy.helpers import _safe_stats
+from ..energy.helpers import compute_basic_statistics
 from ..utils.aggregation import prepare_epoch_channel_data
 from ..constants import cast_columns_to_object
 from .._epoch_context import available_styles_by_modality, build_epoch_context, get_metadata_row, frame_from_records
@@ -24,7 +24,7 @@ def _feature_channel_name(channel_name: str, modality: str) -> str:
     """Return output-channel label for feature columns by modality."""
 
     return channel_name if modality == "eog" else channel_name.upper()
-def _compute_epoch_wavelet_record(
+def _compute_epoch_record(
     *,
     epoch_index: int,
     metadata_row: pd.Series | Mapping[str, object],
@@ -65,7 +65,7 @@ def _compute_epoch_wavelet_record(
                     per_level[lvl].append(float(val))
 
             for lvl in range(1, 5):
-                stats = _safe_stats(per_level[lvl])
+                stats = compute_basic_statistics(per_level[lvl])
                 for stat_name, value in stats.items():
                     key = f"{modality}__{style}__energy__wavelet_energy_d{lvl}_{stat_name}__{_feature_channel_name(ch, modality)}"
                     record[key] = value
@@ -138,10 +138,8 @@ class FrequencyDomainBlinkFeatureExtractor:
             unit="epoch",
             disable=not progress_bar,
         ):
-            metadata_row = (
-                get_metadata_row(self.epochs, ei)
-            )
-            record = _compute_epoch_wavelet_record(
+            metadata_row = (get_metadata_row(self.epochs, ei))
+            record = _compute_epoch_record(
                 epoch_index=ei,
                 metadata_row=metadata_row,
                 sfreq=ctx.sfreq,

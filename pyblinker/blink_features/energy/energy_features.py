@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, Sequence, Set
+from typing import Dict, List, Mapping, Sequence, Set
 
 import mne
 import pandas as pd
@@ -13,22 +13,15 @@ from .._epoch_context import (
     available_styles_by_modality,
     build_epoch_context,
     empty_feature_frame,
-    get_metadata_row,
     frame_from_records,
+    get_metadata_row,
 )
 from .._style_windows import style_windows_from_metadata
+from .column_headers import METRICS, build_output_columns, make_stat_column
 from .common import compute_energy_metrics
-from .helpers import _safe_stats
+from .helpers import compute_basic_statistics
 
 logger = get_logger(__name__)
-
-_METRICS = (
-    "blink_signal_energy",
-    "teager_kaiser_energy",
-    "blink_line_length",
-    "blink_velocity_integral",
-)
-_STATS = ("mean", "std", "cv")
 
 
 def _normalize_styles_for_modality(styles: Set[str], modality: str) -> Set[str]:
@@ -56,21 +49,39 @@ def _normalize_styles_for_modality(styles: Set[str], modality: str) -> Set[str]:
     return styles
 
 
+def _group_channels_by_modality(
+    modality_by_channel: Mapping[str, str],
+    ch_names: Sequence[str],
+) -> Dict[str, List[str]]:
+    grouped: Dict[str, List[str]] = {}
+    for channel_name in ch_names:
+        modality = modality_by_channel[channel_name]
+        grouped.setdefault(modality, []).append(channel_name)
+    return grouped
 
-def _feature_channel_name(channel_name: str, modality: str) -> str:
-    """Return output-channel label for feature columns by modality."""
 
-    return channel_name if modality == "eog" else channel_name.upper()
-def _make_columns(modality_by_channel: Dict[str, str], styles_by_modality: Dict[str, Set[str]]) -> List[str]:
-    """Generate ordered output columns for modality/style/metric/stat combinations."""
-
-    columns: List[str] = []
-    for ch, modality in modality_by_channel.items():
-        for style in sorted(styles_by_modality.get(modality, set())):
-            for metric in _METRICS:
-                for stat in _STATS:
-                    columns.append(f"{modality}__{style}__energy__{metric}_{stat}__{_feature_channel_name(ch, modality)}")
-    return columns
+def _compute_style_windows_for_modality(
+    *,
+    metadata_row: Mapping[str, object],
+    modality: str,
+    available_raw_styles: Set[str],
+    normalized_styles: Set[str],
+    n_times: int,
+) -> Dict[str, List[tuple[int, int]]]:
+    windows_by_style = style_windows_from_metadata(
+        metadata_row=metadata_row,
+        modality=modality,
+        available_styles=available_raw_styles,
+        n_times=n_times,
+        include_half=True,
+        include_peak=True,
+        ear_mode="keep",
+    )
+    return {
+        style: windows
+        for style, windows in windows_by_style.items()
+        if style in normalized_styles
+    }
 
 
 def _compute_epoch_channel_energy_stats(
@@ -105,13 +116,97 @@ def _compute_epoch_channel_energy_stats(
             vel_ints.append(float(metrics["velocity_integral"]))
 
         style_stats[style] = {
-            _METRICS[0]: _safe_stats(energies),
-            _METRICS[1]: _safe_stats(tkeo_vals),
-            _METRICS[2]: _safe_stats(lengths),
-            _METRICS[3]: _safe_stats(vel_ints),
+            METRICS[0]: compute_basic_statistics(energies),
+            METRICS[1]: compute_basic_statistics(tkeo_vals),
+            METRICS[2]: compute_basic_statistics(lengths),
+            METRICS[3]: compute_basic_statistics(vel_ints),
         }
 
     return style_stats
+
+
+def _write_energy_style_stats_into_record(
+    *,
+    record: Dict[str, float],
+    modality: str,
+    style: str,
+    channel_name: str,
+    style_metrics: Dict[str, Dict[str, float]],
+) -> None:
+    for metric, stats in style_metrics.items():
+        for stat_name, value in stats.items():
+            record[
+                make_stat_column(
+                    modality=modality,
+                    style=style,
+                    metric=metric,
+                    stat=stat_name,
+                    channel=channel_name if modality == "eog" else channel_name.upper(),
+                )
+            ] = value
+
+
+def _compute_channel_record(
+    *,
+    record: Dict[str, float],
+    epoch_index: int,
+    modality: str,
+    channel_name: str,
+    signal_1d,
+    windows_by_style: Dict[str, List[tuple[int, int]]],
+    sfreq: float,
+    n_times: int,
+) -> None:
+    stats_by_style = _compute_epoch_channel_energy_stats(
+        style_windows=windows_by_style,
+        signal_1d=signal_1d,
+        sfreq=sfreq,
+        n_times=n_times,
+    )
+    for style, style_metrics in stats_by_style.items():
+        _write_energy_style_stats_into_record(
+            record=record,
+            modality=modality,
+            style=style,
+            channel_name=channel_name,
+            style_metrics=style_metrics,
+        )
+
+
+def _compute_epoch_record(
+    *,
+    epoch_index: int,
+    metadata_row: Mapping[str, object],
+    modality_channels: Dict[str, List[str]],
+    styles_by_modality: Dict[str, Set[str]],
+    available_raw_styles: Dict[str, Set[str]],
+    data,
+    ch_to_ci: Dict[str, int],
+    sfreq: float,
+    n_times: int,
+) -> Dict[str, float]:
+    record: Dict[str, float] = {}
+    for modality, channels in modality_channels.items():
+        windows_by_style = _compute_style_windows_for_modality(
+            metadata_row=metadata_row,
+            modality=modality,
+            available_raw_styles=available_raw_styles.get(modality, set()),
+            normalized_styles=styles_by_modality.get(modality, set()),
+            n_times=n_times,
+        )
+        for channel_name in channels:
+            ci = ch_to_ci[channel_name]
+            _compute_channel_record(
+                record=record,
+                epoch_index=epoch_index,
+                modality=modality,
+                channel_name=channel_name,
+                signal_1d=data[epoch_index, ci, :],
+                windows_by_style=windows_by_style,
+                sfreq=sfreq,
+                n_times=n_times,
+            )
+    return record
 
 
 def compute_energy_features(
@@ -130,43 +225,32 @@ def compute_energy_features(
         for modality, raw_styles in available.items()
     }
 
-    columns = _make_columns(ctx.modality_by_channel, styles_by_modality)
-    if ctx.n_epochs == 0:
-        return empty_feature_frame(ctx.index, columns)
+    columns = build_output_columns(ctx.modality_by_channel, styles_by_modality)
+    if ctx.n_epochs == 0 or not columns:
+        return empty_feature_frame(index=ctx.index, columns=columns)
 
+    modality_channels = _group_channels_by_modality(ctx.modality_by_channel, ctx.ch_names)
     data = epochs.get_data(picks=ctx.ch_names)
+    ch_to_ci = {ch: i for i, ch in enumerate(ctx.ch_names)}
+
     logger.info("Computing energy features for %d epochs", ctx.n_epochs)
     records: List[Dict[str, float]] = []
 
     for ei in range(ctx.n_epochs):
-        metadata_row = (
-            get_metadata_row(epochs, ei)
+        metadata_row = get_metadata_row(epochs, ei)
+        record = _compute_epoch_record(
+            epoch_index=ei,
+            metadata_row=metadata_row,
+            modality_channels=modality_channels,
+            styles_by_modality=styles_by_modality,
+            available_raw_styles=available,
+            data=data,
+            ch_to_ci=ch_to_ci,
+            sfreq=ctx.sfreq,
+            n_times=ctx.n_times,
         )
-        record: Dict[str, float] = {}
-        for ci, ch in enumerate(ctx.ch_names):
-            modality = ctx.modality_by_channel[ch]
-            stats_by_style = _compute_epoch_channel_energy_stats(
-                style_windows=style_windows_from_metadata(
-                    metadata_row=metadata_row,
-                    modality=modality,
-                    available_styles=available.get(modality, set()),
-                    n_times=ctx.n_times,
-                    include_half=True,
-                    include_peak=True,
-                    ear_mode="keep",
-                ),
-                signal_1d=data[ei, ci, :],
-                sfreq=ctx.sfreq,
-                n_times=ctx.n_times,
-            )
-            for style, style_metrics in stats_by_style.items():
-                for metric, stats in style_metrics.items():
-                    for stat_name, value in stats.items():
-                        record[
-                            f"{modality}__{style}__energy__{metric}_{stat_name}__{_feature_channel_name(ch, modality)}"
-                        ] = value
         records.append(record)
-
-    df = frame_from_records(records, index=ctx.index, columns=columns)
+    df =pd.DataFrame.from_records(records, index=ctx.index)
+    # df = frame_from_records(records, index=ctx.index, columns=columns)
     logger.debug("Energy feature DataFrame shape: %s", df.shape)
     return df

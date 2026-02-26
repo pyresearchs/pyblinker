@@ -6,6 +6,9 @@
 - Extend epoch-level legacy morphology aggregation to compute `mean`, `std`, and `cv` for each legacy metric via the shared `_safe_stats` convention.
 
 ### Changed
+- Refactor energy feature extraction orchestration to mirror morphology-style epoch/modality/channel delegation (`compute_energy_features -> _compute_epoch_record -> _compute_channel_record`), including per-modality style-window planning reused across channels.
+- Refactor kinematics epoch aggregation to mirror morphology’s `compute -> _compute_epoch_record -> _compute_channel_record` call graph, including modality/style planning helpers and single per-channel/per-epoch blink-frame construction reused across style stats.
+- Refactor energy, kinematics, and morphology feature schema/header generation into dedicated `column_headers.py` modules backed by a shared `blink_features/utils/column_headers_common.py` helper, while preserving legacy column names/order/alias behavior and existing feature computations.
 - Refactor feature-family compute setup to use shared epoch-context utilities (`_epoch_context.py`) across energy, frequency-domain, and kinematics extractors.
 - Remove temporary `test/blink_features/test_shared_refactor_helpers.py` helper script and keep validation through the canonical full-suite runner.
 - Remove onset/duration-style discovery from shared style helpers and standardize on frame-based start/end metadata windows.
@@ -30,6 +33,11 @@
 
 ### Removed
 - Remove deprecated `pyblinker/outside_annotation/` modules from the core package.
+
+## [0.3.6] - 2026-02-26
+
+### Fixed
+- Avoid `TypeError` in morphology epoch aggregation when a modality/channel has no detected blinks by returning an empty legacy-metrics mapping instead of `None`.
 
 ## [0.3.5] - 2026-02-25
 
@@ -63,6 +71,7 @@
 - Extend epoch-level legacy morphology aggregation to compute `mean`, `std`, and `cv` for each legacy metric via the shared `_safe_stats` convention.
 
 ### Changed
+- Refactor energy, kinematics, and morphology feature schema/header generation into dedicated `column_headers.py` modules backed by a shared `blink_features/utils/column_headers_common.py` helper, while preserving legacy column names/order/alias behavior and existing feature computations.
 - Refactor feature-family compute setup to use shared epoch-context utilities (`_epoch_context.py`) across energy, frequency-domain, and kinematics extractors.
 - Remove temporary `test/blink_features/test_shared_refactor_helpers.py` helper script and keep validation through the canonical full-suite runner.
 - Remove onset/duration-style discovery from shared style helpers and standardize on frame-based start/end metadata windows.
@@ -91,6 +100,7 @@
 - Add a dedicated `test/README.md` documenting supported single-module and batch test commands, with `python -m unittest <dotted.module>` as the recommended single-test workflow.
 
 ### Changed
+- Refactor energy, kinematics, and morphology feature schema/header generation into dedicated `column_headers.py` modules backed by a shared `blink_features/utils/column_headers_common.py` helper, while preserving legacy column names/order/alias behavior and existing feature computations.
 - Refactor feature-family compute setup to use shared epoch-context utilities (`_epoch_context.py`) across energy, frequency-domain, and kinematics extractors.
 - Remove temporary `test/blink_features/test_shared_refactor_helpers.py` helper script and keep validation through the canonical full-suite runner.
 - Remove onset/duration-style discovery from shared style helpers and standardize on frame-based start/end metadata windows.
@@ -108,6 +118,7 @@
 ## [0.1.10] - 2026-02-11
 
 ### Changed
+- Refactor energy, kinematics, and morphology feature schema/header generation into dedicated `column_headers.py` modules backed by a shared `blink_features/utils/column_headers_common.py` helper, while preserving legacy column names/order/alias behavior and existing feature computations.
 - Refactor feature-family compute setup to use shared epoch-context utilities (`_epoch_context.py`) across energy, frequency-domain, and kinematics extractors.
 - Remove temporary `test/blink_features/test_shared_refactor_helpers.py` helper script and keep validation through the canonical full-suite runner.
 - Remove onset/duration-style discovery from shared style helpers and standardize on frame-based start/end metadata windows.
@@ -154,6 +165,7 @@
 ## [0.1.5] - 2026-02-11
 
 ### Changed
+- Refactor energy, kinematics, and morphology feature schema/header generation into dedicated `column_headers.py` modules backed by a shared `blink_features/utils/column_headers_common.py` helper, while preserving legacy column names/order/alias behavior and existing feature computations.
 - Refactor feature-family compute setup to use shared epoch-context utilities (`_epoch_context.py`) across energy, frequency-domain, and kinematics extractors.
 - Remove temporary `test/blink_features/test_shared_refactor_helpers.py` helper script and keep validation through the canonical full-suite runner.
 - Remove onset/duration-style discovery from shared style helpers and standardize on frame-based start/end metadata windows.
@@ -171,6 +183,7 @@
 ## [0.1.4] - 2026-01-20
 
 ### Changed
+- Refactor energy, kinematics, and morphology feature schema/header generation into dedicated `column_headers.py` modules backed by a shared `blink_features/utils/column_headers_common.py` helper, while preserving legacy column names/order/alias behavior and existing feature computations.
 - Refactor feature-family compute setup to use shared epoch-context utilities (`_epoch_context.py`) across energy, frequency-domain, and kinematics extractors.
 - Remove temporary `test/blink_features/test_shared_refactor_helpers.py` helper script and keep validation through the canonical full-suite runner.
 - Remove onset/duration-style discovery from shared style helpers and standardize on frame-based start/end metadata windows.
@@ -185,6 +198,7 @@
 ## [0.1.3] - 2026-01-19
 
 ### Changed
+- Refactor energy, kinematics, and morphology feature schema/header generation into dedicated `column_headers.py` modules backed by a shared `blink_features/utils/column_headers_common.py` helper, while preserving legacy column names/order/alias behavior and existing feature computations.
 - Refactor feature-family compute setup to use shared epoch-context utilities (`_epoch_context.py`) across energy, frequency-domain, and kinematics extractors.
 - Remove temporary `test/blink_features/test_shared_refactor_helpers.py` helper script and keep validation through the canonical full-suite runner.
 - Remove onset/duration-style discovery from shared style helpers and standardize on frame-based start/end metadata windows.
@@ -239,6 +253,7 @@
 - Match MATLAB blink position separation handling by allowing candidates exactly at the minimum separation threshold.
 
 ### Changed
+- Refactor energy, kinematics, and morphology feature schema/header generation into dedicated `column_headers.py` modules backed by a shared `blink_features/utils/column_headers_common.py` helper, while preserving legacy column names/order/alias behavior and existing feature computations.
 - Refactor feature-family compute setup to use shared epoch-context utilities (`_epoch_context.py`) across energy, frequency-domain, and kinematics extractors.
 - Remove temporary `test/blink_features/test_shared_refactor_helpers.py` helper script and keep validation through the canonical full-suite runner.
 - Remove onset/duration-style discovery from shared style helpers and standardize on frame-based start/end metadata windows.
@@ -250,6 +265,7 @@
 ## [0.0.67] - 2026-01-15
 
 ### Changed
+- Refactor energy, kinematics, and morphology feature schema/header generation into dedicated `column_headers.py` modules backed by a shared `blink_features/utils/column_headers_common.py` helper, while preserving legacy column names/order/alias behavior and existing feature computations.
 - Refactor feature-family compute setup to use shared epoch-context utilities (`_epoch_context.py`) across energy, frequency-domain, and kinematics extractors.
 - Remove temporary `test/blink_features/test_shared_refactor_helpers.py` helper script and keep validation through the canonical full-suite runner.
 - Remove onset/duration-style discovery from shared style helpers and standardize on frame-based start/end metadata windows.

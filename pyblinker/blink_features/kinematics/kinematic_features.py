@@ -12,9 +12,13 @@ from typing import Dict, List, Mapping, Sequence, Set
 import mne
 import pandas as pd
 
+from .column_headers import (
+    EXTENDED_METRICS,
+    build_output_columns,
+    make_stat_column,
+    metrics_for_style,
+)
 from .core_metrics import (
-    KINEMATIC_METRIC_STEMS,
-    KINEMATIC_METRICS_NO_STYLE,
     compute_amp_vel_ratio_base,
     compute_amp_vel_ratio_tent,
     compute_amp_vel_ratio_zero_to_max,
@@ -23,28 +27,13 @@ from .core_metrics import (
 )
 from .per_blink import compute_segment_kinematics
 from . import helpers as kin_helpers
-from ..energy.helpers import _safe_stats
+from ..energy.helpers import compute_basic_statistics
 from ...utils.iter_utils import ensure_list
 from ..utils.aggregation import prepare_epoch_channel_data
-from .._epoch_context import build_epoch_context, empty_feature_frame, get_metadata_row
+from .._epoch_context import build_epoch_context, empty_feature_frame, frame_from_records, get_metadata_row
 from ..constants import cast_columns_to_object
 
 logger = get_logger(__name__)
-
-# Base statistic names (kinematics defaults to base per modality)
-_STATS = ("mean", "std", "cv")
-_EXTENDED_KINEMATIC_METRICS = (
-    "aver_left_velocity",
-    "aver_right_velocity",
-    "neg_amp_vel_ratio_base",
-    "pos_amp_vel_ratio_base",
-    "neg_amp_vel_ratio_zero",
-    "pos_amp_vel_ratio_zero",
-    "neg_amp_vel_ratio_tent",
-    "pos_amp_vel_ratio_tent",
-    "inter_blink_max_vel_base",
-    "inter_blink_max_vel_zero",
-)
 
 
 def _coerce_numeric_list(value: object) -> List[float]:
@@ -264,7 +253,7 @@ def _compute_metrics_over_windows(
             modality=modality,
         )
         for metric_name in metrics_for_style:
-            if metric_name in _EXTENDED_KINEMATIC_METRICS:
+            if metric_name in EXTENDED_METRICS:
                 continue
             metric_value = metrics.get(metric_name)
             if metric_value is None and style not in {"base", "zero", "tent"} and metric_name.endswith("_base"):
@@ -288,14 +277,20 @@ def _write_style_stats_into_record(
 ) -> None:
     """Merge legacy extended metrics and write style statistics into an epoch record."""
 
-    for metric_name in _EXTENDED_KINEMATIC_METRICS:
+    for metric_name in EXTENDED_METRICS:
         if metric_name in blink_df.columns:
             per_metric[metric_name] = blink_df[metric_name].tolist()
 
     for metric_name, values in per_metric.items():
-        stats = _safe_stats(values)
+        stats = compute_basic_statistics(values)
         for stat_name, value in stats.items():
-            column = f"{modality}__{style}__kinematic__{metric_name}_{stat_name}__{channel_name}"
+            column = make_stat_column(
+                modality=modality,
+                style=style,
+                metric=metric_name,
+                stat=stat_name,
+                channel=channel_name,
+            )
             record[column] = value
 
 
@@ -337,15 +332,6 @@ def _available_styles(metadata_columns: Sequence[str] | None, modality: str) -> 
 
     return styles
 
-
-def _metrics_for_style(style: str) -> List[str]:
-    """Return output metric names for a segmentation style."""
-
-    metric_suffix = style if style in {"base", "zero", "tent"} else "base"
-    return [
-        stem if stem in KINEMATIC_METRICS_NO_STYLE else f"{stem}_{metric_suffix}"
-        for stem in KINEMATIC_METRIC_STEMS
-    ]
 
 def _style_windows(
     metadata_row: Mapping[str, object],
@@ -391,13 +377,13 @@ class KinematicBlinkFeatureExtractor:
         self.epochs = epochs
         self.raw = raw
 
-    def _sampling_frequency(self) -> float:
-        """Return sampling frequency from available MNE object."""
-        if hasattr(self, "epochs") and self.epochs is not None:
-            return float(self.epochs.info["sfreq"])
-        if hasattr(self, "raw") and self.raw is not None:
-            return float(self.raw.info["sfreq"])
-        raise ValueError("Neither self.epochs nor self.raw defined (need MNE object).")
+    # def _sampling_frequency(self) -> float:
+    #     """Return sampling frequency from available MNE object."""
+    #     if hasattr(self, "epochs") and self.epochs is not None:
+    #         return float(self.epochs.info["sfreq"])
+    #     if hasattr(self, "raw") and self.raw is not None:
+    #         return float(self.raw.info["sfreq"])
+    #     raise ValueError("Neither self.epochs nor self.raw defined (need MNE object).")
 
     def compute(self, picks: str | Sequence[str] | None = None) -> pd.DataFrame:
         """Compute kinematic blink features for each epoch and channel.
@@ -428,97 +414,155 @@ class KinematicBlinkFeatureExtractor:
         )
 
         modality_map: Dict[str, str] = ctx.modality_by_channel
-        modality_channels: Dict[str, List[str]] = {}
-        for ch, mod in modality_map.items():
-            modality_channels.setdefault(mod, []).append(ch)
-        styles_by_modality: Dict[str, Set[str]] = {}
-        for mod in set(modality_map.values()):
-            styles_by_modality[mod] = _available_styles(ctx.metadata_cols, mod)
+        modality_channels = self._group_channels_by_modality(modality_map)
+        styles_by_modality = self._build_styles_by_modality(set(modality_channels), ctx.metadata_cols)
 
-        column_set: Set[str] = set()
-        for mod, channels in modality_channels.items():
-            for style in sorted(styles_by_modality.get(mod) or {"base"}):
-                metrics_for_style = _metrics_for_style(style)
-                metrics_for_style.extend(_EXTENDED_KINEMATIC_METRICS)
-                for metric in metrics_for_style:
-                    for stat in _STATS:
-                        for ch in channels:
-                            column_set.add(f"{mod}__{style}__kinematic__{metric}_{stat}__{ch}")
-        columns = sorted(column_set)
-        if n_epochs == 0:
-            return empty_feature_frame(index, columns)
+        columns = build_output_columns(modality_channels, styles_by_modality)
+
+        if n_epochs == 0 or not columns:
+            return cast_columns_to_object(empty_feature_frame(index=index, columns=columns))
+
 
         records: List[Dict[str, float]] = []
-        logger.info("Computing kinematic features for %d epochs", n_epochs)
 
         for ei in range(n_epochs):
-            metadata_row = (
-                get_metadata_row(self.epochs, ei)
+            metadata_row = get_metadata_row(self.epochs, ei)
+            record = self._compute_epoch_record(
+                epoch_index=ei,
+                metadata_row=metadata_row,
+                modality_channels=modality_channels,
+                styles_by_modality=styles_by_modality,
+                channel_data=channel_data,
+                sfreq=ctx.sfreq,
+                n_times=n_times,
+                n_epochs=n_epochs,
             )
-            record: Dict[str, float] = {}
-            for modality, channels in modality_channels.items():
-                styles = styles_by_modality.get(modality) or {"base"}
-                # use_fallback = fallback_styles.get(modality, False)
-                for style in sorted(styles):
-                    metrics_for_style = _metrics_for_style(style)
-                    metrics_for_style.extend(_EXTENDED_KINEMATIC_METRICS)
-                    windows = _style_windows(metadata_row, modality, style)
-
-                    for ch in channels:
-                        # calculate the legacy kinematics features
-                        blink_df = _compute_extended_kinematic_metrics(
-                            _build_kinematic_blink_frame(metadata_row, modality=modality, sfreq=ctx.sfreq),
-                            channel_data[ch]["raw"][ei],
-                            ctx.sfreq,
-                            modality=modality,
-                        )
-                        per_metric = _compute_metrics_over_windows(
-                            windows=windows,
-                            n_times=n_times,
-                            channel_data=channel_data,
-                            channel_name=ch,
-                            epoch_index=ei,
-                            sfreq=ctx.sfreq,
-                            style=style,
-                            modality=modality,
-                            metrics_for_style=metrics_for_style,
-                        )
-                        _write_style_stats_into_record(
-                            record=record,
-                            per_metric=per_metric,
-                            blink_df=blink_df,
-                            modality=modality,
-                            style=style,
-                            channel_name=ch,
-                        )
             records.append(record)
-
-        df = pd.DataFrame.from_records(records, index=index, columns=columns)
-        # df = _add_legacy_ear_interpolation_aliases(df) # If there is error, this is the place to check for the column names in the test and make sure they match the expected format.
+        df =pd.DataFrame.from_records(records, index=index)
+        # df = frame_from_records(records, index=index, columns=columns)
         logger.debug("Kinematic feature DataFrame shape: %s", df.shape)
         return cast_columns_to_object(df)
 
+    def _group_channels_by_modality(self, modality_map: Dict[str, str]) -> Dict[str, List[str]]:
+        grouped: Dict[str, List[str]] = {}
+        for channel_name, modality in modality_map.items():
+            grouped.setdefault(modality, []).append(channel_name)
+        return grouped
 
-def _add_legacy_ear_interpolation_aliases(df: pd.DataFrame) -> pd.DataFrame:
-    """Expose historical EAR interpolation column aliases used by old tests."""
+    def _build_styles_by_modality(
+        self,
+        modalities: Set[str],
+        metadata_cols: Sequence[str] | None,
+    ) -> Dict[str, Set[str]]:
+        styles_by_modality: Dict[str, Set[str]] = {}
+        for modality in modalities:
+            styles_by_modality[modality] = _available_styles(metadata_cols, modality)
+        return styles_by_modality
 
-    if df.empty:
-        return cast_columns_to_object(df)
+    def _compute_epoch_record(
+        self,
+        epoch_index: int,
+        metadata_row: pd.Series,
+        modality_channels: Dict[str, List[str]],
+        styles_by_modality: Dict[str, Set[str]],
+        channel_data: Mapping[str, Mapping[str, object]],
+        sfreq: float,
+        n_times: int,
+        n_epochs: int,
+    ) -> Dict[str, float]:
+        logger.debug("Kinematic epoch %d/%d", epoch_index + 1, n_epochs)
+        record: Dict[str, float] = {}
+        for modality, channels in modality_channels.items():
+            styles = sorted(styles_by_modality.get(modality) or {"base"})
+            for channel_name in channels:
+                self._compute_channel_record(
+                    record=record,
+                    metadata_row=metadata_row,
+                    channel_data=channel_data,
+                    channel_name=channel_name,
+                    epoch_index=epoch_index,
+                    sfreq=sfreq,
+                    n_times=n_times,
+                    modality=modality,
+                    styles=styles,
+                )
+        return record
 
-    alias_updates: Dict[str, pd.Series] = {}
-    for col in df.columns:
-        if "ear__th_interpolation__kinematic__" not in col:
-            continue
-        alias_col = col.replace("ear__th_interpolation__", "ear__ interpolated_threshold__")
-        if "__" in alias_col:
-            head, tail = alias_col.rsplit("__", 1)
-            alias_col = f"{head}____{tail}"
-        alias_updates[alias_col] = df[col]
+    def _compute_channel_record(
+        self,
+        *,
+        record: Dict[str, float],
+        metadata_row: pd.Series,
+        channel_data: Mapping[str, Mapping[str, object]],
+        channel_name: str,
+        epoch_index: int,
+        sfreq: float,
+        n_times: int,
+        modality: str,
+        styles: Sequence[str],
+    ) -> None:
+        signal = channel_data[channel_name]["raw"][epoch_index]
+        blink_df = self._build_blink_df(metadata_row, signal, sfreq, modality)
+        for style in styles:
+            self._compute_style_stats_into_record(
+                record=record,
+                metadata_row=metadata_row,
+                channel_data=channel_data,
+                channel_name=channel_name,
+                epoch_index=epoch_index,
+                sfreq=sfreq,
+                n_times=n_times,
+                modality=modality,
+                style=style,
+                blink_df=blink_df,
+            )
 
-    if not alias_updates:
-        return cast_columns_to_object(df)
+    def _build_blink_df(
+        self,
+        metadata_row: Mapping[str, object],
+        signal: pd.Series | List[float] | object,
+        sfreq: float,
+        modality: str,
+    ) -> pd.DataFrame:
+        blink_df = _build_kinematic_blink_frame(metadata_row, modality=modality, sfreq=sfreq)
+        blink_df = _compute_extended_kinematic_metrics(blink_df, signal, sfreq, modality=modality)
+        return blink_df
 
-    return cast_columns_to_object(df).assign(**alias_updates)
+    def _compute_style_stats_into_record(
+        self,
+        *,
+        record: Dict[str, float],
+        metadata_row: Mapping[str, object],
+        channel_data: Mapping[str, Mapping[str, object]],
+        channel_name: str,
+        epoch_index: int,
+        sfreq: float,
+        n_times: int,
+        modality: str,
+        style: str,
+        blink_df: pd.DataFrame,
+    ) -> None:
+        windows = _style_windows(metadata_row, modality, style)
+        style_metrics = list(metrics_for_style(style)) + list(EXTENDED_METRICS)
+        per_metric = _compute_metrics_over_windows(
+            windows=windows,
+            n_times=n_times,
+            channel_data=channel_data,
+            channel_name=channel_name,
+            epoch_index=epoch_index,
+            sfreq=sfreq,
+            style=style,
+            modality=modality,
+            metrics_for_style=style_metrics,
+        )
+        _write_style_stats_into_record(
+            record=record,
+            per_metric=per_metric,
+            blink_df=blink_df,
+            modality=modality,
+            style=style,
+            channel_name=channel_name,
+        )
 
 
 def compute_kinematic_features(
