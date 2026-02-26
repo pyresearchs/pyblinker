@@ -29,7 +29,6 @@ from ..energy.helpers import compute_basic_statistics, segment_to_samples
 from ..utils.aggregation import prepare_epoch_channel_data
 from .._epoch_context import (
     build_epoch_context,
-    empty_feature_frame,
     frame_from_records,
     get_metadata_row,
 )

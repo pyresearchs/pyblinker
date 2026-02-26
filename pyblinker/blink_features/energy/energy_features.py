@@ -13,7 +13,6 @@ from .._epoch_context import (
     available_styles_by_modality,
     build_epoch_context,
     empty_feature_frame,
-    frame_from_records,
     get_metadata_row,
 )
 from .._style_windows import style_windows_from_metadata
