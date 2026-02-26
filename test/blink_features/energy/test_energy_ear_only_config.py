@@ -8,10 +8,11 @@ from pathlib import Path
 import mne
 
 from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
+from test.helper import build_expected_metrics
 from pyblinker.blink_features.energy.energy_features import compute_energy_features
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 EAR_CHANNEL = "EAR-avg_ear"
-from test.helper import build_expected_metrics
+
 required_columns=['ear__th_point__energy__blink_signal_energy_mean__EAR-AVG_EAR', 'ear__th_point__energy__blink_signal_energy_std__EAR-AVG_EAR', 'ear__th_point__energy__blink_signal_energy_cv__EAR-AVG_EAR'
 		]
 

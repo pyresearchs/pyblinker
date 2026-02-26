@@ -20,6 +20,13 @@ from .per_blink import compute_blink_waveform_metrics
 from .._blink_metrics_shared import ALL_METHODS
 from ..energy.helpers import _safe_stats, segment_to_samples
 from ..utils.aggregation import prepare_epoch_channel_data
+from .._epoch_context import (
+    build_epoch_context,
+    empty_feature_frame,
+    frame_from_records,
+    get_metadata_row,
+)
+from ..constants import cast_columns_to_object
 from ...utils.epoch_utils import resolve_channels
 from ...utils.iter_utils import ensure_list
 
@@ -555,20 +562,18 @@ class MorphologyBlinkFeatureExtractor:
         self._validate_inputs()
         logger.info("Computing morphology features for epochs")
 
-        sfreq = self._sampling_frequency()
-
-        ch_names, channel_data, index, n_epochs, n_times = self._prepare_inputs(
-            picks=picks,
-            sfreq=sfreq,
+        ctx = build_epoch_context(self.epochs, picks, default=_default_morphology_channels)
+        ch_names, channel_data, index, n_epochs, n_times = prepare_epoch_channel_data(
+            epochs=self.epochs,
+            picks=ctx.ch_names,
+            sfreq=ctx.sfreq,
         )
 
-        modality_map = self._build_modality_map(ch_names)
+        modality_map = ctx.modality_by_channel
         modality_channels = self._group_channels_by_modality(modality_map)
-        metadata_cols = self._get_metadata_cols()
-
         styles_by_modality = self._build_styles_by_modality(
             modalities=set(modality_channels.keys()),
-            metadata_cols=metadata_cols,
+            metadata_cols=ctx.metadata_cols,
         )
 
         columns = self._build_output_columns(modality_channels, styles_by_modality)
@@ -576,29 +581,29 @@ class MorphologyBlinkFeatureExtractor:
 
         if n_epochs == 0:
             logger.info("No epochs available. Returning empty DataFrame.")
-            return pd.DataFrame(index=index, columns=columns, dtype=float)
+            return empty_feature_frame(index, columns)
 
         logger.info("Computing morphology features for %d epochs", n_epochs)
 
         records: List[Dict[str, float]] = []
         for ei in range(n_epochs):
-            metadata_row = self._get_metadata_row(ei)
+            metadata_row = get_metadata_row(self.epochs, ei)
             record = self._compute_epoch_record(
                 epoch_index=ei,
                 metadata_row=metadata_row,
                 modality_channels=modality_channels,
                 styles_by_modality=styles_by_modality,
                 channel_data=channel_data,
-                sfreq=sfreq,
+                sfreq=ctx.sfreq,
                 n_times=n_times,
                 n_epochs=n_epochs,
             )
             records.append(record)
 
-        df = pd.DataFrame.from_records(records, index=index, columns=columns)
+        df = frame_from_records(records, index=index, columns=columns)
         df = _add_legacy_ear_channel_aliases(df)
         logger.debug("Morphology feature DataFrame shape: %s", df.shape)
-        return df
+        return cast_columns_to_object(df)
 
     # ------------------------------------------------------------------
     # Input preparation & validation
@@ -669,9 +674,7 @@ class MorphologyBlinkFeatureExtractor:
 
     def _get_metadata_row(self, epoch_index: int) -> pd.Series:
         """Fetch metadata row for an epoch (or an empty Series if unavailable)."""
-        if isinstance(self.epochs.metadata, pd.DataFrame):
-            return self.epochs.metadata.iloc[epoch_index]
-        return pd.Series(dtype=float)
+        return get_metadata_row(self.epochs, epoch_index)
 
     # ------------------------------------------------------------------
     # Modality/style/column planning
@@ -1252,7 +1255,7 @@ def _add_legacy_ear_channel_aliases(df: pd.DataFrame) -> pd.DataFrame:
     """Expose uppercase EAR channel aliases used by historical tests."""
 
     if df.empty:
-        return df
+        return cast_columns_to_object(df)
 
     alias_updates: Dict[str, pd.Series] = {}
     for col in df.columns:
@@ -1268,8 +1271,8 @@ def _add_legacy_ear_channel_aliases(df: pd.DataFrame) -> pd.DataFrame:
         alias_updates[alias_col] = df[col]
 
     if not alias_updates:
-        return df
-    return df.assign(**alias_updates)
+        return cast_columns_to_object(df)
+    return cast_columns_to_object(df).assign(**alias_updates)
 
 def compute_morphology_features(
 		epochs: mne.Epochs, picks: str | Sequence[str] | None = None
