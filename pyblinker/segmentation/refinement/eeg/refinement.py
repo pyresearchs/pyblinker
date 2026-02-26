@@ -103,6 +103,8 @@ def _append_peak_refinements(
     row_data.update(transposed)
 
     base_fraction = float((modality_config or {}).get("base_fraction", DEFAULT_PARAMS["base_fraction"]))
+
+    # TODO: Do not use the blink_start and blink_end indices since this can be from manual annotatioons. Consider to use the refined start and end indices instead for computing landmarks, or at least make this configurable.refined_start and refined_end
     landmarks = _compute_epoch_landmarks(
         segment=segment,
         blink_starts=blink_starts,
