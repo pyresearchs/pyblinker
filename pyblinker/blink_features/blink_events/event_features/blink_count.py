@@ -14,6 +14,27 @@ from pyblinker.utils.modality import infer_modality
 logger = get_logger(__name__)
 
 
+_MODALITY_START_COLUMN = {
+    "ear": "start__th_point__ear",
+    "eeg": "start__refine__eeg",
+    "eog": "start__refine__eog",
+}
+
+
+def _count_from_metadata_start_column(row: pd.Series, column: str) -> float:
+    """Count blinks from a modality-specific start landmark metadata column."""
+
+    if column not in row.index:
+        return 0.0
+
+    value = row.get(column)
+    if value is None or (isinstance(value, float) and np.isnan(value)):
+        return 0.0
+    if isinstance(value, list):
+        return float(sum(0 if pd.isna(v) else 1 for v in value))
+    return float(0 if pd.isna(value) else 1)
+
+
 def blink_count_epoch(
         blinks: Union[List[Dict[str, int]], 'mne.io.BaseRaw', 'mne.Epochs'],
         label: Optional[str] = None
@@ -114,10 +135,13 @@ def blink_count(
     rows = [row for _, row in metadata_df.iterrows()]
 
     if not picks_list:
-        counts = [
-            float(len(extract_blink_windows(row, None, epoch_idx)))
-            for epoch_idx, row in enumerate(rows)
-        ]
+        if "n_blinks" in metadata_df.columns:
+            counts = metadata_df["n_blinks"].fillna(0).astype(float).tolist()
+        else:
+            counts = [
+                float(len(extract_blink_windows(row, None, epoch_idx)))
+                for epoch_idx, row in enumerate(rows)
+            ]
         df["blink_count"] = counts
         logger.debug("Blink counts per epoch: %s", counts)
     else:
@@ -128,10 +152,35 @@ def blink_count(
                 mod_to_channel[mod] = ch
 
         for modality, channel in mod_to_channel.items():
-            counts = [
-                float(len(extract_blink_windows(row, channel, epoch_idx)))
-                for epoch_idx, row in enumerate(rows)
-            ]
+            start_column = _MODALITY_START_COLUMN.get(modality)
+            mod_onset_key = f"blink_onset_{modality}"
+            mod_duration_key = f"blink_duration_{modality}"
+            has_window_columns = (
+                (
+                    mod_onset_key in metadata_df.columns
+                    and mod_duration_key in metadata_df.columns
+                )
+                or (
+                    "blink_onset" in metadata_df.columns
+                    and "blink_duration" in metadata_df.columns
+                )
+            )
+
+            if has_window_columns:
+                counts = [
+                    float(len(extract_blink_windows(row, channel, epoch_idx)))
+                    for epoch_idx, row in enumerate(rows)
+                ]
+            elif start_column is not None and start_column in metadata_df.columns:
+                counts = [
+                    _count_from_metadata_start_column(row, start_column)
+                    for row in rows
+                ]
+            else:
+                counts = [
+                    float(len(extract_blink_windows(row, channel, epoch_idx)))
+                    for epoch_idx, row in enumerate(rows)
+                ]
             col_name = f"blink_count_{modality}"
             df[col_name] = counts
             logger.debug(

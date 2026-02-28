@@ -37,6 +37,12 @@
 - Remove deprecated `pyblinker/outside_annotation/` modules from the core package.
 - Remove temporary morphology regression test `test_morphology_refine_window_selection.py` and rely on existing morphology suite coverage.
 
+
+## [0.3.7] - 2026-02-28
+
+### Fixed
+- Update epoch blink counting to prefer per-epoch `n_blinks` totals when available and to count modality-specific blink totals from refined start landmarks (`start__th_point__ear`, `start__refine__eeg`, `start__refine__eog`) before falling back to onset/duration windows.
+
 ## [0.3.6] - 2026-02-26
 
 ### Fixed
