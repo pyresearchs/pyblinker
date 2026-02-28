@@ -153,41 +153,11 @@ def blink_count(
 
         for modality, channel in mod_to_channel.items():
             start_column = _MODALITY_START_COLUMN.get(modality)
-            mod_onset_key = f"blink_onset_{modality}"
-            mod_duration_key = f"blink_duration_{modality}"
-            has_window_columns = (
-                (
-                    mod_onset_key in metadata_df.columns
-                    and mod_duration_key in metadata_df.columns
-                )
-                or (
-                    "blink_onset" in metadata_df.columns
-                    and "blink_duration" in metadata_df.columns
-                )
-            )
-
-            if has_window_columns:
-                counts = [
-                    float(len(extract_blink_windows(row, channel, epoch_idx)))
-                    for epoch_idx, row in enumerate(rows)
-                ]
-            elif start_column is not None and start_column in metadata_df.columns:
-                counts = [
-                    _count_from_metadata_start_column(row, start_column)
-                    for row in rows
-                ]
-            else:
-                counts = [
-                    float(len(extract_blink_windows(row, channel, epoch_idx)))
-                    for epoch_idx, row in enumerate(rows)
-                ]
-            col_name = f"blink_count_{modality}"
-            df[col_name] = counts
-            logger.debug(
-                "Blink counts for modality '%s': %s",
-                modality,
-                counts,
-            )
-
-    logger.info("Finished counting blinks")
+            ncount=0
+            for x,row enumerate rows:
+                gg=row[start_column]
+                nblink=len(gg)
+                jj=1
+    df=0
     return df
+#eeg__ncount__EEG-E8
