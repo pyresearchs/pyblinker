@@ -148,6 +148,28 @@ graph TD
 *   **`tutorial/06b_eeg_kinematics_feature_tutorial.py`**:
     Shows EEG/EOG kinematic aggregation with SEGMENT_CONFIG containing only the voltage modalities that are present.
 
+*   **`tutorial/05a_all_channel_feature_aggregation_tutorial.py`**:
+    End-to-end multimodal walkthrough that aggregates blink event (count/rate/IBI), energy, frequency-domain, kinematic, and morphology features together for EAR, EEG, and EOG channels in one combined per-epoch DataFrame.
+
+## Multimodal all-feature aggregation tutorial
+
+*Feature/change*: Added a dedicated tutorial that aggregates feature families in one run across EAR, EEG, and EOG channels. The script demonstrates event/blink-count metrics plus energy, frequency-domain, morphology, and kinematic features using the same segmentation strategy and channel set used by integration tests.
+
+*Related Code*:
+*   `tutorial/05a_all_channel_feature_aggregation_tutorial.py`
+*   `pyblinker/blink_features/blink_events/event_features/aggregate.py`
+*   `pyblinker/blink_features/energy/energy_features.py`
+*   `pyblinker/blink_features/frequency_domain/aggregate.py`
+*   `pyblinker/blink_features/kinematics/kinematic_features.py`
+*   `pyblinker/blink_features/morphology/epoch_features.py`
+
+*Tutorials*:
+*   `tutorial/05a_all_channel_feature_aggregation_tutorial.py`
+
+*Unit Tests*:
+*   `test/blink_features/test_blink_features_ear_eeg_eog.py`
+*   `test/blink_features/blink_events/test_aggregate_event_features.py`
+
 ## Kinematic channel flexibility
 
 *Feature/change*: Kinematic feature extraction now explicitly supports EAR-only, EEG-only, mixed, and partial `SEGMENT_CONFIG` inputs without requiring dummy modality keys. Channel validation is skipped for omitted modalities, while provided channels are still validated strictly.
