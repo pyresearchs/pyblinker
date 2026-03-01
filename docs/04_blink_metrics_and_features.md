@@ -480,3 +480,18 @@ The core helpers are structured to compute metrics one blink at a time so per-bl
   - `test/blink_features/morphology/test_morphology_ear_eeg_eog.py`
   - `test/blink_features/test_blink_features_ear_eeg_eog.py`
   - `test/run_all_tests.py`
+
+## Blink-event count compatibility outputs
+
+*Feature/change*: `blink_count` now correctly computes per-modality epoch blink counts when channel picks are provided, preferring refined start-frame metadata (`start__refine__eeg`, `start__refine__eog`, `start__th_point__ear`) and falling back to modality/generic blink-onset metadata when those landmarks are unavailable. The feature now exports both legacy pick-qualified columns (for example, `eeg__ncount__EEG-E8`) and modality-level columns (`blink_count_eeg`) so existing tests and downstream aggregations remain compatible.
+
+*Related Code*:
+*   `pyblinker/blink_features/blink_events/event_features/blink_count.py`
+*   `pyblinker/blink_features/blink_events/event_features/aggregate.py`
+
+*Tutorials*:
+*   `tutorial/04_epoching_and_blink_validation_report.py` (ground-truth comparison context for epoch counts)
+
+*Unit Tests*:
+*   `test/blink_features/blink_events/test_blink_count.py`: validates pick-based EEG blink count column values against CSV ground truth.
+*   `test/blink_features/blink_events/test_aggregate_event_features.py`: validates blink total/rate aggregation remains correct for EEG/EOG/EAR picks.
