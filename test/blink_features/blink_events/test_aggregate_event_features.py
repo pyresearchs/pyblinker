@@ -57,9 +57,9 @@ class TestAggregateBlinkFeatures(unittest.TestCase):
             csv_path.is_file(),
             f"Missing ground truth CSV at {csv_path}"
         )
-        expected_full = (
-            pd.read_csv(csv_path).set_index("epoch_id")["blink_count"].astype(float)
-        )
+        expected_df = pd.read_csv(csv_path).set_index("epoch_id")
+        count_col = "blink_count" if "blink_count" in expected_df.columns else "eeg__ncount__EEG-E8"
+        expected_full = expected_df[count_col].astype(float)
         self.expected_counts = expected_full.loc[self.epochs.metadata.index]
         self.allowed_exception_rows = {31, 55}
 

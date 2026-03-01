@@ -38,6 +38,11 @@
 - Remove temporary morphology regression test `test_morphology_refine_window_selection.py` and rely on existing morphology suite coverage.
 
 
+## [0.3.8] - 2026-02-28
+
+### Fixed
+- Restore epoch blink-count feature extraction in `blink_count` for channel picks by computing per-modality counts from refined start landmarks when present, then falling back to modality/generic blink onset metadata; also emit the legacy `"<modality>__ncount__<channel>"` output expected by event-feature regression tests while preserving `blink_count_<modality>` columns for aggregation.
+
 ## [0.3.7] - 2026-02-28
 
 ### Fixed

@@ -146,18 +146,53 @@ def blink_count(
         logger.debug("Blink counts per epoch: %s", counts)
     else:
         mod_to_channel: Dict[str, str] = {}
-        for ch in picks_list:
-            mod = infer_modality(ch)
-            if mod not in mod_to_channel:
-                mod_to_channel[mod] = ch
+        for channel in picks_list:
+            modality = infer_modality(channel)
+            if modality not in mod_to_channel:
+                mod_to_channel[modality] = channel
 
         for modality, channel in mod_to_channel.items():
+            # Preserve legacy naming consumed by tests/CSV comparisons.
+            out_col = f"{modality}__ncount__{channel}"
             start_column = _MODALITY_START_COLUMN.get(modality)
-            ncount=0
-            for x,row enumerate rows:
-                gg=row[start_column]
-                nblink=len(gg)
-                jj=1
-    df=0
+
+            mod_onset = f"blink_onset_{modality}"
+            mod_duration = f"blink_duration_{modality}"
+            has_modality_windows = (
+                mod_onset in metadata_df.columns and mod_duration in metadata_df.columns
+            )
+            has_generic_windows = (
+                "blink_onset" in metadata_df.columns
+                and "blink_duration" in metadata_df.columns
+            )
+
+            if has_modality_windows:
+                counts = [
+                    float(len(extract_blink_windows(row, channel, epoch_idx)))
+                    for epoch_idx, row in enumerate(rows)
+                ]
+            elif has_generic_windows:
+                counts = [
+                    float(len(extract_blink_windows(row, None, epoch_idx)))
+                    for epoch_idx, row in enumerate(rows)
+                ]
+            elif start_column and start_column in metadata_df.columns:
+                counts = [
+                    _count_from_metadata_start_column(row, start_column)
+                    for row in rows
+                ]
+            else:
+                counts = metadata_df.get("n_blinks", pd.Series(0.0, index=index)).fillna(0).astype(float).tolist()
+
+            df[out_col] = counts
+            # Keep the modern modality-level name for downstream aggregation.
+            df[f"blink_count_{modality}"] = counts
+
+            logger.debug(
+                "Blink counts for modality %s (channel %s): %s",
+                modality,
+                channel,
+                counts,
+            )
+
     return df
-#eeg__ncount__EEG-E8
