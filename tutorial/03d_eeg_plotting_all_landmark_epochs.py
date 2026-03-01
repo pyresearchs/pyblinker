@@ -5,18 +5,14 @@ from pathlib import Path
 from typing import Iterable
 import sys
 
-
-
 import matplotlib.pyplot as plt
 import mne
 import numpy as np
 import pandas as pd
 
-from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
-
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
-	sys.path.insert(0, str(PROJECT_ROOT))
+    sys.path.insert(0, str(PROJECT_ROOT))
 LOGGER = logging.getLogger(__name__)
 
 LANDMARK_SAMPLE_COLUMNS = (
@@ -348,6 +344,9 @@ def build_eeg_landmark_report(
     overlay_ear: bool = True,
 ) -> mne.Report:
     """Create an HTML report with per-blink EEG landmark plots."""
+    from pyblinker.segmentation.refinement import (
+        slice_raw_into_mne_epochs_refine_annot,
+    )
 
     epochs = slice_raw_into_mne_epochs_refine_annot(
         raw,
