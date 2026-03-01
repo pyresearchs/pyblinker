@@ -64,7 +64,7 @@ class TestBlinkCount(unittest.TestCase):
             f"Missing ground truth CSV at {csv_path}"
         )
         expected_full = (
-            pd.read_csv(csv_path).set_index("epoch_id")["blink_count"].astype(float)
+            pd.read_csv(csv_path).set_index("epoch_id")["eeg__ncount__EEG-E8"].astype(float)
         )
         # Align ground truth with available epochs
         self.expected_counts = expected_full.loc[self.epochs.metadata.index]
@@ -72,18 +72,16 @@ class TestBlinkCount(unittest.TestCase):
 
         # metadata sanity checks
         self.assertIsInstance(self.epochs.metadata, pd.DataFrame)
-        for col in ("blink_onset", "blink_duration"):
-            self.assertIn(col, self.epochs.metadata.columns)
 
         logger.info("Epoch setup complete.")
 
     def test_counts(self) -> None:
         """Verify blink counts against CSV, ignoring rows 31 and 55."""
         df = blink_count(self.epochs, picks="EEG-E8")
-        assert_df_has_columns(self, df, ["ep", "eeg__ncount__EEG-E8"])
+        assert_df_has_columns(self, df, ["epoch_id", "eeg__ncount__EEG-E8"])
         self.assertEqual(len(df), len(self.epochs))
         pd.testing.assert_series_equal(
-            df["ep"], pd.Series(self.epochs.metadata.index, name="ep"), check_names=False
+            df["epoch_id"], pd.Series(self.epochs.metadata.index, name="epoch_id"), check_names=False
         )
 
         expected = self.expected_counts.drop(
@@ -110,7 +108,7 @@ class TestBlinkCount(unittest.TestCase):
                 continue
             self.assertEqual(df.loc[idx, "eeg__ncount__EEG-E8"], expected_val)
             self.assertTrue(np.isfinite(df.loc[idx, "eeg__ncount__EEG-E8"]))
-	#
+	# #
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)

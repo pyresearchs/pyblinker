@@ -80,7 +80,7 @@ def blink_count(
         index = pd.RangeIndex(len(epochs))
 
     df = pd.DataFrame(index=index)
-    df.insert(0, "ep", index.to_numpy())
+    df.insert(0, "epoch_id", index.to_numpy())
 
     picks_list = normalize_picks(picks) if picks is not None else []
     rows = [row for _, row in metadata_df.iterrows()]
@@ -103,11 +103,13 @@ def blink_count(
         if mod not in mod_to_channel:
             mod_to_channel[mod] = ch
 
-    for modality in mod_to_channel:
+    for modality, channel in mod_to_channel.items():
+        expected_column = f"{modality}__ncount__{channel}"
         start_column = _MODALITY_START_COLUMN.get(modality)
-        column_name = f"blink_count_{modality}"
 
-        if start_column and start_column in metadata_df.columns:
+        if expected_column in metadata_df.columns:
+            counts = metadata_df[expected_column].fillna(0).astype(float).tolist()
+        elif start_column and start_column in metadata_df.columns:
             counts = [
                 _count_from_metadata_start_column(row, start_column)
                 for row in rows
@@ -120,7 +122,7 @@ def blink_count(
                 for epoch_idx, row in enumerate(rows)
             ]
 
-        df[column_name] = counts
+        df[expected_column] = counts
         logger.debug("Blink counts for %s: %s", modality, counts)
 
     return df
