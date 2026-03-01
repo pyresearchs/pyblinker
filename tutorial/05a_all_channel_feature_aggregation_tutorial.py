@@ -126,6 +126,8 @@ def run_tutorial() -> pd.DataFrame:
 
 if __name__ == "__main__":
     df_features = run_tutorial()
+    output_path = Path(__file__).resolve().parents[1] / "complete_feature.xlsx"
+    df_features.to_excel(output_path, index=False)
     print("Combined feature DataFrame shape:", df_features.shape)
     print("Sample columns:")
     print(df_features.columns[:20].tolist())
