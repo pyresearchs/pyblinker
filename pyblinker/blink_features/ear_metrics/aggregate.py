@@ -1,4 +1,5 @@
 """Aggregate EAR baseline and extrema features."""
+
 from typing import Iterable, Dict, Any, List
 import pandas as pd
 import numpy as np
@@ -51,25 +52,29 @@ def aggregate_ear_features(
         blink_list = per_epoch_blinks[idx]
         record = {"epoch": idx}
         if signal is None:
-            record.update({
-                "EAR_Before_Blink_left_avg": float("nan"),
-                "EAR_Before_Blink_right_avg": float("nan"),
-                "EAR_left_min": float("nan"),
-                "EAR_right_min": float("nan"),
-                "EAR_left_max": float("nan"),
-                "EAR_right_max": float("nan"),
-            })
+            record.update(
+                {
+                    "EAR_Before_Blink_left_avg": float("nan"),
+                    "EAR_Before_Blink_right_avg": float("nan"),
+                    "EAR_left_min": float("nan"),
+                    "EAR_right_min": float("nan"),
+                    "EAR_left_max": float("nan"),
+                    "EAR_right_max": float("nan"),
+                }
+            )
         else:
             pre = ear_before_blink_avg_epoch(signal, blink_list, sfreq, lookback)
             extrema = ear_extrema_epoch(signal)
-            record.update({
-                "EAR_Before_Blink_left_avg": pre,
-                "EAR_Before_Blink_right_avg": pre,
-                "EAR_left_min": extrema["ear_min"],
-                "EAR_right_min": extrema["ear_min"],
-                "EAR_left_max": extrema["ear_max"],
-                "EAR_right_max": extrema["ear_max"],
-            })
+            record.update(
+                {
+                    "EAR_Before_Blink_left_avg": pre,
+                    "EAR_Before_Blink_right_avg": pre,
+                    "EAR_left_min": extrema["ear_min"],
+                    "EAR_right_min": extrema["ear_min"],
+                    "EAR_left_max": extrema["ear_max"],
+                    "EAR_right_max": extrema["ear_max"],
+                }
+            )
         records.append(record)
 
     df = pd.DataFrame.from_records(records).set_index("epoch")

@@ -12,12 +12,16 @@ from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_a
 from test.helper import build_expected_metrics
 
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 
 stats = ["mean", "std", "cv"]
-metrics = ["wavelet_energy_d1", "wavelet_energy_d2", "wavelet_energy_d3", "wavelet_energy_d4"]
+metrics = [
+    "wavelet_energy_d1",
+    "wavelet_energy_d2",
+    "wavelet_energy_d3",
+    "wavelet_energy_d4",
+]
 
 modality = "ear"
 landmark = ["th_point"]
@@ -73,7 +77,6 @@ class TestFrequencyDomainBlinkFeaturesEAROnly(unittest.TestCase):
             for metric in landmark_metrics.values():
                 for stat_name in metric:
                     self.assertIn(stat_name, df.columns)
-
 
 
 if __name__ == "__main__":

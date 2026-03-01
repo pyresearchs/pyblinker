@@ -70,9 +70,11 @@ class DataFrameComparison:
     differing_rows: pd.DataFrame
 
     def is_match(self) -> bool:
-        return not self.missing_columns["missing_in_python"] and not self.missing_columns[
-            "missing_in_matlab"
-        ] and self.differing_rows.empty
+        return (
+            not self.missing_columns["missing_in_python"]
+            and not self.missing_columns["missing_in_matlab"]
+            and self.differing_rows.empty
+        )
 
 
 def _load_inputs() -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -99,7 +101,9 @@ def _load_inputs() -> tuple[pd.DataFrame, pd.DataFrame]:
     )
 
     python_positions = python_positions.copy()
-    python_positions[["start_blink", "end_blink"]] += 1  # convert to MATLAB's 1-based indexing
+    python_positions[["start_blink", "end_blink"]] += (
+        1  # convert to MATLAB's 1-based indexing
+    )
 
     matlab_positions = pd.DataFrame(
         {
@@ -126,8 +130,12 @@ def _compare(python_df: pd.DataFrame, matlab_df: pd.DataFrame) -> DataFrameCompa
     python_df = _integerise(python_df)
     matlab_df = _integerise(matlab_df)
 
-    missing_in_python = [col for col in matlab_df.columns if col not in python_df.columns]
-    missing_in_matlab = [col for col in python_df.columns if col not in matlab_df.columns]
+    missing_in_python = [
+        col for col in matlab_df.columns if col not in python_df.columns
+    ]
+    missing_in_matlab = [
+        col for col in python_df.columns if col not in matlab_df.columns
+    ]
 
     aligned_python = python_df[[c for c in matlab_df.columns if c in python_df.columns]]
     aligned_matlab = matlab_df[[c for c in aligned_python.columns]]
@@ -152,7 +160,10 @@ def _print_report(result: DataFrameComparison) -> None:
     """Print a human-readable report of the comparison outcome."""
 
     print("\nBlink position comparison (MATLAB vs Python)\n" + "-" * 46)
-    if result.missing_columns["missing_in_python"] or result.missing_columns["missing_in_matlab"]:
+    if (
+        result.missing_columns["missing_in_python"]
+        or result.missing_columns["missing_in_matlab"]
+    ):
         print("Missing columns detected:")
         for key, columns in result.missing_columns.items():
             print(f"  {key}: {columns if columns else 'None'}")
@@ -179,4 +190,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

@@ -1,4 +1,5 @@
 """Median absolute deviation of open-eye baseline."""
+
 from typing import List, Dict
 import numpy as np
 from pyblinker.fitutils import mad
@@ -11,7 +12,9 @@ def baseline_mad_epoch(epoch_signal: np.ndarray, blinks: List[Dict[str, int]]) -
     """Compute baseline median absolute deviation for an epoch."""
     mask = np.ones(len(epoch_signal), dtype=bool)
     for blink in blinks:
-        mask[int(blink["refined_start_frame"]): int(blink["refined_end_frame"])+1] = False
+        mask[
+            int(blink["refined_start_frame"]) : int(blink["refined_end_frame"]) + 1
+        ] = False
     open_signal = epoch_signal[mask]
     if open_signal.size == 0:
         return float("nan")

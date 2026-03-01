@@ -206,7 +206,9 @@ def find_threshold_crossing_triplet(
     else:
         t_arr = np.asarray(t, dtype=float)
         if t_arr.shape != ear_arr.shape:
-            raise ThresholdCrossingError("Timebase and EAR arrays must share the same shape")
+            raise ThresholdCrossingError(
+                "Timebase and EAR arrays must share the same shape"
+            )
 
     base_start, base_end = window if window is not None else (0, ear_arr.size - 1)
     if base_start < 0 or base_end >= ear_arr.size:
@@ -226,7 +228,9 @@ def find_threshold_crossing_triplet(
         start = max(0, base_start - expansion)
         end = min(ear_arr.size - 1, base_end + expansion)
         if start >= end:
-            last_error = ThresholdCrossingError("Expanded window is too small for crossing search")
+            last_error = ThresholdCrossingError(
+                "Expanded window is too small for crossing search"
+            )
             continue
 
         candidate = _find_crossings_in_window(
@@ -245,11 +249,19 @@ def find_threshold_crossing_triplet(
         candidate.window = (start, end)
 
         if not (t_arr[start] <= candidate.left.time <= t_arr[end]):
-            raise ThresholdCrossingError("Left crossing time lies outside the search window")
+            raise ThresholdCrossingError(
+                "Left crossing time lies outside the search window"
+            )
         if not (t_arr[start] <= candidate.right.time <= t_arr[end]):
-            raise ThresholdCrossingError("Right crossing time lies outside the search window")
-        if not (candidate.left.index < candidate.minimum_index < candidate.right.index + 1):
-            raise ThresholdCrossingError("Minimum is not bracketed by threshold crossings")
+            raise ThresholdCrossingError(
+                "Right crossing time lies outside the search window"
+            )
+        if not (
+            candidate.left.index < candidate.minimum_index < candidate.right.index + 1
+        ):
+            raise ThresholdCrossingError(
+                "Minimum is not bracketed by threshold crossings"
+            )
 
         return candidate
 
@@ -258,7 +270,9 @@ def find_threshold_crossing_triplet(
     raise ThresholdCrossingError("No threshold crossings found within search bounds")
 
 
-def compute_threshold_slopes(result: ThresholdCrossingResult, theta: float) -> tuple[float, float]:
+def compute_threshold_slopes(
+    result: ThresholdCrossingResult, theta: float
+) -> tuple[float, float]:
     """Compute closing and opening slopes for a crossing triple.
 
     Returns
@@ -272,7 +286,9 @@ def compute_threshold_slopes(result: ThresholdCrossingResult, theta: float) -> t
     denom_close = result.minimum_time - result.left.time
     denom_open = result.right.time - result.minimum_time
 
-    closing = (result.minimum_value - theta) / denom_close if denom_close != 0 else np.nan
+    closing = (
+        (result.minimum_value - theta) / denom_close if denom_close != 0 else np.nan
+    )
     opening = (theta - result.minimum_value) / denom_open if denom_open != 0 else np.nan
 
     return float(closing), float(opening)

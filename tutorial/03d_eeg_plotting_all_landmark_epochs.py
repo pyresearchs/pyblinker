@@ -48,7 +48,9 @@ def _explode_epoch_metadata(metadata: pd.DataFrame) -> pd.DataFrame:
         n_blinks = int(row.get("n_blinks", 0))
         if n_blinks <= 0:
             continue
-        per_col = {col: _listify(row[col]) for col in metadata.columns if col != "n_blinks"}
+        per_col = {
+            col: _listify(row[col]) for col in metadata.columns if col != "n_blinks"
+        }
         for idx in range(n_blinks):
             entry = {
                 col: (values[idx] if idx < len(values) else np.nan)
@@ -70,7 +72,9 @@ def _compute_overlay_indices(
     start_time = start / base_sfreq
     end_time = end / base_sfreq
     overlay_start = int(np.clip(round(start_time * derived_sfreq), 0, overlay_len - 1))
-    overlay_end = int(np.clip(round(end_time * derived_sfreq), overlay_start, overlay_len - 1))
+    overlay_end = int(
+        np.clip(round(end_time * derived_sfreq), overlay_start, overlay_len - 1)
+    )
     return overlay_start, overlay_end
 
 
@@ -280,7 +284,14 @@ def _plot_epoch_blink(
         x_val = y_val = float("nan")
     if np.isfinite(x_val) and np.isfinite(y_val):
         color, marker = marker_styles["Intersection"]
-        ax.scatter([x_val / sfreq], [y_val], color=color, marker=marker, s=50, label="Intersection")
+        ax.scatter(
+            [x_val / sfreq],
+            [y_val],
+            color=color,
+            marker=marker,
+            s=50,
+            label="Intersection",
+        )
 
     ax.scatter(times, window, s=6, color="black", alpha=0.45)
 

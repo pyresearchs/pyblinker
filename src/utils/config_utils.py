@@ -21,9 +21,6 @@ def get_dataset_root(config: Dict[str, Any], key: str = "raw_downsampled") -> Pa
     try:
         base_path = config["paths"][key]
     except KeyError as exc:  # pragma: no cover - guard clause
-        raise KeyError(
-            f"Configuration missing paths.{key}."
-        ) from exc
+        raise KeyError(f"Configuration missing paths.{key}.") from exc
 
     return Path(base_path).expanduser()
-

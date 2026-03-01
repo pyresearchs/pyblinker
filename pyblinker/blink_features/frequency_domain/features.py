@@ -51,7 +51,9 @@ def _compute_wavelet_energies(
         return [float("nan")] * max_level
 
     if pywt is None:
-        logger.warning("PyWavelets is not installed; returning NaNs for wavelet energies")
+        logger.warning(
+            "PyWavelets is not installed; returning NaNs for wavelet energies"
+        )
         return [float("nan")] * max_level
 
     max_level_available = min(pywt.dwt_max_level(segment.size, "db4"), max_level)

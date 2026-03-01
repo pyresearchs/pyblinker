@@ -10,7 +10,9 @@ import mne
 import pandas as pd
 
 from pyblinker.blink_features.energy.energy_features import compute_energy_features
-from pyblinker.blink_features.frequency_domain import aggregate_frequency_domain_features
+from pyblinker.blink_features.frequency_domain import (
+    aggregate_frequency_domain_features,
+)
 from pyblinker.blink_features.kinematics.kinematic_features import (
     KinematicBlinkFeatureExtractor,
 )
@@ -37,7 +39,12 @@ ENERGY_METRICS = [
 ]
 ENERGY_LANDMARKS = ["zero", "base", "tent", "half", "peak"]
 
-FREQ_METRICS = ["wavelet_energy_d1", "wavelet_energy_d2", "wavelet_energy_d3", "wavelet_energy_d4"]
+FREQ_METRICS = [
+    "wavelet_energy_d1",
+    "wavelet_energy_d2",
+    "wavelet_energy_d3",
+    "wavelet_energy_d4",
+]
 FREQ_LANDMARKS = ["zero", "base", "tent", "half", "peak"]
 
 SHARED_KINEMATIC_METRICS = (
@@ -105,8 +112,18 @@ MORPHOLOGY_METRICS_BY_LANDMARK = {
     "half": ["duration_half_base", "duration_half_zero"],
     "inter_blink": ["inter_blink_max_amp"],
     "peak": ["peak_time_blink", "peak_time_tent", "peak_max_blink", "peak_max_tent"],
-    "tent": ["duration_tent", "closing_time_tent", "reopening_time_tent", "time_shut_tent"],
-    "zero": ["duration_zero", "closing_time_zero", "reopening_time_zero", "time_shut_zero"],
+    "tent": [
+        "duration_tent",
+        "closing_time_tent",
+        "reopening_time_tent",
+        "time_shut_tent",
+    ],
+    "zero": [
+        "duration_zero",
+        "closing_time_zero",
+        "reopening_time_zero",
+        "time_shut_zero",
+    ],
 }
 
 SEGMENT_CONFIG = {
@@ -146,7 +163,9 @@ class TestBlinkFeaturesAllModalities(unittest.TestCase):
             epochs=cls.epochs, picks=[EAR_CHANNEL, EEG_CHANNEL, EOG_CHANNEL]
         )
         cls.freq_df = aggregate_frequency_domain_features(
-            cls.epochs, picks=[EAR_CHANNEL, EEG_CHANNEL, EOG_CHANNEL], progress_bar=False
+            cls.epochs,
+            picks=[EAR_CHANNEL, EEG_CHANNEL, EOG_CHANNEL],
+            progress_bar=False,
         )
         extractor = KinematicBlinkFeatureExtractor(epochs=cls.epochs)
         cls.kin_df = extractor.compute(picks=[EAR_CHANNEL, EEG_CHANNEL, EOG_CHANNEL])
@@ -337,54 +356,55 @@ class TestBlinkFeaturesAllModalities(unittest.TestCase):
     # def test_compare_morphology_with_excel_fixture(self) -> None:
     #     try:
     #         import importlib.util
-	#
-    #         if importlib.util.find_spec("openpyxl") is None:
-    #             self.skipTest("openpyxl is not installed")
-    #     except Exception:
-    #         self.skipTest("openpyxl is not installed")
-	#
-    #     fixture_path = (
-    #         PROJECT_ROOT
-    #         / "test"
-    #         / "blink_features"
-    #         / "morphology"
-    #         / "expected_output_new_naming.xlsx"
-    #     )
-    #     expected_df = pd.read_excel(fixture_path)
-    #     expected_df = expected_df.drop(columns=["Unnamed: 0"], errors="ignore")
-	#
-    #     self.assertEqual(len(self.morph_df), len(expected_df))
-	#
-    #     column_overrides = {
-    #         "eeg__peak__morphology__peak_time_tent_mean__EEG-E8": "eeg__peak__morphology__peak_max_tent_mean__EEG-E8",
-    #         "eeg__peak__morphology__peak_time_tent_mean__EEG-E8.1": "eeg__peak__morphology__peak_time_tent_mean__EEG-E8",
-    #     }
-	#
-    #     for expected_col in expected_df.columns:
-    #         output_col = column_overrides.get(expected_col, expected_col.split(".", 1)[0])
-    #         self.assertIn(output_col, self.morph_df.columns)
-	#
-    #         expected_values = expected_df[expected_col].to_numpy(dtype=float)
-    #         actual_values = self.morph_df[output_col].to_numpy(dtype=float)
-    #         self.assertTrue(
-    #             np.allclose(actual_values, expected_values, atol=1e-8, equal_nan=True),
-    #             msg=f"Column mismatch: fixture={expected_col} output={output_col}",
-    #         )
 
-    # def test_matches_baseline_pickle(self) -> None:
-    #     # self._maybe_write_baseline()
-    #     # self.df.to_pickle(BASELINE_PATH)
-    #     baseline = self._load_baseline()
-	#
-    #     pd.testing.assert_frame_equal(
-    #         self.df.sort_index(axis=1),
-    #         baseline.sort_index(axis=1),
-    #         check_dtype=False,
-    #         rtol=1e-6,
-    #         atol=1e-9,
-    #     )
+
+#
+#         if importlib.util.find_spec("openpyxl") is None:
+#             self.skipTest("openpyxl is not installed")
+#     except Exception:
+#         self.skipTest("openpyxl is not installed")
+#
+#     fixture_path = (
+#         PROJECT_ROOT
+#         / "test"
+#         / "blink_features"
+#         / "morphology"
+#         / "expected_output_new_naming.xlsx"
+#     )
+#     expected_df = pd.read_excel(fixture_path)
+#     expected_df = expected_df.drop(columns=["Unnamed: 0"], errors="ignore")
+#
+#     self.assertEqual(len(self.morph_df), len(expected_df))
+#
+#     column_overrides = {
+#         "eeg__peak__morphology__peak_time_tent_mean__EEG-E8": "eeg__peak__morphology__peak_max_tent_mean__EEG-E8",
+#         "eeg__peak__morphology__peak_time_tent_mean__EEG-E8.1": "eeg__peak__morphology__peak_time_tent_mean__EEG-E8",
+#     }
+#
+#     for expected_col in expected_df.columns:
+#         output_col = column_overrides.get(expected_col, expected_col.split(".", 1)[0])
+#         self.assertIn(output_col, self.morph_df.columns)
+#
+#         expected_values = expected_df[expected_col].to_numpy(dtype=float)
+#         actual_values = self.morph_df[output_col].to_numpy(dtype=float)
+#         self.assertTrue(
+#             np.allclose(actual_values, expected_values, atol=1e-8, equal_nan=True),
+#             msg=f"Column mismatch: fixture={expected_col} output={output_col}",
+#         )
+
+# def test_matches_baseline_pickle(self) -> None:
+#     # self._maybe_write_baseline()
+#     # self.df.to_pickle(BASELINE_PATH)
+#     baseline = self._load_baseline()
+#
+#     pd.testing.assert_frame_equal(
+#         self.df.sort_index(axis=1),
+#         baseline.sort_index(axis=1),
+#         check_dtype=False,
+#         rtol=1e-6,
+#         atol=1e-9,
+#     )
 
 
 if __name__ == "__main__":
     unittest.main()
-

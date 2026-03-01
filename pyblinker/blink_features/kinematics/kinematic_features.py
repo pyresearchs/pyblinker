@@ -79,7 +79,9 @@ def _build_kinematic_blink_frame(
     peak_times_sec: List[float] = []
     for peak_key in peak_key_candidates:
         if metadata_row.get(peak_key) is not None:
-            peak_times_sec = kin_helpers.coerce_numeric_list(metadata_row.get(peak_key), ensure_list)
+            peak_times_sec = kin_helpers.coerce_numeric_list(
+                metadata_row.get(peak_key), ensure_list
+            )
             if peak_times_sec:
                 break
 
@@ -116,14 +118,26 @@ def _compute_extended_kinematic_metrics(
 
     _initialize_extended_columns(blink_df)
     _populate_average_velocities(blink_df, blink_velocity)
-    _populate_amp_velocity_ratios(blink_df, candidate_signal, blink_velocity, sfreq, modality)
+    _populate_amp_velocity_ratios(
+        blink_df, candidate_signal, blink_velocity, sfreq, modality
+    )
     _populate_inter_blink_velocity(blink_df, candidate_signal, sfreq, modality)
 
-    blink_df["amp_vel_ratio_base"] = blink_df[["pos_amp_vel_ratio_base", "neg_amp_vel_ratio_base"]].mean(axis=1)
-    blink_df["amp_vel_ratio_zero_to_max"] = blink_df[["pos_amp_vel_ratio_zero", "neg_amp_vel_ratio_zero"]].mean(axis=1)
-    blink_df["amp_vel_ratio_tent"] = blink_df[["pos_amp_vel_ratio_tent", "neg_amp_vel_ratio_tent"]].mean(axis=1)
-    blink_df["blink_velocity"] = blink_df[["aver_left_velocity", "aver_right_velocity"]].abs().mean(axis=1)
-    blink_df["inter_blink_max_vel"] = blink_df.get("inter_blink_max_vel_base", float("nan"))
+    blink_df["amp_vel_ratio_base"] = blink_df[
+        ["pos_amp_vel_ratio_base", "neg_amp_vel_ratio_base"]
+    ].mean(axis=1)
+    blink_df["amp_vel_ratio_zero_to_max"] = blink_df[
+        ["pos_amp_vel_ratio_zero", "neg_amp_vel_ratio_zero"]
+    ].mean(axis=1)
+    blink_df["amp_vel_ratio_tent"] = blink_df[
+        ["pos_amp_vel_ratio_tent", "neg_amp_vel_ratio_tent"]
+    ].mean(axis=1)
+    blink_df["blink_velocity"] = (
+        blink_df[["aver_left_velocity", "aver_right_velocity"]].abs().mean(axis=1)
+    )
+    blink_df["inter_blink_max_vel"] = blink_df.get(
+        "inter_blink_max_vel_base", float("nan")
+    )
 
     return blink_df
 
@@ -149,11 +163,15 @@ def _initialize_extended_columns(blink_df: pd.DataFrame) -> None:
             blink_df[col] = float("nan")
 
 
-def _populate_average_velocities(blink_df: pd.DataFrame, blink_velocity: object) -> None:
+def _populate_average_velocities(
+    blink_df: pd.DataFrame, blink_velocity: object
+) -> None:
     """Populate mean opening/closing velocities for each blink from frame-aligned bounds."""
 
     velocity = pd.Series(blink_velocity, copy=False).to_numpy(dtype=float)
-    velocity_valid = blink_df[["left_base", "right_base", "max_blink"]].notna().all(axis=1)
+    velocity_valid = (
+        blink_df[["left_base", "right_base", "max_blink"]].notna().all(axis=1)
+    )
     for idx, row in blink_df.loc[velocity_valid].iterrows():
         left_base = max(0, min(int(row["left_base"]), velocity.size))
         max_blink = max(0, min(int(row["max_blink"]), velocity.size))
@@ -162,8 +180,12 @@ def _populate_average_velocities(blink_df: pd.DataFrame, blink_velocity: object)
         left_segment = velocity[left_base:max_blink]
         right_segment = velocity[max_blink:right_base]
 
-        blink_df.at[idx, "aver_left_velocity"] = float(left_segment.mean()) if left_segment.size > 0 else float("nan")
-        blink_df.at[idx, "aver_right_velocity"] = float(right_segment.mean()) if right_segment.size > 0 else float("nan")
+        blink_df.at[idx, "aver_left_velocity"] = (
+            float(left_segment.mean()) if left_segment.size > 0 else float("nan")
+        )
+        blink_df.at[idx, "aver_right_velocity"] = (
+            float(right_segment.mean()) if right_segment.size > 0 else float("nan")
+        )
 
 
 def _populate_amp_velocity_ratios(
@@ -179,25 +201,37 @@ def _populate_amp_velocity_ratios(
     if base_valid.any():
         base_df = blink_df.loc[base_valid].copy()
         compute_amp_vel_ratio_base(base_df, candidate_signal, blink_velocity, sfreq)
-        blink_df.loc[base_valid, ["pos_amp_vel_ratio_base", "neg_amp_vel_ratio_base", "peaks_pos_vel_base"]] = base_df[
+        blink_df.loc[
+            base_valid,
+            ["pos_amp_vel_ratio_base", "neg_amp_vel_ratio_base", "peaks_pos_vel_base"],
+        ] = base_df[
             ["pos_amp_vel_ratio_base", "neg_amp_vel_ratio_base", "peaks_pos_vel_base"]
         ]
 
     zero_valid = blink_df[["left_zero", "right_zero", "max_blink"]].notna().all(axis=1)
     if zero_valid.any():
         zero_df = blink_df.loc[zero_valid].copy()
-        compute_amp_vel_ratio_zero_to_max(zero_df, candidate_signal, blink_velocity, sfreq, modality=modality)
-        blink_df.loc[zero_valid, ["pos_amp_vel_ratio_zero", "neg_amp_vel_ratio_zero", "peaks_pos_vel_zero"]] = zero_df[
+        compute_amp_vel_ratio_zero_to_max(
+            zero_df, candidate_signal, blink_velocity, sfreq, modality=modality
+        )
+        blink_df.loc[
+            zero_valid,
+            ["pos_amp_vel_ratio_zero", "neg_amp_vel_ratio_zero", "peaks_pos_vel_zero"],
+        ] = zero_df[
             ["pos_amp_vel_ratio_zero", "neg_amp_vel_ratio_zero", "peaks_pos_vel_zero"]
         ]
 
-    tent_valid = blink_df[["max_blink", "aver_left_velocity", "aver_right_velocity"]].notna().all(axis=1)
+    tent_valid = (
+        blink_df[["max_blink", "aver_left_velocity", "aver_right_velocity"]]
+        .notna()
+        .all(axis=1)
+    )
     if tent_valid.any():
         tent_df = blink_df.loc[tent_valid].copy()
         compute_amp_vel_ratio_tent(tent_df, candidate_signal, sfreq)
-        blink_df.loc[tent_valid, ["pos_amp_vel_ratio_tent", "neg_amp_vel_ratio_tent"]] = tent_df[
-            ["pos_amp_vel_ratio_tent", "neg_amp_vel_ratio_tent"]
-        ]
+        blink_df.loc[
+            tent_valid, ["pos_amp_vel_ratio_tent", "neg_amp_vel_ratio_tent"]
+        ] = tent_df[["pos_amp_vel_ratio_tent", "neg_amp_vel_ratio_tent"]]
 
 
 def _populate_inter_blink_velocity(
@@ -213,13 +247,13 @@ def _populate_inter_blink_velocity(
         return
 
     inter_df = blink_df.loc[inter_valid].copy()
-    compute_inter_blink_max_vel(inter_df, sfreq, modality=modality, signal_len=len(candidate_signal))
+    compute_inter_blink_max_vel(
+        inter_df, sfreq, modality=modality, signal_len=len(candidate_signal)
+    )
     cols = ["inter_blink_max_vel_base"]
     if modality != "ear":
         cols.append("inter_blink_max_vel_zero")
     blink_df.loc[inter_valid, cols] = inter_df[cols]
-
-
 
 
 def _compute_metrics_over_windows(
@@ -256,8 +290,12 @@ def _compute_metrics_over_windows(
             if metric_name in EXTENDED_METRICS:
                 continue
             metric_value = metrics.get(metric_name)
-            if metric_value is None and style not in {"base", "zero", "tent"} and metric_name.endswith("_base"):
-                style_metric = metric_name[:-len("_base")] + f"_{style}"
+            if (
+                metric_value is None
+                and style not in {"base", "zero", "tent"}
+                and metric_name.endswith("_base")
+            ):
+                style_metric = metric_name[: -len("_base")] + f"_{style}"
                 metric_value = metrics.get(style_metric)
             if metric_value is None:
                 metric_value = float("nan")
@@ -294,8 +332,9 @@ def _write_style_stats_into_record(
             record[column] = value
 
 
-
-def _available_styles(metadata_columns: Sequence[str] | None, modality: str) -> Set[str]:
+def _available_styles(
+    metadata_columns: Sequence[str] | None, modality: str
+) -> Set[str]:
     """Return frame-based segmentation styles present in metadata for a modality."""
 
     if metadata_columns is None:
@@ -371,7 +410,9 @@ def _style_windows(
 class KinematicBlinkFeatureExtractor:
     """Compute blink kinematic features from MNE objects."""
 
-    def __init__(self, epochs: mne.Epochs | None = None, raw: mne.io.BaseRaw | None = None):
+    def __init__(
+        self, epochs: mne.Epochs | None = None, raw: mne.io.BaseRaw | None = None
+    ):
         self.epochs = epochs
         self.raw = raw
 
@@ -405,13 +446,16 @@ class KinematicBlinkFeatureExtractor:
 
         modality_map: Dict[str, str] = ctx.modality_by_channel
         modality_channels = self._group_channels_by_modality(modality_map)
-        styles_by_modality = self._build_styles_by_modality(set(modality_channels), ctx.metadata_cols)
+        styles_by_modality = self._build_styles_by_modality(
+            set(modality_channels), ctx.metadata_cols
+        )
 
         columns = build_output_columns(modality_channels, styles_by_modality)
 
         if n_epochs == 0 or not columns:
-            return cast_columns_to_object(empty_feature_frame(index=index, columns=columns))
-
+            return cast_columns_to_object(
+                empty_feature_frame(index=index, columns=columns)
+            )
 
         records: List[Dict[str, float]] = []
 
@@ -428,11 +472,13 @@ class KinematicBlinkFeatureExtractor:
                 n_epochs=n_epochs,
             )
             records.append(record)
-        df =pd.DataFrame.from_records(records, index=index)
+        df = pd.DataFrame.from_records(records, index=index)
         logger.debug("Kinematic feature DataFrame shape: %s", df.shape)
         return cast_columns_to_object(df)
 
-    def _group_channels_by_modality(self, modality_map: Dict[str, str]) -> Dict[str, List[str]]:
+    def _group_channels_by_modality(
+        self, modality_map: Dict[str, str]
+    ) -> Dict[str, List[str]]:
         grouped: Dict[str, List[str]] = {}
         for channel_name, modality in modality_map.items():
             grouped.setdefault(modality, []).append(channel_name)
@@ -513,8 +559,12 @@ class KinematicBlinkFeatureExtractor:
         sfreq: float,
         modality: str,
     ) -> pd.DataFrame:
-        blink_df = _build_kinematic_blink_frame(metadata_row, modality=modality, sfreq=sfreq)
-        blink_df = _compute_extended_kinematic_metrics(blink_df, signal, sfreq, modality=modality)
+        blink_df = _build_kinematic_blink_frame(
+            metadata_row, modality=modality, sfreq=sfreq
+        )
+        blink_df = _compute_extended_kinematic_metrics(
+            blink_df, signal, sfreq, modality=modality
+        )
         return blink_df
 
     def _compute_style_stats_into_record(

@@ -9,7 +9,9 @@ from pathlib import Path
 import mne
 import pandas as pd
 
-from pyblinker.blink_features.frequency_domain import aggregate_frequency_domain_features
+from pyblinker.blink_features.frequency_domain import (
+    aggregate_frequency_domain_features,
+)
 from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
 from test.helper import build_expected_metrics
 
@@ -23,7 +25,12 @@ EEG_CHANNEL = "EEG-E8"
 EOG_CHANNEL = "EOG-EEG-eog_vert_left"
 
 stats = ["mean", "std", "cv"]
-metrics = ["wavelet_energy_d1", "wavelet_energy_d2", "wavelet_energy_d3", "wavelet_energy_d4"]
+metrics = [
+    "wavelet_energy_d1",
+    "wavelet_energy_d2",
+    "wavelet_energy_d3",
+    "wavelet_energy_d4",
+]
 landmarks = ["zero", "base", "tent", "half", "peak"]
 
 REQUIRED_EAR_COLUMNS = build_expected_metrics(
@@ -104,8 +111,6 @@ class TestFrequencyDomainBlinkFeaturesAllModalities(unittest.TestCase):
         if os.environ.get(UPDATE_ENV_VAR) == "1":
             OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
             self.df.to_pickle(BASELINE_PATH)
-
-
 
     def test_eeg_columns(self) -> None:
         for style in REQUIRED_EEG_METRICS.values():

@@ -10,7 +10,7 @@ Flowchart
 
 ::
 
-       +--------------------+                 
+       +--------------------+
        |  find_blinks_epoch |   High-level API
        +--------------------+
                   |
@@ -144,10 +144,12 @@ def _get_blink_position_epoching(
     pos_mask[close] = False
     pos_mask[close + 1] = False
 
-    return pd.DataFrame({
-        "start_blink": arr_start[pos_mask],
-        "end_blink": arr_end[pos_mask],
-    })
+    return pd.DataFrame(
+        {
+            "start_blink": arr_start[pos_mask],
+            "end_blink": arr_end[pos_mask],
+        }
+    )
 
 
 def _epoch_boundaries_in_samples(epochs: mne.Epochs) -> Tuple[np.ndarray, np.ndarray]:
@@ -227,10 +229,13 @@ def map_blinks_to_epochs(
             onsets[idx].append(rel_onset)
             durations[idx].append((b_end - b_start) / sfreq)
 
-    meta = pd.DataFrame({
-        "blink_onsets": onsets,
-        "blink_durations": durations,
-    }, index=epochs.selection)
+    meta = pd.DataFrame(
+        {
+            "blink_onsets": onsets,
+            "blink_durations": durations,
+        },
+        index=epochs.selection,
+    )
 
     logger.debug("Leaving map_blinks_to_epochs")
     return meta
@@ -335,4 +340,3 @@ def find_blinks_epoch(
     logger.info("Assigned blink metadata to epochs")
     logger.debug("Leaving find_blinks_epoch")
     return epochs
-

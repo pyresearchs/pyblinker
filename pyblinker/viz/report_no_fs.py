@@ -3,16 +3,17 @@ import mne
 import pandas as pd
 from html import escape
 
+
 def make_blink_report(
-        *,
-        fig_data: list[dict],
-        ch: str,
-        number_good_blinks: int,
-        ch_selected=None,
-        blink_details: "pd.DataFrame | None" = None,
-        title: str = "Blink Detection Report",
-        out_path: str = "blink_report.html",
-        overwrite: bool = True,
+    *,
+    fig_data: list[dict],
+    ch: str,
+    number_good_blinks: int,
+    ch_selected=None,
+    blink_details: "pd.DataFrame | None" = None,
+    title: str = "Blink Detection Report",
+    out_path: str = "blink_report.html",
+    overwrite: bool = True,
 ) -> str:
     """
     Build a self-contained HTML report from BlinkDetector results.
@@ -64,7 +65,9 @@ def make_blink_report(
                 blink_details = None
         if blink_details is not None and not blink_details.empty:
             # Lightly limit huge tables while preserving all rows via details/summary
-            html_table_full = blink_details.to_html(border=0, classes="dataframe compact", escape=False)
+            html_table_full = blink_details.to_html(
+                border=0, classes="dataframe compact", escape=False
+            )
             html_table = f"""
             <details open>
               <summary><b>Blink details table</b> (rows: {len(blink_details)})</summary>
@@ -81,7 +84,11 @@ def make_blink_report(
         bq = entry.get("blink_quality", "Unknown")
         mf = entry.get("maxFrames", "NA")
         idx_window = entry.get("idx_window", [])
-        win_txt = f"[{idx_window[0]} … {idx_window[-1]}] ({len(idx_window)} samples)" if len(idx_window) else "NA"
+        win_txt = (
+            f"[{idx_window[0]} … {idx_window[-1]}] ({len(idx_window)} samples)"
+            if len(idx_window)
+            else "NA"
+        )
 
         caption = f"Quality: {bq} | Max frame: {mf} | Window: {win_txt}"
         # add_figure will embed a PNG snapshot of the Matplotlib figure

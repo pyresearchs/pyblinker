@@ -55,17 +55,15 @@ def compute_blink_waveform_metrics(
     else:
         raw_seg = np.asarray(segment, dtype=float).reshape(-1)
 
-
     modality_key = modality.lower()
     if method is None:
         method = METHODS_BY_MODALITY.get(modality_key, ("base",))[0]
 
-
-    metrics=compute_blink_morphology_metrics(
-		raw_seg,
+    metrics = compute_blink_morphology_metrics(
+        raw_seg,
         sfreq,
         start_end_method=method,
         modality=modality_key,
         use_abs_for_thresholds_and_areas=use_abs_for_thresholds_and_areas,
-        )
+    )
     return metrics

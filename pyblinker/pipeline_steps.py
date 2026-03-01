@@ -46,7 +46,7 @@ def process_channel_data(detector, channel: str, verbose: bool = True) -> None:
     df = fitblinks.frame_blinks
 
     # STEP 3: Extract blink statistics extractBlinkProperties.m
-	# Calculate an amplitude criterion (frames in blink to those out) and Now calculate the cutoff ratios -- use default for the values
+    # Calculate an amplitude criterion (frames in blink to those out) and Now calculate the cutoff ratios -- use default for the values
     blink_stats = get_blink_statistic(
         df,
         detector.params["z_thresholds"],
@@ -90,7 +90,10 @@ def process_all_channels(detector) -> None:
     """Process all channels available in the raw data."""
     logger.info("Processing %d channels.", len(detector.channel_list))
     for channel in tqdm(
-        detector.channel_list, desc="Processing Channels", unit="channel", colour="BLACK"
+        detector.channel_list,
+        desc="Processing Channels",
+        unit="channel",
+        colour="BLACK",
     ):
         process_channel_data(detector, channel)
     logger.info("Finished processing all channels.")
@@ -122,9 +125,7 @@ def get_blink(detector):
     process_all_channels(detector)
 
     ch_selected = select_representative_channel(detector)
-    logger.info(
-        "Selected representative channel: %s", ch_selected.loc[0, "ch"]
-    )
+    logger.info("Selected representative channel: %s", ch_selected.loc[0, "ch"])
 
     ch, data, df = get_representative_blink_data(detector, ch_selected)
     annot = detector.create_annotations(df)

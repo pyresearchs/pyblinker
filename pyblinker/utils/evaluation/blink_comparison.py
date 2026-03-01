@@ -278,13 +278,15 @@ def compare_detected_vs_ground_truth(
         require_both_conditions=require_both_conditions,
     )
 
-
-
     start_diff, end_diff = similarity.compute_pairwise_differences(
         detected_df, ground_truth_df
     )
-    ok_start = start_diff <= tolerance_samples if start_diff.size else np.array([], dtype=bool)
-    ok_end = end_diff <= tolerance_samples if end_diff.size else np.array([], dtype=bool)
+    ok_start = (
+        start_diff <= tolerance_samples if start_diff.size else np.array([], dtype=bool)
+    )
+    ok_end = (
+        end_diff <= tolerance_samples if end_diff.size else np.array([], dtype=bool)
+    )
     all_ok = (
         (ok_start.size == 0 or np.all(ok_start))
         and (ok_end.size == 0 or np.all(ok_end))
@@ -309,9 +311,7 @@ def compare_detected_vs_ground_truth(
     )
     within_tolerance_mask = within_tolerance_series.fillna(False)
 
-    mismatch_mask = (
-        diff_table["event_label"] != reporting.DIFF_EVENT_LABEL_MATCH
-    ) | (
+    mismatch_mask = (diff_table["event_label"] != reporting.DIFF_EVENT_LABEL_MATCH) | (
         match_category.isin(["pairs_outside_tolerance", "share_within_tolerance"])
         & ~within_tolerance_mask
     )
@@ -354,10 +354,7 @@ def compare_detected_vs_ground_truth(
 
     if indicator_metrics:
         metrics.update(
-            {
-                f"indicator_{key}": value
-                for key, value in indicator_metrics.items()
-            }
+            {f"indicator_{key}": value for key, value in indicator_metrics.items()}
         )
 
     annotations = annotations_from_diff_table(diff_table, sampling_rate_hz)

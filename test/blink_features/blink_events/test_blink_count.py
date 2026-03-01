@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
+
 class TestBlinkCount(unittest.TestCase):
     """Unit tests for blink counting from ``mne.Epochs`` metadata.
 
@@ -37,12 +38,7 @@ class TestBlinkCount(unittest.TestCase):
     def setUp(self) -> None:
         """Load raw data and slice into epochs for blink counting."""
         logger.info("Setting up epochs for blink count tests...")
-        raw_path = (
-            PROJECT_ROOT
-            / "test"
-            / "test_files"
-            / "ear_eog_raw.fif"
-        )
+        raw_path = PROJECT_ROOT / "test" / "test_files" / "ear_eog_raw.fif"
         raw = mne.io.read_raw_fif(raw_path, preload=True, verbose=False)
         segmentation_config = build_segment_config(raw)
         self.epochs = slice_raw_into_mne_epochs_refine_annot(
@@ -54,17 +50,13 @@ class TestBlinkCount(unittest.TestCase):
         )
         # Load ground truth blink counts for cross-verification
         csv_path = (
-            PROJECT_ROOT
-            / "test"
-            / "test_files"
-            / "ear_eog_blink_count_epoch.csv"
+            PROJECT_ROOT / "test" / "test_files" / "ear_eog_blink_count_epoch.csv"
         )
-        self.assertTrue(
-            csv_path.is_file(),
-            f"Missing ground truth CSV at {csv_path}"
-        )
+        self.assertTrue(csv_path.is_file(), f"Missing ground truth CSV at {csv_path}")
         expected_full = (
-            pd.read_csv(csv_path).set_index("epoch_id")["eeg__ncount__EEG-E8"].astype(float)
+            pd.read_csv(csv_path)
+            .set_index("epoch_id")["eeg__ncount__EEG-E8"]
+            .astype(float)
         )
         # Align ground truth with available epochs
         self.expected_counts = expected_full.loc[self.epochs.metadata.index]
@@ -81,7 +73,9 @@ class TestBlinkCount(unittest.TestCase):
         assert_df_has_columns(self, df, ["epoch_id", "eeg__ncount__EEG-E8"])
         self.assertEqual(len(df), len(self.epochs))
         pd.testing.assert_series_equal(
-            df["epoch_id"], pd.Series(self.epochs.metadata.index, name="epoch_id"), check_names=False
+            df["epoch_id"],
+            pd.Series(self.epochs.metadata.index, name="epoch_id"),
+            check_names=False,
         )
 
         expected = self.expected_counts.drop(
@@ -108,7 +102,9 @@ class TestBlinkCount(unittest.TestCase):
                 continue
             self.assertEqual(df.loc[idx, "eeg__ncount__EEG-E8"], expected_val)
             self.assertTrue(np.isfinite(df.loc[idx, "eeg__ncount__EEG-E8"]))
-	# #
+
+
+# #
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)

@@ -18,7 +18,6 @@ from pyblinker.blink_features.morphology.core_metrics import (
 )
 
 
-
 class BlinkProperties:
     """
     Return a structure with blink shapes and properties for individual blinks
@@ -73,7 +72,9 @@ class BlinkProperties:
         self.p_avr_threshold = params["p_avr_threshold"]
         self.z_thresholds = params["z_thresholds"]
 
-        self.modality: Literal["eeg", "ear"] = normalize_modality(params.get("modality"))
+        self.modality: Literal["eeg", "ear"] = normalize_modality(
+            params.get("modality")
+        )
 
         self.fitted = fitted
 

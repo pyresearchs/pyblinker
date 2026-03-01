@@ -15,7 +15,9 @@ import pandas as pd
 __all__ = ["to_epoch_indexed"]
 
 
-def _coerce_epoch_labels(values: Iterable[pd.Series | pd.Index | pd.ArrayLike]) -> list[pd.Index]:
+def _coerce_epoch_labels(
+    values: Iterable[pd.Series | pd.Index | pd.ArrayLike],
+) -> list[pd.Index]:
     """Return the epoch labels as integer valued :class:`~pandas.Index` objects."""
 
     coerced: list[pd.Index] = []
@@ -127,5 +129,3 @@ def to_epoch_indexed(
         result = result.sort_index()
 
     return result
-
-

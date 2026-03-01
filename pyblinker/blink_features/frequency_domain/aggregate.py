@@ -13,8 +13,13 @@ from pyblinker.logging import get_logger
 from .features import _compute_wavelet_energies
 from ..energy.helpers import compute_basic_statistics
 from ..utils.aggregation import prepare_epoch_channel_data
+
 # from ..constants import cast_columns_to_object
-from .._epoch_context import available_styles_by_modality, build_epoch_context, get_metadata_row
+from .._epoch_context import (
+    available_styles_by_modality,
+    build_epoch_context,
+    get_metadata_row,
+)
 from .._style_windows import style_windows_from_metadata
 
 logger = get_logger(__name__)
@@ -24,6 +29,8 @@ def _feature_channel_name(channel_name: str, modality: str) -> str:
     """Return output-channel label for feature columns by modality."""
 
     return channel_name if modality == "eog" else channel_name.upper()
+
+
 def _compute_epoch_record(
     *,
     epoch_index: int,
@@ -75,7 +82,9 @@ def _compute_epoch_record(
 class FrequencyDomainBlinkFeatureExtractor:
     """Compute wavelet-energy blink features from MNE objects."""
 
-    def __init__(self, epochs: mne.Epochs | None = None, raw: mne.io.BaseRaw | None = None):
+    def __init__(
+        self, epochs: mne.Epochs | None = None, raw: mne.io.BaseRaw | None = None
+    ):
         self.epochs = epochs
         self.raw = raw
 
@@ -138,7 +147,7 @@ class FrequencyDomainBlinkFeatureExtractor:
             unit="epoch",
             disable=not progress_bar,
         ):
-            metadata_row = (get_metadata_row(self.epochs, ei))
+            metadata_row = get_metadata_row(self.epochs, ei)
             record = _compute_epoch_record(
                 epoch_index=ei,
                 metadata_row=metadata_row,
@@ -150,7 +159,7 @@ class FrequencyDomainBlinkFeatureExtractor:
             )
             record["ep"] = index[ei]
             records.append(record)
-        df =pd.DataFrame.from_records(records, index=index)
+        df = pd.DataFrame.from_records(records, index=index)
         # df = frame_from_records(records, index=index)
         logger.debug("Frequency-domain feature DataFrame shape: %s", df.shape)
         # return cast_columns_to_object(df)

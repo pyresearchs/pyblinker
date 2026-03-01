@@ -1,4 +1,5 @@
 """Aggregate blink morphology features from :class:`mne.Epochs`."""
+
 from typing import Dict, List, Mapping, Sequence, Set, Tuple
 
 import mne
@@ -38,13 +39,11 @@ logger = get_logger(__name__)
 
 _SHUT_AMP_FRACTION = 0.9
 
+
 def _default_morphology_channels(epochs: mne.Epochs) -> List[str]:
     """Select default morphology channels with deterministic EEG/EAR/EOG precedence."""
 
-    ch_types = {
-        ch: infer_modality(ch, epochs.info)
-        for ch in epochs.ch_names
-    }
+    ch_types = {ch: infer_modality(ch, epochs.info) for ch in epochs.ch_names}
 
     eeg_channels = [ch for ch in epochs.ch_names if ch_types[ch] == "eeg"]
     if eeg_channels:
@@ -62,7 +61,9 @@ def _default_morphology_channels(epochs: mne.Epochs) -> List[str]:
     raise ValueError("No default EEG/EAR/EOG channels found")
 
 
-def _available_styles(metadata_columns: Sequence[str] | None, modality: str) -> Set[str]:
+def _available_styles(
+    metadata_columns: Sequence[str] | None, modality: str
+) -> Set[str]:
     """Return segmentation styles present in metadata for a modality."""
 
     if metadata_columns is None:
@@ -231,7 +232,9 @@ def _build_blink_landmark_frame(
         "x_intersect": f"x_intersect__{modality}",
         "y_intersect": f"y_intersect__{modality}",
     }
-    landmark_lists = {key: _coerce_list(metadata_row.get(col)) for key, col in landmark_keys.items()}
+    landmark_lists = {
+        key: _coerce_list(metadata_row.get(col)) for key, col in landmark_keys.items()
+    }
 
     peak_key_candidates = (
         f"onset__refine_extremum__{modality}",
@@ -254,8 +257,7 @@ def _build_blink_landmark_frame(
         return pd.DataFrame()
 
     data: Dict[str, List[float]] = {
-        key: _pad_to_length(values, n_blinks)
-        for key, values in landmark_lists.items()
+        key: _pad_to_length(values, n_blinks) for key, values in landmark_lists.items()
     }
 
     if peak_times_sec:
@@ -324,9 +326,11 @@ def _apply_morphology_properties(
         if col not in blink_df.columns:
             blink_df[col] = np.nan
 
-    zero_valid = blink_df[
-        ["left_zero", "right_zero", "max_blink", "max_value"]
-    ].notna().all(axis=1)
+    zero_valid = (
+        blink_df[["left_zero", "right_zero", "max_blink", "max_value"]]
+        .notna()
+        .all(axis=1)
+    )
     if zero_valid.any():
         zero_df = blink_df.loc[zero_valid, :].copy()
         compute_time_zero_shut(
@@ -336,9 +340,9 @@ def _apply_morphology_properties(
             modality=modality,
             shut_amp_fraction=_SHUT_AMP_FRACTION,
         )
-        blink_df.loc[zero_valid, ["closing_time_zero", "reopening_time_zero", "time_shut_zero"]] = (
-            zero_df[["closing_time_zero", "reopening_time_zero", "time_shut_zero"]]
-        )
+        blink_df.loc[
+            zero_valid, ["closing_time_zero", "reopening_time_zero", "time_shut_zero"]
+        ] = zero_df[["closing_time_zero", "reopening_time_zero", "time_shut_zero"]]
 
     base_valid = blink_df[["left_base", "right_base", "max_value"]].notna().all(axis=1)
     fitted_valid = base_valid & blink_df[
@@ -355,9 +359,19 @@ def _apply_morphology_properties(
         )
         blink_df.loc[
             fitted_valid,
-            ["time_shut_base", "closing_time_tent", "reopening_time_tent", "time_shut_tent"],
+            [
+                "time_shut_base",
+                "closing_time_tent",
+                "reopening_time_tent",
+                "time_shut_tent",
+            ],
         ] = fitted_df[
-            ["time_shut_base", "closing_time_tent", "reopening_time_tent", "time_shut_tent"]
+            [
+                "time_shut_base",
+                "closing_time_tent",
+                "reopening_time_tent",
+                "time_shut_tent",
+            ]
         ]
 
     base_only = base_valid & ~fitted_valid
@@ -392,7 +406,9 @@ def _apply_morphology_properties(
 class MorphologyBlinkFeatureExtractor:
     """Compute blink morphology features from MNE objects."""
 
-    def __init__(self, epochs: mne.Epochs | None = None, raw: mne.io.BaseRaw | None = None):
+    def __init__(
+        self, epochs: mne.Epochs | None = None, raw: mne.io.BaseRaw | None = None
+    ):
         self.epochs = epochs
         self.raw = raw
 
@@ -455,7 +471,9 @@ class MorphologyBlinkFeatureExtractor:
         """
         logger.info("Computing morphology features for epochs")
 
-        ctx = build_epoch_context(self.epochs, picks, default=_default_morphology_channels)
+        ctx = build_epoch_context(
+            self.epochs, picks, default=_default_morphology_channels
+        )
         ch_names, channel_data, index, n_epochs, n_times = prepare_epoch_channel_data(
             epochs=self.epochs,
             picks=ctx.ch_names,
@@ -486,13 +504,11 @@ class MorphologyBlinkFeatureExtractor:
                 n_epochs=n_epochs,
             )
             records.append(record)
-        df =pd.DataFrame.from_records(records, index=index)
+        df = pd.DataFrame.from_records(records, index=index)
         # df = frame_from_records(records, index=index, columns=columns) # TODO: To remove and directly use pd.DataFrame.from_records(records, index=index)
         df = add_legacy_alias_columns(df)
         logger.debug("Morphology feature DataFrame shape: %s", df.shape)
         return cast_columns_to_object(df)
-
-
 
     def _prepare_inputs(
         self,
@@ -530,7 +546,9 @@ class MorphologyBlinkFeatureExtractor:
         n_times : int
             Number of samples per epoch.
         """
-        ch_names = resolve_channels(self.epochs, picks, default=_default_morphology_channels)
+        ch_names = resolve_channels(
+            self.epochs, picks, default=_default_morphology_channels
+        )
         if not ch_names:
             available = ", ".join(self.epochs.ch_names)
             raise ValueError(
@@ -562,13 +580,14 @@ class MorphologyBlinkFeatureExtractor:
         """Infer modality for each channel (e.g., eeg/eog/ear)."""
         return {ch: infer_modality(ch, self.epochs.info) for ch in ch_names}
 
-    def _group_channels_by_modality(self, modality_map: Dict[str, str]) -> Dict[str, List[str]]:
+    def _group_channels_by_modality(
+        self, modality_map: Dict[str, str]
+    ) -> Dict[str, List[str]]:
         """Group channels by modality."""
         grouped: Dict[str, List[str]] = {}
         for ch, mod in modality_map.items():
             grouped.setdefault(mod, []).append(ch)
         return grouped
-
 
     def _build_styles_by_modality(
         self,
@@ -585,7 +604,9 @@ class MorphologyBlinkFeatureExtractor:
             styles_by_modality[mod] = styles
         return styles_by_modality
 
-    def _should_emit_legacy_metrics(self, modality_channels: Dict[str, List[str]]) -> bool:
+    def _should_emit_legacy_metrics(
+        self, modality_channels: Dict[str, List[str]]
+    ) -> bool:
         """Emit legacy morphology metrics whenever EEG or EOG channels are present."""
         return bool(modality_channels.get("eeg") or modality_channels.get("eog"))
 
@@ -718,16 +739,23 @@ class MorphologyBlinkFeatureExtractor:
         None
             This function does not return anything. It updates `record` in-place.
         """
-        logger.debug("Epoch %d: channel=%s modality=%s",epoch_index + 1,channel_name,modality)
+        logger.debug(
+            "Epoch %d: channel=%s modality=%s", epoch_index + 1, channel_name, modality
+        )
 
         # Next  Build per-blink landmark frame first; this is then calculate legacy morphology features for given an EEG input. This is a backward-compatible with the MATLAB implementation of BLINKER
         # 			#
         # 			# . See the test/blink_features/morphology/test_morphology_eeg_only_config.py for list of outputed features when only EEG is present.
-        blink_df = self._build_blink_df(metadata_row=metadata_row,signal=signal, sfreq=sfreq, n_times=n_times, modality=modality)
-        legacy_record=self.build_legacy_morphology_stat_features(
-            blink_df,
+        blink_df = self._build_blink_df(
+            metadata_row=metadata_row,
+            signal=signal,
+            sfreq=sfreq,
+            n_times=n_times,
             modality=modality,
-            channel_name=channel_name)
+        )
+        legacy_record = self.build_legacy_morphology_stat_features(
+            blink_df, modality=modality, channel_name=channel_name
+        )
 
         for style in styles:
             self._compute_style_stats_into_record(
@@ -742,7 +770,6 @@ class MorphologyBlinkFeatureExtractor:
                 blink_df=blink_df,
             )
 
-
         record.update(legacy_record)
 
     def _build_blink_df(
@@ -754,41 +781,41 @@ class MorphologyBlinkFeatureExtractor:
         modality: str,
     ) -> pd.DataFrame:
         """Build and enrich the blink landmark dataframe.
-        This function will return
-        REQUIRED_LEGACY_MORPHOLOGY_METRICS = {
-        "zero": (
-            "duration_zero",
-            "closing_time_zero",
-            "reopening_time_zero",
-            "time_shut_zero",
-        ),
-        "base": (
-            "duration_base",
-            "time_shut_base",
-        ),
-        "tent": (
-            "duration_tent",
-            "closing_time_tent",
-            "reopening_time_tent",
-            "time_shut_tent",
-        ),
-        "half": (
-            "duration_half_base",
-            "duration_half_zero",
-        ),
-        "peak": (
-            "peak_time_blink",
-            "peak_time_tent",
-            "peak_max_blink",
-            "peak_max_tent",
-        ),
-        "inter_blink": (
-            "inter_blink_max_amp",
-        ),
-    }
+            This function will return
+            REQUIRED_LEGACY_MORPHOLOGY_METRICS = {
+            "zero": (
+                "duration_zero",
+                "closing_time_zero",
+                "reopening_time_zero",
+                "time_shut_zero",
+            ),
+            "base": (
+                "duration_base",
+                "time_shut_base",
+            ),
+            "tent": (
+                "duration_tent",
+                "closing_time_tent",
+                "reopening_time_tent",
+                "time_shut_tent",
+            ),
+            "half": (
+                "duration_half_base",
+                "duration_half_zero",
+            ),
+            "peak": (
+                "peak_time_blink",
+                "peak_time_tent",
+                "peak_max_blink",
+                "peak_max_tent",
+            ),
+            "inter_blink": (
+                "inter_blink_max_amp",
+            ),
+        }
 
 
-    """
+        """
         blink_df = _build_blink_landmark_frame(
             metadata_row,
             signal,
@@ -1001,26 +1028,30 @@ class MorphologyBlinkFeatureExtractor:
         """Preserve legacy morphology metrics behavior with mean/std/cv stats."""
         if blink_df.empty:
             return {}
-        record = {}   # empty dict
+        record = {}  # empty dict
         for legacy_metric in LEGACY_MORPHOLOGY_METRICS:
             if legacy_metric in blink_df.columns:
                 stats = compute_basic_statistics(blink_df[legacy_metric].tolist())
                 for stat_name, stat_value in stats.items():
-                    column_name=rename_metric_column_name(modality=modality,metric=legacy_metric,stat_name=stat_name,
-                        channel_name=channel_name)
+                    column_name = rename_metric_column_name(
+                        modality=modality,
+                        metric=legacy_metric,
+                        stat_name=stat_name,
+                        channel_name=channel_name,
+                    )
                     record[column_name] = stat_value
 
         return record
 
 
-
 def compute_morphology_features(
-        epochs: mne.Epochs, picks: str | Sequence[str] | None = None
-        ) -> pd.DataFrame:
+    epochs: mne.Epochs, picks: str | Sequence[str] | None = None
+) -> pd.DataFrame:
     """Compute blink morphology features for each epoch and channel."""
 
     extractor = MorphologyBlinkFeatureExtractor(epochs=epochs)
     return extractor.compute(picks=picks)
+
 
 def compute_epoch_morphology_features(
     epochs: mne.Epochs, picks: str | Sequence[str] | None = None

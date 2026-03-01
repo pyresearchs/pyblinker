@@ -1,6 +1,8 @@
 """Schema snapshot tests for column header modules."""
 
-from pyblinker.blink_features.energy.column_headers import build_output_columns as build_energy_columns
+from pyblinker.blink_features.energy.column_headers import (
+    build_output_columns as build_energy_columns,
+)
 from pyblinker.blink_features.kinematics.column_headers import (
     EXTENDED_METRICS,
     STATS,
@@ -35,7 +37,9 @@ def test_energy_column_order_matches_legacy_logic() -> None:
             for metric in metrics:
                 for stat in stats:
                     channel = ch if modality == "eog" else ch.upper()
-                    expected.append(f"{modality}__{style}__energy__{metric}_{stat}__{channel}")
+                    expected.append(
+                        f"{modality}__{style}__energy__{metric}_{stat}__{channel}"
+                    )
 
     assert new_columns == expected
 
@@ -54,7 +58,9 @@ def test_kinematic_column_schema_matches_legacy_set_logic() -> None:
             for metric in metrics:
                 for stat in STATS:
                     for ch in channels:
-                        expected_set.add(f"{mod}__{style}__kinematic__{metric}_{stat}__{ch}")
+                        expected_set.add(
+                            f"{mod}__{style}__kinematic__{metric}_{stat}__{ch}"
+                        )
 
     assert new_columns == sorted(expected_set)
 
@@ -71,7 +77,9 @@ def test_morphology_schema_matches_legacy_set_plus_legacy_columns() -> None:
             for metric in morphology_metrics_for_style(style):
                 for stat in MORPH_STATS:
                     for ch in channels:
-                        expected_set.add(f"{mod}__{style}__morphology__{metric}_{stat}__{ch}")
+                        expected_set.add(
+                            f"{mod}__{style}__morphology__{metric}_{stat}__{ch}"
+                        )
 
         if channels and mod in {"eeg", "eog"}:
             primary_channel = channels[0]

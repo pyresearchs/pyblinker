@@ -7,7 +7,7 @@ replication of MATLAB-based results.
 
 ## Overview
 The testing suite requires input data to be available in multiple formats (FIF, MAT)
-and specifically sampled at a target frequency (e.g., 20 Hz) to match legacy processing pipelines. 
+and specifically sampled at a target frequency (e.g., 20 Hz) to match legacy processing pipelines.
 This script automates the creation of these derived files from the source raw data.
 
 ## Workflow
@@ -31,7 +31,7 @@ The script performs the following idempotent checks and operations:
 
 ## Usage
 Run this script via the command line from the project root:
-    
+
     python -m test.prep_matlab_file.setup_resampled_files
 
 This ensures that imports are resolved correctly within the package structure.
@@ -52,7 +52,7 @@ except ImportError:
     # Fallback: Add project root to sys.path to allow absolute imports
     current_file = Path(__file__).resolve()
     # Path is: <root>/test/prep_matlab_file/setup_resampled_files.py
-    project_root = current_file.parents[2] 
+    project_root = current_file.parents[2]
     sys.path.append(str(project_root))
     from test.prep_matlab_file.convert_input_fif_to_edf import convert_fif_to_mat
 
@@ -98,16 +98,18 @@ def ensure_resampled_fif(source: Path, target: Path, target_sfreq: int) -> None:
         logger.info("Resampled FIF already exists: %s", target)
         return
 
-    logger.info("Creating resampled FIF: %s -> %s (sfreq=%s)", source, target, target_sfreq)
+    logger.info(
+        "Creating resampled FIF: %s -> %s (sfreq=%s)", source, target, target_sfreq
+    )
     if not source.exists():
         raise FileNotFoundError(f"Source file not found: {source}")
 
     raw = mne.io.read_raw_fif(str(source), preload=True, verbose="ERROR")
-    
+
     # Resample
     if int(round(raw.info["sfreq"])) != target_sfreq:
         raw.resample(target_sfreq)
-    
+
     # Save
     raw.save(str(target), overwrite=True, verbose="ERROR")
     logger.info("Created resampled FIF.")
@@ -137,14 +139,16 @@ def ensure_mat_from_fif(mat_path: Path, source_fif: Path, target_sfreq: int) -> 
 
     logger.info("MAT file missing. Generating from: %s", source_fif)
     if not source_fif.exists():
-            raise FileNotFoundError(f"Source FIF for MAT generation not found: {source_fif}")
-    
+        raise FileNotFoundError(
+            f"Source FIF for MAT generation not found: {source_fif}"
+        )
+
     # Use the utility to create MAT
     convert_fif_to_mat(
         input_fif=str(source_fif),
         output_mat=str(mat_path),
-        srate=target_sfreq, # Explicitly matching the resampled rate
-        channel_name="EEG-E8" # Default expected channel
+        srate=target_sfreq,  # Explicitly matching the resampled rate
+        channel_name="EEG-E8",  # Default expected channel
     )
     logger.info("Created MAT file: %s", mat_path)
 
@@ -160,9 +164,9 @@ def main():
 
         # Step 2: Create MAT from resampled FIF
         ensure_mat_from_fif(RESAMPLED_MAT, RESAMPLED_FIF, target_sfreq=TARGET_SFREQ)
-        
+
         logger.info("Setup complete. All required files are present.")
-        
+
     except Exception as e:
         logger.error("Setup failed: %s", e)
         sys.exit(1)

@@ -1,4 +1,5 @@
 """Manual energy computations for tests."""
+
 from __future__ import annotations
 
 from typing import Dict
@@ -8,9 +9,9 @@ import pandas as pd
 
 from pyblinker.blink_features.energy.common import compute_energy_metrics
 from pyblinker.blink_features.energy.helpers import (
-	extract_blink_windows,
-	segment_to_samples,
-	compute_basic_statistics,
+    extract_blink_windows,
+    segment_to_samples,
+    compute_basic_statistics,
 )
 
 

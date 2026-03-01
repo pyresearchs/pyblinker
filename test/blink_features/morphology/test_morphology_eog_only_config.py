@@ -18,13 +18,23 @@ EOG_CHANNEL = "EOG-EEG-eog_vert_left"
 stats = ["mean", "std", "cv"]
 
 metrics_by_landmark = {
-		"base": ["duration_base", "time_shut_base"],
-		"half": ["duration_half_base", "duration_half_zero"],
-		"inter_blink": ["inter_blink_max_amp"],
-		"peak": ["peak_time_blink", "peak_time_tent", "peak_max_blink", "peak_max_tent"],
-		"tent": ["duration_tent", "closing_time_tent", "reopening_time_tent", "time_shut_tent"],
-		"zero": ["duration_zero", "closing_time_zero", "reopening_time_zero", "time_shut_zero"],
-		}
+    "base": ["duration_base", "time_shut_base"],
+    "half": ["duration_half_base", "duration_half_zero"],
+    "inter_blink": ["inter_blink_max_amp"],
+    "peak": ["peak_time_blink", "peak_time_tent", "peak_max_blink", "peak_max_tent"],
+    "tent": [
+        "duration_tent",
+        "closing_time_tent",
+        "reopening_time_tent",
+        "time_shut_tent",
+    ],
+    "zero": [
+        "duration_zero",
+        "closing_time_zero",
+        "reopening_time_zero",
+        "time_shut_zero",
+    ],
+}
 
 REQUIRED_MORPHOLOGY_METRICS = build_expected_metrics(
     landmark=list(metrics_by_landmark.keys()),
@@ -49,7 +59,7 @@ class TestMorphologyAggregation(unittest.TestCase):
             blink_label=None,
             progress_bar=False,
             segmentation_type=segmentation_config,
-            )
+        )
 
     def test_epoch_output_contains_expected_morphology_features(self) -> None:
         """Epoch output includes expected style-aware and legacy morphology fields."""
@@ -59,6 +69,7 @@ class TestMorphologyAggregation(unittest.TestCase):
             for metric in style.values():
                 for stat_name in metric:
                     self.assertIn(stat_name, df.columns)
+
 
 if __name__ == "__main__":
     unittest.main()

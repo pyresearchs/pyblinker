@@ -125,7 +125,9 @@ def _values_match(matlab_value: Any, python_value: Any) -> bool:
         python_array.dtype, np.number
     ):
         return bool(
-            np.allclose(matlab_array, python_array, atol=COMPARISON_ATOL, equal_nan=True)
+            np.allclose(
+                matlab_array, python_array, atol=COMPARISON_ATOL, equal_nan=True
+            )
         )
 
     return np.array_equal(matlab_array, python_array)
@@ -180,9 +182,11 @@ def _print_report(differences: Dict[str, Dict[str, Any]]) -> None:
         print(f"- {key}:")
         print("    MATLAB:", matlab_value)
         print("    Python:", python_value)
-        if matlab_value.shape == python_value.shape and np.issubdtype(
-            matlab_value.dtype, np.number
-        ) and np.issubdtype(python_value.dtype, np.number):
+        if (
+            matlab_value.shape == python_value.shape
+            and np.issubdtype(matlab_value.dtype, np.number)
+            and np.issubdtype(python_value.dtype, np.number)
+        ):
             delta = python_value - matlab_value
             print("    Python - MATLAB:", delta)
     print(

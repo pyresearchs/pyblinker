@@ -21,13 +21,17 @@ ANN_DESCRIPTION_DETECTED = "BD"
 ANN_DESCRIPTION_GROUND_TRUTH = "BG"
 
 
-def _to_seconds(sample_index: Optional[float], sampling_rate_hz: float) -> Optional[float]:
+def _to_seconds(
+    sample_index: Optional[float], sampling_rate_hz: float
+) -> Optional[float]:
     if sample_index is None:
         return None
     return (float(sample_index) - 1.0) / sampling_rate_hz
 
 
-def _duration_seconds(start_sample: int, end_sample: int, sampling_rate_hz: float) -> float:
+def _duration_seconds(
+    start_sample: int, end_sample: int, sampling_rate_hz: float
+) -> float:
     return (float(end_sample) - float(start_sample) + 1.0) / sampling_rate_hz
 
 
@@ -80,9 +84,7 @@ def create_annotation(
         raise TypeError("label must be a non-empty string")
 
     onset = (sblink["start_blink"] / sfreq).to_list()
-    duration = (
-        (sblink["end_blink"] - sblink["start_blink"]) / sfreq
-    ).to_list()
+    duration = ((sblink["end_blink"] - sblink["start_blink"]) / sfreq).to_list()
     descriptions: Iterable[str] = [label] * len(onset)
 
     annot = mne.Annotations(
@@ -130,7 +132,9 @@ def annotations_from_diff_table(
             if pd.notna(value)
         ]
         end_candidates = [
-            value for value in (row.ground_truth_end, row.detected_end) if pd.notna(value)
+            value
+            for value in (row.ground_truth_end, row.detected_end)
+            if pd.notna(value)
         ]
 
         if not start_candidates or not end_candidates:

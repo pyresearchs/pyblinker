@@ -4,6 +4,7 @@ Captures variability of the eyelid aperture when it should
 remain steady. Increased variability may indicate unstable
 oculomotor control due to fatigue.
 """
+
 from typing import List, Dict
 import numpy as np
 from pyblinker.logging import get_logger
@@ -15,7 +16,9 @@ def baseline_std_epoch(epoch_signal: np.ndarray, blinks: List[Dict[str, int]]) -
     """Compute baseline standard deviation for an epoch."""
     mask = np.ones(len(epoch_signal), dtype=bool)
     for blink in blinks:
-        mask[int(blink["refined_start_frame"]): int(blink["refined_end_frame"])+1] = False
+        mask[
+            int(blink["refined_start_frame"]) : int(blink["refined_end_frame"]) + 1
+        ] = False
     open_signal = epoch_signal[mask]
     if open_signal.size < 2:
         return float("nan")

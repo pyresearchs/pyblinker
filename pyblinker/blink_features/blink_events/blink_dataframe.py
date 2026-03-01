@@ -59,9 +59,7 @@ def _filter_blink_annotations(
     return starts, ends
 
 
-def _get_channel_type(
-    raw: mne.io.BaseRaw, channel: str, provided: str | None
-) -> str:
+def _get_channel_type(raw: mne.io.BaseRaw, channel: str, provided: str | None) -> str:
     """Determine ``channel`` type, optionally using the caller-provided value.
 
     Parameters

@@ -5,6 +5,7 @@ totals are validated against ``ear_eog_blink_count_epoch.csv``. Rows 31 and 55
 are known mismatches and are excluded from comparisons; see
 ``tutorial/04_epoching_and_blink_validation_report.py`` for background.
 """
+
 from __future__ import annotations
 
 import unittest
@@ -35,12 +36,7 @@ class TestAggregateBlinkFeatures(unittest.TestCase):
     """
 
     def setUp(self) -> None:
-        raw_path = (
-            PROJECT_ROOT
-            / "test"
-            / "test_files"
-            / "ear_eog_raw.fif"
-        )
+        raw_path = PROJECT_ROOT / "test" / "test_files" / "ear_eog_raw.fif"
         raw = mne.io.read_raw_fif(raw_path, preload=True, verbose=False)
         segmentation_config = build_segment_config(raw)
         self.epochs = slice_raw_into_mne_epochs_refine_annot(
@@ -53,12 +49,13 @@ class TestAggregateBlinkFeatures(unittest.TestCase):
         csv_path = (
             PROJECT_ROOT / "test" / "test_files" / "ear_eog_blink_count_epoch.csv"
         )
-        self.assertTrue(
-            csv_path.is_file(),
-            f"Missing ground truth CSV at {csv_path}"
-        )
+        self.assertTrue(csv_path.is_file(), f"Missing ground truth CSV at {csv_path}")
         expected_df = pd.read_csv(csv_path).set_index("epoch_id")
-        count_col = "blink_count" if "blink_count" in expected_df.columns else "eeg__ncount__EEG-E8"
+        count_col = (
+            "blink_count"
+            if "blink_count" in expected_df.columns
+            else "eeg__ncount__EEG-E8"
+        )
         expected_full = expected_df[count_col].astype(float)
         self.expected_counts = expected_full.loc[self.epochs.metadata.index]
         self.allowed_exception_rows = {31, 55}
@@ -88,7 +85,9 @@ class TestAggregateBlinkFeatures(unittest.TestCase):
         assert_df_has_columns(self, df, expected_cols)
         self.assertEqual(len(df), len(self.epochs))
         pd.testing.assert_series_equal(
-            df["ep"], pd.Series(self.epochs.metadata.index, name="ep"), check_names=False
+            df["ep"],
+            pd.Series(self.epochs.metadata.index, name="ep"),
+            check_names=False,
         )
 
         # Compare blink totals against CSV, excluding mismatched rows
@@ -121,10 +120,10 @@ class TestAggregateBlinkFeatures(unittest.TestCase):
             vals = df[f"ibi_{ch}"].iloc[:4]
             self.assertTrue(vals.apply(lambda v: np.isfinite(v) or np.isnan(v)).all())
 
-#     def test_missing_channel(self) -> None:
-#         with self.assertRaises(ValueError):
-#             aggregate_blink_event_features(self.epochs, picks=["BAD-CHAN"])
-#
+    #     def test_missing_channel(self) -> None:
+    #         with self.assertRaises(ValueError):
+    #             aggregate_blink_event_features(self.epochs, picks=["BAD-CHAN"])
+    #
     def test_select_subset(self) -> None:
         df = aggregate_blink_event_features(
             self.epochs, picks=["EEG-E8"], features=["blink_total"]
@@ -167,7 +166,9 @@ class TestAggregateBlinkFeatures(unittest.TestCase):
             columns=["blink_onset_eeg", "blink_duration_eeg"], errors="ignore"
         )
         picks = ["EEG-E8", "EOG-EEG-eog_vert_left"]
-        df = aggregate_blink_event_features(epochs, picks=picks, features=["blink_total"])
+        df = aggregate_blink_event_features(
+            epochs, picks=picks, features=["blink_total"]
+        )
         assert_df_has_columns(self, df, ["blink_total_eeg", "blink_total_eog"])
         self.assertListEqual(df["blink_total_eeg"].tolist(), [1.0, 2.0])
         self.assertListEqual(df["blink_total_eog"].tolist(), [2.0, 1.0])

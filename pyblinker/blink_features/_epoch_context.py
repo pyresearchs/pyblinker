@@ -38,7 +38,11 @@ def build_epoch_context(
     ch_names = resolve_channels(epochs, picks, default=default)
     sfreq = float(epochs.info["sfreq"])
     n_epochs = len(epochs)
-    index = epochs.metadata.index if isinstance(epochs.metadata, pd.DataFrame) else pd.RangeIndex(n_epochs)
+    index = (
+        epochs.metadata.index
+        if isinstance(epochs.metadata, pd.DataFrame)
+        else pd.RangeIndex(n_epochs)
+    )
 
     if n_epochs == 0:
         n_times = 0
@@ -46,7 +50,11 @@ def build_epoch_context(
         n_times = int(epochs.get_data(picks=[ch_names[0]]).shape[-1])
 
     modality_by_channel = {ch: infer_modality(ch, epochs.info) for ch in ch_names}
-    metadata_cols = tuple(epochs.metadata.columns) if isinstance(epochs.metadata, pd.DataFrame) else None
+    metadata_cols = (
+        tuple(epochs.metadata.columns)
+        if isinstance(epochs.metadata, pd.DataFrame)
+        else None
+    )
 
     return EpochContext(
         epochs=epochs,

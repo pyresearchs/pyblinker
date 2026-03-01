@@ -27,7 +27,9 @@ from .similarity import Alignment
 logger = logging.getLogger(__name__)
 
 
-def _to_seconds(sample_index: Optional[float], sampling_rate_hz: float) -> Optional[float]:
+def _to_seconds(
+    sample_index: Optional[float], sampling_rate_hz: float
+) -> Optional[float]:
     if sample_index is None:
         return None
     return (float(sample_index) - 1.0) / sampling_rate_hz
@@ -47,7 +49,9 @@ def preview_side_by_side(
     n = max(0, int(n))
     return pd.DataFrame(
         {
-            "ground_truth_start": ground_truth_df["start_blink"].astype(int).to_numpy()[:n],
+            "ground_truth_start": ground_truth_df["start_blink"]
+            .astype(int)
+            .to_numpy()[:n],
             "detected_start": detected_df["start_blink"].astype(int).to_numpy()[:n],
             "ground_truth_end": ground_truth_df["end_blink"].astype(int).to_numpy()[:n],
             "detected_end": detected_df["end_blink"].astype(int).to_numpy()[:n],
@@ -55,7 +59,9 @@ def preview_side_by_side(
     )
 
 
-def print_comparison_summary(metrics_dict: dict[str, float], tolerance_samples: int) -> None:
+def print_comparison_summary(
+    metrics_dict: dict[str, float], tolerance_samples: int
+) -> None:
     """Print a human-readable summary of alignment metrics.
 
     Summaries are expressed in sample index units. Percentages are derived from counts
@@ -264,6 +270,3 @@ def make_diff_table(
         preview_rows = max_rows if max_rows is not None else len(diff_df)
         diff_df.attrs["preview"] = diff_df.head(preview_rows).to_dict(orient="list")
     return diff_df
-
-
-

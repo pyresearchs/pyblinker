@@ -4,14 +4,21 @@ import numpy as np
 
 # ---------- MATLAB -> Python converters ----------
 
+
 def _is_matlab_struct(x):
     """MATLAB struct as seen by the Engine behaves like a mapping with .keys() and [] access."""
     return hasattr(x, "keys") and hasattr(x, "__getitem__") and not isinstance(x, dict)
 
+
 def _is_matlab_cell(x):
     # cell arrays are list-like; we detect by module/type name to be robust
     tn = type(x).__name__.lower()
-    return ("cell" in tn) or (hasattr(x, "__iter__") and not _is_matlab_struct(x) and not isinstance(x, (list, tuple, dict, str, bytes)))
+    return ("cell" in tn) or (
+        hasattr(x, "__iter__")
+        and not _is_matlab_struct(x)
+        and not isinstance(x, (list, tuple, dict, str, bytes))
+    )
+
 
 def ml_to_py(obj):
     """
@@ -27,9 +34,17 @@ def ml_to_py(obj):
     # MATLAB numeric/logical arrays -> numpy
     try:
         import matlab  # type: ignore
+
         matlab_numeric_types = (
-            matlab.double, matlab.int8, matlab.int16, matlab.int32, matlab.int64,
-            matlab.uint8, matlab.uint16, matlab.uint32, matlab.uint64,
+            matlab.double,
+            matlab.int8,
+            matlab.int16,
+            matlab.int32,
+            matlab.int64,
+            matlab.uint8,
+            matlab.uint16,
+            matlab.uint32,
+            matlab.uint64,
             matlab.logical,  # noqa
         )
         if isinstance(obj, matlab_numeric_types):
@@ -79,7 +94,9 @@ def to_dataframe(x):
         # Single scalar struct
         return pd.json_normalize(x)
 
-    if isinstance(x, list) and not any(isinstance(e, (dict, list, tuple, np.ndarray)) for e in x):
+    if isinstance(x, list) and not any(
+        isinstance(e, (dict, list, tuple, np.ndarray)) for e in x
+    ):
         # Flat list of scalars
         return pd.DataFrame({"value": x})
 

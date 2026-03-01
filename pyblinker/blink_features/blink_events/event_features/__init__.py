@@ -1,4 +1,5 @@
 """Blink event feature modules."""
+
 from .aggregate import aggregate_blink_event_features
 from .blink_count import blink_count_epoch, blink_count
 from .blink_rate import blink_rate_epoch
@@ -10,5 +11,5 @@ __all__ = [
     "blink_count",
     "blink_rate_epoch",
     "compute_ibi_features",
-    "inter_blink_interval_epochs"
+    "inter_blink_interval_epochs",
 ]

@@ -100,7 +100,9 @@ def _load_matlab_tables() -> tuple[pd.DataFrame, pd.DataFrame]:
     signal_data = _prepare_signal_dataframe(matlab_input["signalData"])
 
     matlab_reference = pd.DataFrame.from_records(matlab_output["blinks"]["signalData"])
-    matlab_reference = matlab_reference.drop(columns=list(DROP_COLUMNS), errors="ignore")
+    matlab_reference = matlab_reference.drop(
+        columns=list(DROP_COLUMNS), errors="ignore"
+    )
     matlab_reference = matlab_reference.rename(columns={"signalLabel": "ch"})
     matlab_reference.rename(columns=RENAME_MAP, inplace=True)
 
@@ -147,7 +149,9 @@ def main() -> None:
     differences = _compare_tables(python_selection, matlab_selection)
 
     if differences.empty:
-        print("\nAll channel statistics match the MATLAB reference after sorting by 'ch'.")
+        print(
+            "\nAll channel statistics match the MATLAB reference after sorting by 'ch'."
+        )
     else:
         print("\nDifferences detected between Python and MATLAB channel statistics:")
         print(differences)

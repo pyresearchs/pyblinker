@@ -8,7 +8,11 @@ from .epoch import (
     _refine_ear_blinks_for_epoch,
     _select_seg_type,
 )
-from .threshold import EARRefinementConfig, EARThresholdBlinkRefiner, refine_annotations_for_threshold
+from .threshold import (
+    EARRefinementConfig,
+    EARThresholdBlinkRefiner,
+    refine_annotations_for_threshold,
+)
 
 __all__ = [
     "EARRefinementConfig",

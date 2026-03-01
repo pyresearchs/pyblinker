@@ -15,7 +15,6 @@ logger = logging.getLogger(__name__)
 
 
 class TestFitBlinks(unittest.TestCase):
-
     @classmethod
     def setUpClass(cls):
         """
@@ -26,7 +25,7 @@ class TestFitBlinks(unittest.TestCase):
         mat_signal_path = get_test_file_path("ear_eog_resamp-100_raw.mat")
         mat_pos_path = get_test_file_path("step_a_extract_blinks_resamp-100.mat")
         mat_fit_path = get_test_file_path("step_b_fit_blink.mat")
-        
+
         # Referenced in the task but not used for signal data due to value discrepancy
         cls.fif_path = get_test_file_path("ear_eog_resamp-100_raw.fif")
 
@@ -40,16 +39,13 @@ class TestFitBlinks(unittest.TestCase):
         if blink_comp.ndim > 1:
             blink_comp = blink_comp[0]
 
-
-
-
         params = default_setting.DEFAULT_PARAMS.copy()
         df_positions = get_blink_position(
             params,
             blink_component=blink_comp,
             ch="No_channel",
             progress_bar=False,
-            )
+        )
         # 3. Run FitBlinks
         # params_default = default_setting.DEFAULT_PARAMS.copy()
         fitblinks = FitBlinks(
@@ -69,24 +65,33 @@ class TestFitBlinks(unittest.TestCase):
         # MATLAB compatibility: index correction (1-based indexing)
         # ---------------------------------------------------------------------
         columns_to_increment = [
-                "max_blink", "start_blink", "end_blink",
-                "outer_start", "outer_end",
-                "left_zero", "right_zero",
-                "max_pos_vel_frame", "max_neg_vel_frame",
-                "left_base", "right_base",
-                "left_zero_half_height", "right_zero_half_height",
-                "left_base_half_height", "right_base_half_height",
-                "x_intersect",
-                "right_x_intercept","left_x_intercept"
-                ]
+            "max_blink",
+            "start_blink",
+            "end_blink",
+            "outer_start",
+            "outer_end",
+            "left_zero",
+            "right_zero",
+            "max_pos_vel_frame",
+            "max_neg_vel_frame",
+            "left_base",
+            "right_base",
+            "left_zero_half_height",
+            "right_zero_half_height",
+            "left_base_half_height",
+            "right_base_half_height",
+            "x_intersect",
+            "right_x_intercept",
+            "left_x_intercept",
+        ]
         df_output[columns_to_increment] += 1
 
         df_output["left_range"] = df_output["left_range"].apply(
             lambda x: [v + 1 for v in x]
-            )
+        )
         df_output["right_range"] = df_output["right_range"].apply(
             lambda x: [v + 1 for v in x]
-            )
+        )
 
         # ---------------------------------------------------------------------
         # Load MATLAB reference output
@@ -101,7 +106,7 @@ class TestFitBlinks(unittest.TestCase):
         blink_fits_mat = mat_data["blinkFits"]
         if not isinstance(blink_fits_mat, (list, np.ndarray)):
             blink_fits_mat = [blink_fits_mat]
-            
+
         df_mat = pd.DataFrame(blink_fits_mat).reset_index(drop=True)
 
         matlab_to_python = {
@@ -131,7 +136,14 @@ class TestFitBlinks(unittest.TestCase):
             "rightXIntercept": "right_x_intercept",
         }
 
-        column_order = ["max_blink", "max_value", "left_zero", "right_zero", "leftR2", "rightR2"]
+        column_order = [
+            "max_blink",
+            "max_value",
+            "left_zero",
+            "right_zero",
+            "leftR2",
+            "rightR2",
+        ]
 
         cls.df_mat = df_mat.rename(columns=matlab_to_python)[column_order]
         cls.df_py = df_output[column_order].reset_index(drop=True)
@@ -140,12 +152,11 @@ class TestFitBlinks(unittest.TestCase):
         """
         # Compare Python FitBlinks output with MATLAB reference output.
         # Both should return 355 blinks with identical properties.
-        # """
+        #"""
         self.assertEqual(
             len(self.df_py),
             len(self.df_mat),
-            f"Different number of blinks: "
-            f"py={len(self.df_py)} mat={len(self.df_mat)}",
+            f"Different number of blinks: py={len(self.df_py)} mat={len(self.df_mat)}",
         )
         # TODO GOT SOME ISSUE python implementation of pyblinker
         pd.testing.assert_frame_equal(
@@ -157,8 +168,6 @@ class TestFitBlinks(unittest.TestCase):
             atol=1e-4,
         )
         # pass
-
-
 
 
 if __name__ == "__main__":

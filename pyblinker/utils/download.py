@@ -3,7 +3,6 @@ from pathlib import Path
 import mne
 
 
-
 # ---------------------------------------------------------------------
 # 2. Download helper
 # ---------------------------------------------------------------------
@@ -25,6 +24,7 @@ def save_edf_once(raw: mne.io.Raw, edf_path: Path):
         return
     print(f"Saving EDF file: {edf_path}")
     from mne.export import export_raw
+
     export_raw(edf_path.as_posix(), raw, fmt="edf")
     print("EDF saved.")
 

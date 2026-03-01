@@ -15,23 +15,19 @@ _T = TypeVar("_T")
 
 
 @overload
-def ensure_list(value: Sequence[_T]) -> List[_T]:
-    ...
+def ensure_list(value: Sequence[_T]) -> List[_T]: ...
 
 
 @overload
-def ensure_list(value: np.ndarray) -> List[Union[int, float]]:
-    ...
+def ensure_list(value: np.ndarray) -> List[Union[int, float]]: ...
 
 
 @overload
-def ensure_list(value: pd.Series) -> List[object]:
-    ...
+def ensure_list(value: pd.Series) -> List[object]: ...
 
 
 @overload
-def ensure_list(value: _T) -> List[_T]:
-    ...
+def ensure_list(value: _T) -> List[_T]: ...
 
 
 def ensure_list(value):

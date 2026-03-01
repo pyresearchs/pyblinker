@@ -4,6 +4,7 @@ The functions in this module are shared across energy feature
 calculations. They operate on :class:`pandas.Series` metadata rows and
 NumPy arrays representing eyelid aperture signals.
 """
+
 from __future__ import annotations
 
 from typing import Dict, Sequence
@@ -51,4 +52,10 @@ def _tkeo(x: np.ndarray) -> np.ndarray:
         psi[1:-1] = x[1:-1] ** 2 - x[:-2] * x[2:]
     return psi
 
-__all__ = ["extract_blink_windows", "segment_to_samples", "compute_basic_statistics", "_tkeo"]
+
+__all__ = [
+    "extract_blink_windows",
+    "segment_to_samples",
+    "compute_basic_statistics",
+    "_tkeo",
+]

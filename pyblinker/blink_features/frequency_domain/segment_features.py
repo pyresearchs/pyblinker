@@ -39,4 +39,4 @@ def compute_frequency_domain_features(
         sfreq,
     )
     energies = _compute_wavelet_energies(np.asarray(segment_signal, dtype=float), sfreq)
-    return {f"wavelet_energy_d{i+1}": val for i, val in enumerate(energies)}
+    return {f"wavelet_energy_d{i + 1}": val for i, val in enumerate(energies)}

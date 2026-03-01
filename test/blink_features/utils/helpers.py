@@ -1,4 +1,5 @@
 """Test utilities for blink feature modules."""
+
 from __future__ import annotations
 
 from typing import Sequence, Iterable, List
@@ -34,5 +35,7 @@ def morphology_column_names(channels: Sequence[str]) -> List[str]:
         style = "base"
         for metric in metrics:
             for stat in stats:
-                columns.append(f"{modality}__{style}__morphology__{metric}_{stat}__{ch}")
+                columns.append(
+                    f"{modality}__{style}__morphology__{metric}_{stat}__{ch}"
+                )
     return columns

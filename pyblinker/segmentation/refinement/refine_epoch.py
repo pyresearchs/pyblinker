@@ -69,7 +69,7 @@ def _refine_epoch_peak_modality(
         blink_starts,
         blink_ends,
         sfreq,
-		modalities,
+        modalities,
         n_samp_epoch,
         modality_config,
     )
@@ -107,7 +107,11 @@ def _refine_epoch_modalities(
         n_samp_epoch,
     )
 
-    row_data: Dict[str, Any] = {"blink_onset": np.nan, "blink_duration": np.nan, "n_blinks": 0}
+    row_data: Dict[str, Any] = {
+        "blink_onset": np.nan,
+        "blink_duration": np.nan,
+        "n_blinks": 0,
+    }
     n_blinks = len(blink_starts)
     row_data["n_blinks"] = n_blinks
     if n_blinks == 0:
@@ -147,7 +151,7 @@ def _refine_epoch_modalities(
             blink_ends=blink_ends,
             sfreq=sfreq,
             n_samp_epoch=n_samp_epoch,
-			modalities="eeg",
+            modalities="eeg",
         )
 
     if have_eog and data_eog is not None:
@@ -160,7 +164,7 @@ def _refine_epoch_modalities(
             blink_ends=blink_ends,
             sfreq=sfreq,
             n_samp_epoch=n_samp_epoch,
-			modalities="eog",
+            modalities="eog",
         )
 
     return row_data

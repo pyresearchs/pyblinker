@@ -1,7 +1,5 @@
 """Basic usage example showing how to run ``BlinkDetector`` on sample data."""
 
-
-
 # 1) Import required libraries
 import mne
 from pyblinker.blinker.pyblinker import BlinkDetector
@@ -12,7 +10,7 @@ import os
 sample_data_folder = mne.datasets.sample.data_path()
 raw_file = os.path.join(
     sample_data_folder, "MEG", "sample", "sample_audvis_filt-0-40_raw.fif"
-    )
+)
 
 
 # 3) Load the EEG recording
@@ -47,7 +45,7 @@ detector = BlinkDetector(
     resample_rate=100,
     n_jobs=2,
     use_multiprocessing=True,
-    )
+)
 
 # 9) Run blink detection
 annotations, channel, _good, _df, _fig_data, _selected = detector.get_blink()

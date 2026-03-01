@@ -112,7 +112,9 @@ def load_mat_to_mne(mat_path: str, sfreq_default: float = 256.0) -> mne.io.BaseR
             print("MAT-file structure:")
             print_structure(mat)
             raise ValueError("No numeric arrays found in the .mat file.")
-        data_candidate = np.asarray(max(numeric.items(), key=lambda item: item[1].size)[1])
+        data_candidate = np.asarray(
+            max(numeric.items(), key=lambda item: item[1].size)[1]
+        )
 
     arr = np.asarray(data_candidate)
     if arr.ndim == 1:
@@ -140,7 +142,9 @@ def load_mat_to_mne(mat_path: str, sfreq_default: float = 256.0) -> mne.io.BaseR
     meta_str = " ".join(map(str, mat.keys())).lower()
     if any(token in meta_str for token in ("uv", "microv", "microvolt", "micro_volt")):
         scale = 1e6
-    elif any(token in meta_str for token in ("mv", "milliv", "millivolt", "milli_volt")):
+    elif any(
+        token in meta_str for token in ("mv", "milliv", "millivolt", "milli_volt")
+    ):
         scale = 1e3
 
     if scale == 1.0:

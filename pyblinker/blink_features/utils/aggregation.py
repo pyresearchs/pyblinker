@@ -50,7 +50,9 @@ def prepare_epoch_channel_data(
     return ch_names, channel_data, index, n_epochs, n_times
 
 
-def _normalize_picks(picks: str | Sequence[str] | None, epoch_channels: Iterable[str]) -> List[str]:
+def _normalize_picks(
+    picks: str | Sequence[str] | None, epoch_channels: Iterable[str]
+) -> List[str]:
     if picks is None:
         return list(epoch_channels)
     if isinstance(picks, str):
@@ -58,7 +60,9 @@ def _normalize_picks(picks: str | Sequence[str] | None, epoch_channels: Iterable
     return list(picks)
 
 
-def _raise_for_missing_channels(ch_names: List[str], epoch_channels: Iterable[str]) -> None:
+def _raise_for_missing_channels(
+    ch_names: List[str], epoch_channels: Iterable[str]
+) -> None:
     missing = [ch for ch in ch_names if ch not in epoch_channels]
     if missing:
         raise ValueError(f"Channels not found: {missing}")

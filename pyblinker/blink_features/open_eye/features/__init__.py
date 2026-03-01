@@ -1,4 +1,5 @@
 """Open-eye period feature functions."""
+
 from .baseline_mean import baseline_mean_epoch
 from .baseline_drift import baseline_drift_epoch
 from .baseline_std import baseline_std_epoch

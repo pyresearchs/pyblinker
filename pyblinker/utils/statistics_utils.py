@@ -62,9 +62,13 @@ def get_blink_statistic(
 
     # The Python pipeline uses 0-based frame indices in blink fit outputs.
     # Keep this indexing (do not shift) and mirror MATLAB's inclusive range test.
-    signal_values = np.asarray(signal, dtype=float) if signal is not None else np.array([])
+    signal_values = (
+        np.asarray(signal, dtype=float) if signal is not None else np.array([])
+    )
     blink_mask = np.zeros(signal_values.shape[0], dtype=bool)
-    for lz, rz in zip(df_data["left_zero"].to_numpy(), df_data["right_zero"].to_numpy()):
+    for lz, rz in zip(
+        df_data["left_zero"].to_numpy(), df_data["right_zero"].to_numpy()
+    ):
         # MATLAB indexing accepts integer frame indices; use nearest integer
         # to mirror float-to-index semantics for values stored as doubles.
         left = int(np.rint(lz))
@@ -77,7 +81,9 @@ def get_blink_statistic(
 
     inside_blink = (signal_values > 0) & blink_mask
     outside_blink = (signal_values > 0) & ~blink_mask
-    inside_mean = np.mean(signal_values[inside_blink]) if np.any(inside_blink) else np.nan
+    inside_mean = (
+        np.mean(signal_values[inside_blink]) if np.any(inside_blink) else np.nan
+    )
     outside_mean = (
         np.mean(signal_values[outside_blink]) if np.any(outside_blink) else np.nan
     )

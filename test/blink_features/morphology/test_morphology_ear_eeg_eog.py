@@ -47,8 +47,18 @@ MORPHOLOGY_METRICS_BY_LANDMARK = {
     "half": ["duration_half_base", "duration_half_zero"],
     "inter_blink": ["inter_blink_max_amp"],
     "peak": ["peak_time_blink", "peak_time_tent", "peak_max_blink", "peak_max_tent"],
-    "tent": ["duration_tent", "closing_time_tent", "reopening_time_tent", "time_shut_tent"],
-    "zero": ["duration_zero", "closing_time_zero", "reopening_time_zero", "time_shut_zero"],
+    "tent": [
+        "duration_tent",
+        "closing_time_tent",
+        "reopening_time_tent",
+        "time_shut_tent",
+    ],
+    "zero": [
+        "duration_zero",
+        "closing_time_zero",
+        "reopening_time_zero",
+        "time_shut_zero",
+    ],
 }
 
 REQUIRED_EAR_METRICS = build_expected_metrics(
@@ -156,35 +166,37 @@ class TestFullModalityMorphologyPipeline(unittest.TestCase):
     #     )
     #     expected_df = pd.read_excel(fixture_path)
     #     expected_df = expected_df.drop(columns=["Unnamed: 0"], errors="ignore")
-	#
-    #     self.assertEqual(len(self.df), len(expected_df))
-	#
-    #     column_overrides = {
-    #         "eeg__peak__morphology__peak_time_tent_mean__EEG-E8": "eeg__peak__morphology__peak_max_tent_mean__EEG-E8",
-    #         "eeg__peak__morphology__peak_time_tent_mean__EEG-E8.1": "eeg__peak__morphology__peak_time_tent_mean__EEG-E8",
-    #     }
-	#
-    #     for expected_col in expected_df.columns:
-    #         output_col = column_overrides.get(expected_col, expected_col.split(".", 1)[0])
-    #         self.assertIn(output_col, self.df.columns)
-	#
-    #         expected_values = expected_df[expected_col].to_numpy(dtype=float)
-    #         actual_values = self.df[output_col].to_numpy(dtype=float)
-    #         self.assertTrue(
-    #             np.allclose(actual_values, expected_values, atol=1e-8, equal_nan=True),
-    #             msg=f"Column mismatch: fixture={expected_col} output={output_col}",
-    #         )
 
-    # def test_matches_baseline_pickle(self) -> None:
-    #     # self._maybe_write_baseline()
-    #     baseline = self._load_baseline()
-    #     pd.testing.assert_frame_equal(
-    #         self.df.sort_index(axis=1),
-    #         baseline.sort_index(axis=1),
-    #         check_dtype=False,
-    #         rtol=1e-6,
-    #         atol=1e-9,
-    #     )
+
+#
+#     self.assertEqual(len(self.df), len(expected_df))
+#
+#     column_overrides = {
+#         "eeg__peak__morphology__peak_time_tent_mean__EEG-E8": "eeg__peak__morphology__peak_max_tent_mean__EEG-E8",
+#         "eeg__peak__morphology__peak_time_tent_mean__EEG-E8.1": "eeg__peak__morphology__peak_time_tent_mean__EEG-E8",
+#     }
+#
+#     for expected_col in expected_df.columns:
+#         output_col = column_overrides.get(expected_col, expected_col.split(".", 1)[0])
+#         self.assertIn(output_col, self.df.columns)
+#
+#         expected_values = expected_df[expected_col].to_numpy(dtype=float)
+#         actual_values = self.df[output_col].to_numpy(dtype=float)
+#         self.assertTrue(
+#             np.allclose(actual_values, expected_values, atol=1e-8, equal_nan=True),
+#             msg=f"Column mismatch: fixture={expected_col} output={output_col}",
+#         )
+
+# def test_matches_baseline_pickle(self) -> None:
+#     # self._maybe_write_baseline()
+#     baseline = self._load_baseline()
+#     pd.testing.assert_frame_equal(
+#         self.df.sort_index(axis=1),
+#         baseline.sort_index(axis=1),
+#         check_dtype=False,
+#         rtol=1e-6,
+#         atol=1e-9,
+#     )
 
 
 if __name__ == "__main__":

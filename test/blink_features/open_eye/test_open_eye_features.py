@@ -1,4 +1,5 @@
 """Tests for aggregated open-eye baseline features."""
+
 from __future__ import annotations
 
 import unittest
@@ -32,10 +33,9 @@ class TestOpenEyeBaselineFeatures(unittest.TestCase):
     def test_aggregated_baseline_features(self) -> None:
         """Baseline features averaged across selected blink-free epochs."""
         picks = ["EEG-E8", "EOG-EEG-eog_vert_left", "EAR-avg_ear"]
-        baseline_idx = (
-            self.epochs.metadata.index[self.epochs.metadata["n_blinks"] == 0][:4]
-            .tolist()
-        )
+        baseline_idx = self.epochs.metadata.index[
+            self.epochs.metadata["n_blinks"] == 0
+        ][:4].tolist()
 
         for idx in baseline_idx:
             self.assertEqual(self.epochs.metadata.loc[idx, "n_blinks"], 0)

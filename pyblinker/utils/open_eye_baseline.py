@@ -57,7 +57,9 @@ def _blinks_from_metadata(meta: pd.Series, sfreq: float) -> list[dict[str, int]]
     return blinks
 
 
-def _compute_features(signal: np.ndarray, blinks: list[dict[str, int]], sfreq: float) -> pd.Series:
+def _compute_features(
+    signal: np.ndarray, blinks: list[dict[str, int]], sfreq: float
+) -> pd.Series:
     """Compute baseline features for a single-channel epoch.
 
     Parameters
@@ -125,7 +127,8 @@ def compute_open_eye_baseline_features(
             feats = _compute_features(signal, blinks, sfreq)
             channel_features[ch].append(feats)
     aggregated = {
-        ch: pd.concat(feats, axis=1).mean(axis=1) for ch, feats in channel_features.items()
+        ch: pd.concat(feats, axis=1).mean(axis=1)
+        for ch, feats in channel_features.items()
     }
     df = pd.DataFrame.from_dict(aggregated, orient="index")
     logger.info("Computed baseline features for %d channels", len(df))

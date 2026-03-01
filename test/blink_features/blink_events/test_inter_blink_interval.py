@@ -4,6 +4,7 @@ Epochs are constructed using ``slice_raw_into_mne_epochs_refine_annot`` to
 match the canonical pipeline. This test does not rely on any CSV ground truth
 files.
 """
+
 from __future__ import annotations
 
 import unittest
@@ -30,12 +31,7 @@ class TestInterBlinkInterval(unittest.TestCase):
     """Validate IBI computation using epoch metadata."""
 
     def setUp(self) -> None:
-        raw_path = (
-            PROJECT_ROOT
-            / "test"
-            / "test_files"
-            / "ear_eog_raw.fif"
-        )
+        raw_path = PROJECT_ROOT / "test" / "test_files" / "ear_eog_raw.fif"
         raw = mne.io.read_raw_fif(raw_path, preload=True, verbose=False)
         segmentation_config = build_segment_config(raw)
         self.epochs = slice_raw_into_mne_epochs_refine_annot(
@@ -53,7 +49,9 @@ class TestInterBlinkInterval(unittest.TestCase):
         assert_df_has_columns(self, df, expected_cols)
         self.assertEqual(len(df), len(self.epochs))
         pd.testing.assert_series_equal(
-            df["ep"], pd.Series(self.epochs.metadata.index, name="ep"), check_names=False
+            df["ep"],
+            pd.Series(self.epochs.metadata.index, name="ep"),
+            check_names=False,
         )
 
         # epoch-wise checks across all epochs using blink counts

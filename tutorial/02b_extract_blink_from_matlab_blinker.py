@@ -76,13 +76,16 @@ else:
     )
 
 logging.info("Running MATLAB Blinker exports")
-processed = cast(Mapping[str, Any], execute_blinker.run_blinker_batch(
-    edf_path=edf_path,
-    eeglab_root=eeglab_root,
-    project_root=execute_blinker.DEFAULT_PROJECT_ROOT,
-    blinker_plugin="Blinker1.2.0",
-    overwrite=True,
-))
+processed = cast(
+    Mapping[str, Any],
+    execute_blinker.run_blinker_batch(
+        edf_path=edf_path,
+        eeglab_root=eeglab_root,
+        project_root=execute_blinker.DEFAULT_PROJECT_ROOT,
+        blinker_plugin="Blinker1.2.0",
+        overwrite=True,
+    ),
+)
 
 if "blinkFits" not in processed:
     raise KeyError(

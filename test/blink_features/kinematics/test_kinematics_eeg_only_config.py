@@ -57,6 +57,7 @@ REQUIRED_KINEMATICS_METRICS = build_expected_metrics(
     channel=EEG_CHANNEL,
 )
 
+
 class TestEegOnlyKinematicPipeline(unittest.TestCase):
     """EEG-only kinematic pipeline coverage."""
 

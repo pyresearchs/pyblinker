@@ -52,7 +52,9 @@ def blink_count_epoch(
 
     if mne and isinstance(blinks, mne.Epochs):
         logger.warning("Blink count from MNE Epochs not implemented")
-        raise NotImplementedError("blink_count_epoch does not support MNE Epochs input.")
+        raise NotImplementedError(
+            "blink_count_epoch does not support MNE Epochs input."
+        )
 
     if isinstance(blinks, list):
         logger.debug("Counting %s blinks from list of dicts", len(blinks))
@@ -111,8 +113,7 @@ def blink_count(
             counts = metadata_df[expected_column].fillna(0).astype(float).tolist()
         elif start_column and start_column in metadata_df.columns:
             counts = [
-                _count_from_metadata_start_column(row, start_column)
-                for row in rows
+                _count_from_metadata_start_column(row, start_column) for row in rows
             ]
         elif "n_blinks" in metadata_df.columns:
             counts = metadata_df["n_blinks"].fillna(0).astype(float).tolist()

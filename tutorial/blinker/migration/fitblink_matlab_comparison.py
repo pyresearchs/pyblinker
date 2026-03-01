@@ -90,7 +90,6 @@ Expected
 ❌ AssertionError if any column or value differs (beyond the ignored minimal cases).
 """
 
-
 import sys
 from pathlib import Path
 import logging
@@ -171,7 +170,7 @@ def _adjust_python_fitblinks_to_matlab(df: pd.DataFrame) -> pd.DataFrame:
         "left_base_half_height",
         "right_base_half_height",
         "x_intersect",
-        "y_intersect",          # ← important: back in
+        "y_intersect",  # ← important: back in
         "right_x_intercept",
     ]
     for col in cols_step1:
@@ -193,7 +192,9 @@ def _adjust_python_fitblinks_to_matlab(df: pd.DataFrame) -> pd.DataFrame:
     for list_col in ("left_range", "right_range"):
         if list_col in df.columns:
             df[list_col] = df[list_col].apply(
-                lambda arr: [v + 1 for v in arr] if isinstance(arr, (list, tuple)) else arr
+                lambda arr: (
+                    [v + 1 for v in arr] if isinstance(arr, (list, tuple)) else arr
+                )
             )
 
     # final column order
@@ -256,10 +257,18 @@ def _compare_frames(df_mat: pd.DataFrame, df_py: pd.DataFrame, decimal_places: i
     # round numeric
     for col in common_cols:
         df_mat[col] = df_mat[col].apply(
-            lambda x: np.round(x, decimal_places) if isinstance(x, (int, float, np.floating)) else x
+            lambda x: (
+                np.round(x, decimal_places)
+                if isinstance(x, (int, float, np.floating))
+                else x
+            )
         )
         df_py[col] = df_py[col].apply(
-            lambda x: np.round(x, decimal_places) if isinstance(x, (int, float, np.floating)) else x
+            lambda x: (
+                np.round(x, decimal_places)
+                if isinstance(x, (int, float, np.floating))
+                else x
+            )
         )
 
     # cell-wise compare
@@ -403,8 +412,7 @@ def main():
     ).any(axis=None)
 
     assert not has_inconsistent, (
-        "Found inconsistent cells in FitBlinks output:\n"
-        f"{filtered_report}"
+        f"Found inconsistent cells in FitBlinks output:\n{filtered_report}"
     )
 
     print("\n✅ Validation PASSED: Python FitBlinks matches MATLAB gold.")

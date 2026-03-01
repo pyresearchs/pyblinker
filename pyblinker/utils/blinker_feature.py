@@ -2,6 +2,7 @@
 
 To delete later
 """
+
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 import hashlib
@@ -41,16 +42,16 @@ class BlinkPropsPickleFixture:
 
 
 def save_blinkprops_pickle(
-        path: str,
-        *,
-        candidate_signal: np.ndarray,
-        df_in: pd.DataFrame,
-        srate: float,
-        params: Dict[str, Any],
-        fitted: bool,
-        df_out: pd.DataFrame,
-        notes: Optional[str] = None,
-        protocol: int = pickle.HIGHEST_PROTOCOL,
+    path: str,
+    *,
+    candidate_signal: np.ndarray,
+    df_in: pd.DataFrame,
+    srate: float,
+    params: Dict[str, Any],
+    fitted: bool,
+    df_out: pd.DataFrame,
+    notes: Optional[str] = None,
+    protocol: int = pickle.HIGHEST_PROTOCOL,
 ) -> None:
     """
     Save BlinkProperties inputs + expected output into a single pickle file.
@@ -71,7 +72,9 @@ def save_blinkprops_pickle(
         pickle.dump(fixture, f, protocol=protocol)
 
 
-def load_blinkprops_pickle(path: str, *, verify_hash: bool = True) -> BlinkPropsPickleFixture:
+def load_blinkprops_pickle(
+    path: str, *, verify_hash: bool = True
+) -> BlinkPropsPickleFixture:
     """
     Load the fixture from pickle. Optionally verify candidate_signal hash for integrity.
     """
@@ -82,17 +85,19 @@ def load_blinkprops_pickle(path: str, *, verify_hash: bool = True) -> BlinkProps
         expected = fixture.candidate_signal_sha256
         actual = _sha256_array(np.asarray(fixture.candidate_signal))
         if expected != actual:
-            raise ValueError("candidate_signal hash mismatch — fixture may be altered/corrupted.")
+            raise ValueError(
+                "candidate_signal hash mismatch — fixture may be altered/corrupted."
+            )
 
     return fixture
 
 
 def replay_and_assert_blinkprops(
-        fixture: BlinkPropsPickleFixture,
-        BlinkPropertiesCls,
-        *,
-        rtol: float = 1e-6,
-        atol: float = 1e-8,
+    fixture: BlinkPropsPickleFixture,
+    BlinkPropertiesCls,
+    *,
+    rtol: float = 1e-6,
+    atol: float = 1e-8,
 ) -> pd.DataFrame:
     """
     Re-run BlinkProperties on saved inputs and assert the produced df matches df_out.

@@ -1,4 +1,5 @@
 """Channel pick normalization and validation utilities."""
+
 from __future__ import annotations
 
 from typing import Iterable, Sequence
@@ -84,4 +85,3 @@ __all__ = [
     "pick_ear_channels_from_info",
     "pick_ear_channels_from_raw",
 ]
-

@@ -70,8 +70,8 @@ def _append_peak_refinements(
         peaks.append(int(peak))
         blink_entries.append(
             {
-				f"start__refine__{modality}": refined_start,
-				f"end__refine__{modality}": refined_end,
+                f"start__refine__{modality}": refined_start,
+                f"end__refine__{modality}": refined_end,
             }
         )
 
@@ -92,12 +92,13 @@ def _append_peak_refinements(
             blink_data[f"start__outer__{modality}"] = outer_start
             blink_data[f"end__outer__{modality}"] = outer_end
 
-
     keys = blink_entries[0].keys()
     transposed = {key: [entry[key] for entry in blink_entries] for key in keys}
     row_data.update(transposed)
 
-    base_fraction = float((modality_config or {}).get("base_fraction", DEFAULT_PARAMS["base_fraction"]))
+    base_fraction = float(
+        (modality_config or {}).get("base_fraction", DEFAULT_PARAMS["base_fraction"])
+    )
 
     # TODO: Do not use the blink_start and blink_end indices since this can be from manual annotatioons. Consider to use the refined start and end indices instead for computing landmarks, or at least make this configurable.refined_start and refined_end
     landmarks = _compute_epoch_landmarks(
@@ -105,7 +106,7 @@ def _append_peak_refinements(
         blink_starts=blink_starts,
         blink_ends=blink_ends,
         n_samp_epoch=n_samp_epoch,
-		modality=modality,
+        modality=modality,
         base_fraction=base_fraction,
     )
     row_data.update(landmarks)
@@ -117,7 +118,7 @@ def _compute_epoch_landmarks(
     blink_starts: Sequence[int],
     blink_ends: Sequence[int],
     n_samp_epoch: int,
-		modality: str,
+    modality: str,
     base_fraction: float,
 ) -> Dict[str, List[float]]:
     n_blinks = len(blink_starts)
@@ -136,7 +137,9 @@ def _compute_epoch_landmarks(
         f"y_intersect__{modality}",
     ]
 
-    results: Dict[str, List[float]] = {col: [float("nan")] * n_blinks for col in landmark_columns}
+    results: Dict[str, List[float]] = {
+        col: [float("nan")] * n_blinks for col in landmark_columns
+    }
     if n_blinks == 0 or segment.size == 0:
         return results
 
@@ -198,12 +201,22 @@ def _compute_epoch_landmarks(
             row.outer_end,
         )
 
-        results[f"start__left_base_half_height__{modality}"][idx] = float(left_base_half_height)
-        results[f"end__right_base_half_height__{modality}"][idx] = float(right_base_half_height)
-        results[f"start__left_zero_half_height__{modality}"][idx] = float(left_zero_half_height)
-        results[f"end__right_zero_half_height__{modality}"][idx] = float(right_zero_half_height)
+        results[f"start__left_base_half_height__{modality}"][idx] = float(
+            left_base_half_height
+        )
+        results[f"end__right_base_half_height__{modality}"][idx] = float(
+            right_base_half_height
+        )
+        results[f"start__left_zero_half_height__{modality}"][idx] = float(
+            left_zero_half_height
+        )
+        results[f"end__right_zero_half_height__{modality}"][idx] = float(
+            right_zero_half_height
+        )
 
-        if int(row.left_zero) >= int(row.max_blink) or int(row.right_zero) <= int(row.max_blink):
+        if int(row.left_zero) >= int(row.max_blink) or int(row.right_zero) <= int(
+            row.max_blink
+        ):
             continue
 
         try:
@@ -237,8 +250,12 @@ def _compute_epoch_landmarks(
                 right_x_intercept,
             ) = lines_intersection(signal=segment, x_right=x_right, x_left=x_left)
 
-            results[f"start__left_x_intercept__{modality}"][idx] = float(left_x_intercept)
-            results[f"end__right_x_intercept__{modality}"][idx] = float(right_x_intercept)
+            results[f"start__left_x_intercept__{modality}"][idx] = float(
+                left_x_intercept
+            )
+            results[f"end__right_x_intercept__{modality}"][idx] = float(
+                right_x_intercept
+            )
             results[f"x_intersect__{modality}"][idx] = float(x_intersect)
             results[f"y_intersect__{modality}"][idx] = float(y_intersect)
 
@@ -277,7 +294,9 @@ def refine_blinks_from_epochs(
             end_rel = min(end_rel, len(signal) - 1)
             if end_rel < start_rel:
                 end_rel = start_rel
-            rs, peak, re = refine_local_maximum_stub(signal, start_rel, end_rel, peak_rel_cvat=None)
+            rs, peak, re = refine_local_maximum_stub(
+                signal, start_rel, end_rel, peak_rel_cvat=None
+            )
             refined.append(
                 {
                     "epoch_index": epoch_index,
@@ -291,4 +310,8 @@ def refine_blinks_from_epochs(
     return refined
 
 
-__all__ = ["_append_peak_refinements", "refine_local_maximum_stub", "refine_blinks_from_epochs"]
+__all__ = [
+    "_append_peak_refinements",
+    "refine_local_maximum_stub",
+    "refine_blinks_from_epochs",
+]

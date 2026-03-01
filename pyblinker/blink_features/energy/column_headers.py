@@ -32,7 +32,9 @@ def channel_label(channel_name: str, modality: str) -> str:
     return channel_name if modality == "eog" else channel_name.upper()
 
 
-def make_stat_column(*, modality: str, style: str, metric: str, stat: str, channel: str) -> str:
+def make_stat_column(
+    *, modality: str, style: str, metric: str, stat: str, channel: str
+) -> str:
     """Build an energy stat column header."""
 
     return make_common_stat_column(

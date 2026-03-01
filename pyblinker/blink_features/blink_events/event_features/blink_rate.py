@@ -1,4 +1,5 @@
 """Blink rate feature."""
+
 from typing import List, Dict
 from pyblinker.logging import get_logger
 

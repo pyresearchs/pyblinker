@@ -104,9 +104,13 @@ def _compute_slopes_from_samples(
     closing_slope = float("nan")
     opening_slope = float("nan")
     if closing_duration > 0:
-        closing_slope = float((signal[lowest_sample] - signal[start_sample]) / closing_duration)
+        closing_slope = float(
+            (signal[lowest_sample] - signal[start_sample]) / closing_duration
+        )
     if opening_duration > 0:
-        opening_slope = float((signal[end_sample] - signal[lowest_sample]) / opening_duration)
+        opening_slope = float(
+            (signal[end_sample] - signal[lowest_sample]) / opening_duration
+        )
 
     return closing_slope, opening_slope
 
@@ -165,17 +169,16 @@ def _compute_base_features(
     std_val = float(np.std(context_window))
     var_val = float(np.var(context_window))
     mad_val = float(np.median(np.abs(context_window - median_val)))
-    iqr_val = float(np.percentile(context_window, 75) - np.percentile(context_window, 25))
-    skewness = float(
-        np.mean(((context_window - mean_val) / (std_val + 1e-12)) ** 3)
+    iqr_val = float(
+        np.percentile(context_window, 75) - np.percentile(context_window, 25)
     )
-    kurtosis = float(
-        np.mean(((context_window - mean_val) / (std_val + 1e-12)) ** 4)
-    )
+    skewness = float(np.mean(((context_window - mean_val) / (std_val + 1e-12)) ** 3))
+    kurtosis = float(np.mean(((context_window - mean_val) / (std_val + 1e-12)) ** 4))
 
     percentile_values = np.percentile(context_window, feature_config.percentiles)
     percentile_dict = {
-        f"ear_p{p}": float(val) for p, val in zip(feature_config.percentiles, percentile_values)
+        f"ear_p{p}": float(val)
+        for p, val in zip(feature_config.percentiles, percentile_values)
     }
 
     min_idx_local = int(np.argmin(window))
@@ -197,7 +200,9 @@ def _compute_base_features(
 
     closing_velocity = velocity[: min_idx_local + 1]
     reopening_velocity = velocity[min_idx_local:]
-    mean_closing_slope = float(np.mean(closing_velocity)) if closing_velocity.size else float("nan")
+    mean_closing_slope = (
+        float(np.mean(closing_velocity)) if closing_velocity.size else float("nan")
+    )
     mean_reopening_slope = (
         float(np.mean(reopening_velocity)) if reopening_velocity.size else float("nan")
     )
@@ -357,7 +362,9 @@ def _compute_threshold_features(
 
     under_threshold_mask = window < threshold
     closed_duration = float(under_threshold_mask.sum() * dt)
-    closed_fraction = float(np.mean(under_threshold_mask)) if window.size else float("nan")
+    closed_fraction = (
+        float(np.mean(under_threshold_mask)) if window.size else float("nan")
+    )
     auc_below = float(np.sum((threshold - window[under_threshold_mask]) * dt))
 
     classification_threshold = (
@@ -366,15 +373,21 @@ def _compute_threshold_features(
         else threshold
     )
     min_index_for_metrics = (
-        resolved_lowest_sample if resolved_lowest_sample is not None else int(min_sample)
+        resolved_lowest_sample
+        if resolved_lowest_sample is not None
+        else int(min_sample)
     )
     min_offset = min_index_for_metrics - start_sample
     min_value = float("nan")
     if 0 <= min_offset < window.size:
         min_value = float(window[int(min_offset)])
-    computed_classification = "full" if min_value < classification_threshold else "partial"
+    computed_classification = (
+        "full" if min_value < classification_threshold else "partial"
+    )
     blink_classification = (
-        str(blink_type) if blink_type is not None and str(blink_type) else computed_classification
+        str(blink_type)
+        if blink_type is not None and str(blink_type)
+        else computed_classification
     )
 
     threshold_features: Dict[str, float | str | bool] = {
@@ -520,7 +533,11 @@ class EARBlinkFeatureExtractor:
             Input rows augmented with base EAR metrics and threshold-dependent scalars.
         """
 
-        required_cols = {"refined_start_sample", "refined_end_sample", "refined_lowest_point_sample"}
+        required_cols = {
+            "refined_start_sample",
+            "refined_end_sample",
+            "refined_lowest_point_sample",
+        }
         missing_cols = required_cols - set(refined.columns)
         if missing_cols:
             raise ValueError(
@@ -558,7 +575,8 @@ class EARBlinkFeatureExtractor:
                 },
                 "threshold_value": threshold_value,
                 "refined_duration": float(
-                    (row["refined_end_sample"] - row["refined_start_sample"]) / self.sfreq
+                    (row["refined_end_sample"] - row["refined_start_sample"])
+                    / self.sfreq
                 ),
             }
             records.append(combined)

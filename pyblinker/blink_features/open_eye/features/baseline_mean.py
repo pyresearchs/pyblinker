@@ -5,6 +5,7 @@ periods when no blink is detected within an epoch. A lower
 baseline mean suggests partial eye closure or reduced vigilance,
 which are common signs of drowsiness.
 """
+
 from typing import List, Dict
 import numpy as np
 from pyblinker.logging import get_logger
@@ -12,7 +13,9 @@ from pyblinker.logging import get_logger
 logger = get_logger(__name__)
 
 
-def baseline_mean_epoch(epoch_signal: np.ndarray, blinks: List[Dict[str, int]]) -> float:
+def baseline_mean_epoch(
+    epoch_signal: np.ndarray, blinks: List[Dict[str, int]]
+) -> float:
     """Compute baseline mean for one epoch.
 
     Parameters

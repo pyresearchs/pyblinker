@@ -36,7 +36,7 @@ class TestBlinkProperties(unittest.TestCase):
             squeeze_me=True,
             simplify_cells=True,
             struct_as_record=False,
-            )
+        )
 
         cls.df_mat = pd.DataFrame(mat_data["blinkProperties"]).reset_index(drop=True)
         # Load raw FIF data
@@ -80,7 +80,7 @@ class TestBlinkProperties(unittest.TestCase):
             df,
             params["z_thresholds"],
             signal=blink_comp,
-            )
+        )
         blink_stats["ch"] = "EEG"
         # There is a step for << Reduce the number of candidate signals based on the blink amp ratios >>, but we move it to channel selection step.
 
@@ -90,7 +90,7 @@ class TestBlinkProperties(unittest.TestCase):
             blink_stats["best_median"],
             blink_stats["best_robust_std"],
             params["z_thresholds"],
-            )
+        )
         # # What happen if no good blinks are found or all blinks are bad?
         # if df.empty and verbose:
         #     logger.warning("No good blinks found in channel: %s", channel)
@@ -102,14 +102,13 @@ class TestBlinkProperties(unittest.TestCase):
             df_in,
             params["sfreq"],
             params,
-            ).df
+        ).df
 
         condition_1 = df_out["pos_amp_vel_ratio_zero"] < params["p_avr_threshold"]
         condition_2 = df_out["max_value"] < (
-                blink_stats["best_median"] - blink_stats["best_robust_std"]
+            blink_stats["best_median"] - blink_stats["best_robust_std"]
         )
         cls.df_py = df_out[~(condition_1 & condition_2)]
-
 
     def test_dataframe_equality(self):
         """
@@ -120,8 +119,7 @@ class TestBlinkProperties(unittest.TestCase):
         self.assertEqual(
             len(self.df_py),
             len(self.df_mat),
-            f"Different number of blinks: "
-            f"py={len(self.df_py)} mat={len(self.df_mat)}",
+            f"Different number of blinks: py={len(self.df_py)} mat={len(self.df_mat)}",
         )
 
         column_mapping = {
@@ -176,12 +174,13 @@ class TestBlinkProperties(unittest.TestCase):
 
         if mismatches:
             details = [
-                f"row={row} py_col={py_col} mat_col={mat_col} "
-                f"mat={mat_val} py={py_val}"
+                f"row={row} py_col={py_col} mat_col={mat_col} mat={mat_val} py={py_val}"
                 for row, py_col, mat_col, mat_val, py_val in mismatches
             ]
             raise AssertionError(
                 f"{len(mismatches)} mismatches found.\n" + "\n".join(details)
             )
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -56,7 +56,9 @@ from pyblinker.blink_features.blink_events.event_features import (
     aggregate_blink_event_features,
 )
 from pyblinker.blink_features.energy import compute_energy_features
-from pyblinker.blink_features.frequency_domain import aggregate_frequency_domain_features
+from pyblinker.blink_features.frequency_domain import (
+    aggregate_frequency_domain_features,
+)
 from pyblinker.blink_features.kinematics.kinematic_features import (
     KinematicBlinkFeatureExtractor,
 )

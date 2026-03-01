@@ -159,8 +159,10 @@ def extract_blink_windows(
     def _is_missing(val: object) -> bool:
         return val is None or (isinstance(val, float) and np.isnan(val))
 
-    if (not prefer_generic) and contains_key(metadata_row, mod_onset_key) and contains_key(
-        metadata_row, mod_duration_key
+    if (
+        (not prefer_generic)
+        and contains_key(metadata_row, mod_onset_key)
+        and contains_key(metadata_row, mod_duration_key)
     ):
         onsets = metadata_row.get(mod_onset_key)
         durations = metadata_row.get(mod_duration_key)
@@ -176,7 +178,9 @@ def extract_blink_windows(
         generic_keys = ("blink_onset", "blink_duration")
         missing = [key for key in generic_keys if not contains_key(metadata_row, key)]
         if missing:
-            logger.error("Missing blink metadata columns: %s", ", ".join(sorted(missing)))
+            logger.error(
+                "Missing blink metadata columns: %s", ", ".join(sorted(missing))
+            )
             raise ValueError(
                 "Epochs.metadata missing required blink columns: "
                 + ", ".join(sorted(missing))
@@ -204,6 +208,7 @@ def extract_blink_windows(
     logger.debug("Extracted %d blink windows", len(windows))
     logger.debug("Exiting extract_blink_windows")
     return windows
+
 
 __all__ = [
     "onset_entry_to_blinks",

@@ -1,4 +1,5 @@
 """Aggregate open-eye features across epochs."""
+
 from typing import Iterable, Dict, List, Any
 import pandas as pd
 import numpy as np
@@ -57,16 +58,18 @@ def aggregate_open_eye_features(
         blinks_epoch = per_epoch_blinks[idx]
         record = {"epoch": idx}
         if signal is None:
-            record.update({
-                "baseline_mean": float("nan"),
-                "baseline_drift": float("nan"),
-                "baseline_std": float("nan"),
-                "baseline_mad": float("nan"),
-                "perclos": float("nan"),
-                "eye_opening_rms": float("nan"),
-                "micropause_count": 0,
-                "zero_crossing_rate": float("nan"),
-            })
+            record.update(
+                {
+                    "baseline_mean": float("nan"),
+                    "baseline_drift": float("nan"),
+                    "baseline_std": float("nan"),
+                    "baseline_mad": float("nan"),
+                    "perclos": float("nan"),
+                    "eye_opening_rms": float("nan"),
+                    "micropause_count": 0,
+                    "zero_crossing_rate": float("nan"),
+                }
+            )
         else:
             record["baseline_mean"] = baseline_mean_epoch(signal, blinks_epoch)
             record["baseline_drift"] = baseline_drift_epoch(signal, blinks_epoch, sfreq)
@@ -74,8 +77,12 @@ def aggregate_open_eye_features(
             record["baseline_mad"] = baseline_mad_epoch(signal, blinks_epoch)
             record["perclos"] = perclos_epoch(signal, blinks_epoch)
             record["eye_opening_rms"] = eye_opening_rms_epoch(signal, blinks_epoch)
-            record["micropause_count"] = micropause_count_epoch(signal, blinks_epoch, sfreq)
-            record["zero_crossing_rate"] = zero_crossing_rate_epoch(signal, blinks_epoch)
+            record["micropause_count"] = micropause_count_epoch(
+                signal, blinks_epoch, sfreq
+            )
+            record["zero_crossing_rate"] = zero_crossing_rate_epoch(
+                signal, blinks_epoch
+            )
         records.append(record)
 
     df = pd.DataFrame.from_records(records).set_index("epoch")

@@ -60,7 +60,9 @@ class TestEegOnlyMorphologyPipeline(unittest.TestCase):
         self.assertNotIn("blink_onset_ear", epochs.metadata.columns)
         self.assertIn("blink_onset_eeg", epochs.metadata.columns)
         channel_columns = [col for col in df.columns if "__" in col]
-        self.assertTrue(all(col.endswith(f"__{EEG_CHANNEL}") for col in channel_columns))
+        self.assertTrue(
+            all(col.endswith(f"__{EEG_CHANNEL}") for col in channel_columns)
+        )
         styles = _available_styles(tuple(epochs.metadata.columns), "eeg")
         for style in styles:
             for stat in ("mean", "std", "cv"):

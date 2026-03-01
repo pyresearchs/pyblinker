@@ -79,25 +79,25 @@ SCALING_FACTOR = 1.4826  # From original paper: by default, BLINKER eliminates
 # absolute deviation from the median.
 
 DEFAULT_PARAMS = {
-    'std_threshold': 1.50,
-    'min_event_len': 0.05,
-    'min_event_sep': 0.05,
-    'base_fraction': 0.1,
-    'correlation_threshold_top': 0.980,
-    'correlation_threshold_bottom': 0.90,
-    'correlation_threshold_middle': 0.95,
-    'shut_amp_fraction': 0.9,
-    'blink_amp_range_1': 3,
-    'blink_amp_range_2': 50,
-    'good_ratio_threshold': 0.7,
-    'min_good_blinks': 10,
-    'keep_signals': 0,
-    'correlation_threshold': 0.98,
-    'p_avr_threshold': 3,  # from original paper: The pAVR criterion captures
+    "std_threshold": 1.50,
+    "min_event_len": 0.05,
+    "min_event_sep": 0.05,
+    "base_fraction": 0.1,
+    "correlation_threshold_top": 0.980,
+    "correlation_threshold_bottom": 0.90,
+    "correlation_threshold_middle": 0.95,
+    "shut_amp_fraction": 0.9,
+    "blink_amp_range_1": 3,
+    "blink_amp_range_2": 50,
+    "good_ratio_threshold": 0.7,
+    "min_good_blinks": 10,
+    "keep_signals": 0,
+    "correlation_threshold": 0.98,
+    "p_avr_threshold": 3,  # from original paper: The pAVR criterion captures
     # the difference between the sharp rising edge of saccades and the more
     # curved rise of normal blinks. We have found empirically that blink
     # candidates with pAVR ≤ 3 do not correspond to normal blinks, but rather
     # saccades having short, fast eye movements
-    'z_thresholds': np.array([[0.9, 0.98], [2.0, 5.0]]),
-    'sfreq': 100,
+    "z_thresholds": np.array([[0.9, 0.98], [2.0, 5.0]]),
+    "sfreq": 100,
 }

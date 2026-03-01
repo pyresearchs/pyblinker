@@ -1,4 +1,5 @@
 """Time-domain energy features for 30-second segments."""
+
 from __future__ import annotations
 
 from typing import Dict

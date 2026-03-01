@@ -6,6 +6,7 @@ from copy import deepcopy
 from typing import Any, Dict
 
 import mne
+
 # In the test files, there are only 3 channels, which are EAR-avg_ear, EEG-E8, and EOG-EEG-eog_vert_left. This is to make the file smaller and easier to manage.
 DEFAULT_EAR_CHANNEL = "EAR-avg_ear"
 DEFAULT_EEG_CHANNEL = "EEG-E8"
@@ -51,7 +52,9 @@ def build_segment_config(
             return section
         channel = _normalize_channel(channel)
         if channel not in raw.ch_names:
-            raise ValueError(f"Channel '{channel}' not found in raw data for modality '{modality}'.")
+            raise ValueError(
+                f"Channel '{channel}' not found in raw data for modality '{modality}'."
+            )
         section["channel"] = channel
         section.setdefault("seg_type", "outer")
         return section

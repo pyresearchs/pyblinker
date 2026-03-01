@@ -81,7 +81,9 @@ def _import_dependencies() -> tuple[Path, object, object]:
         sys.path.insert(0, str(repo_root))
 
     from pyblinker.blinker.get_blink_positions import get_blink_position as importer_get
-    from test.blinker_migration.obs.debugging_tools import load_matlab_data as importer_load
+    from test.blinker_migration.obs.debugging_tools import (
+        load_matlab_data as importer_load,
+    )
 
     return repo_root, importer_get, importer_load
 
@@ -93,6 +95,8 @@ REPO_ROOT, get_blink_position, load_matlab_data = _import_dependencies()
 # CONFIG
 # ---------------------------------------------------------------------
 N_PREVIEW_ROWS = 10  # how many rows to show for quick visual inspection
+
+
 def main():
     # -----------------------------------------------------------------
     # 1. Locate test data
@@ -107,11 +111,15 @@ def main():
     # 2. Load MATLAB input + MATLAB expected output
     #    load_matlab_data should return two dict-like objects
     # -----------------------------------------------------------------
-    input_data, output_data = load_matlab_data(str(mat_input_path), str(mat_output_path))
+    input_data, output_data = load_matlab_data(
+        str(mat_input_path), str(mat_output_path)
+    )
 
     # required keys from MATLAB input
     for key in ("blinkComp", "srate", "stdThreshold"):
-        assert key in input_data, f"Expected key '{key}' in MATLAB input, got: {list(input_data.keys())}"
+        assert key in input_data, (
+            f"Expected key '{key}' in MATLAB input, got: {list(input_data.keys())}"
+        )
 
     blink_component = input_data["blinkComp"]
     srate = float(input_data["srate"])
@@ -144,7 +152,9 @@ def main():
     )
 
     # basic shape / type checks
-    assert isinstance(result_df, pd.DataFrame), "Python result must be a pandas DataFrame"
+    assert isinstance(result_df, pd.DataFrame), (
+        "Python result must be a pandas DataFrame"
+    )
     assert list(result_df.columns) == ["start_blink", "end_blink"], (
         f"Unexpected columns: {list(result_df.columns)}"
     )
@@ -197,10 +207,9 @@ def main():
 
     # Show duplicate (repeated) intervals, if any
     print("\nDuplicate intervals in Python result (if any):")
-    dup_py = (
-        result_df_1based.value_counts(subset=["start_blink", "end_blink"])
-        .reset_index(name="count")
-    )
+    dup_py = result_df_1based.value_counts(
+        subset=["start_blink", "end_blink"]
+    ).reset_index(name="count")
     dup_py = dup_py[dup_py["count"] > 1]
     if dup_py.empty:
         print("  - none -")
@@ -208,9 +217,8 @@ def main():
         print(dup_py)
 
     print("\nDuplicate intervals in MATLAB GT (if any):")
-    dup_mat = (
-        expected_df.value_counts(subset=["start_blink", "end_blink"])
-        .reset_index(name="count")
+    dup_mat = expected_df.value_counts(subset=["start_blink", "end_blink"]).reset_index(
+        name="count"
     )
     dup_mat = dup_mat[dup_mat["count"] > 1]
     if dup_mat.empty:
@@ -223,7 +231,9 @@ def main():
     # -----------------------------------------------------------------
     # compare starts
     np.testing.assert_array_equal(
-        result_start, expected_start, err_msg="Start indices differ between Python and MATLAB"
+        result_start,
+        expected_start,
+        err_msg="Start indices differ between Python and MATLAB",
     )
     # compare ends
     np.testing.assert_array_equal(

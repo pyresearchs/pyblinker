@@ -17,7 +17,6 @@ logger = get_logger(__name__)
 
 
 class FitBlinks:
-
     def __init__(self, candidate_signal=None, df=None, params=None):
         # candidateSignal    IC or channel time course of blinks to be fitted
         self.candidate_signal = candidate_signal
@@ -101,8 +100,6 @@ class FitBlinks:
                 result_type="expand",
             )
 
-
-
         if run_fit:
             logger.warning(
                 "Running fit() may drop blinks due to NaNs in fit range",
@@ -142,9 +139,7 @@ class FitBlinks:
 
         # Shifts for outer start/end
         self.df["outer_start"] = self.df["max_blink"].shift(1, fill_value=0)
-        self.df["outer_end"] = self.df["max_blink"].shift(
-            -1, fill_value=data_size - 1
-        )
+        self.df["outer_end"] = self.df["max_blink"].shift(-1, fill_value=data_size - 1)
 
         # Add columns for leftZero/rightZero
         self.df[["left_zero", "right_zero"]] = self.df.apply(
@@ -253,8 +248,12 @@ class FitBlinks:
                 return len(value)
             return 0
 
-        self.frame_blinks["nsize_x_left"] = self.frame_blinks["x_left"].apply(_range_size)
-        self.frame_blinks["nsize_x_right"] = self.frame_blinks["x_right"].apply(_range_size)
+        self.frame_blinks["nsize_x_left"] = self.frame_blinks["x_left"].apply(
+            _range_size
+        )
+        self.frame_blinks["nsize_x_right"] = self.frame_blinks["x_right"].apply(
+            _range_size
+        )
 
         # Calculate line intersections only for valid ranges
         line_cols = self.cols_lines_intesection

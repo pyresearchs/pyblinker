@@ -1,4 +1,5 @@
 """Open-eye feature extraction package."""
+
 from .aggregate import aggregate_open_eye_features
 from .features import (
     baseline_mean_epoch,

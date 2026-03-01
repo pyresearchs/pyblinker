@@ -228,7 +228,9 @@ def compute_energy_features(
     if ctx.n_epochs == 0 or not columns:
         return empty_feature_frame(index=ctx.index, columns=columns)
 
-    modality_channels = _group_channels_by_modality(ctx.modality_by_channel, ctx.ch_names)
+    modality_channels = _group_channels_by_modality(
+        ctx.modality_by_channel, ctx.ch_names
+    )
     data = epochs.get_data(picks=ctx.ch_names)
     ch_to_ci = {ch: i for i, ch in enumerate(ctx.ch_names)}
 
@@ -249,7 +251,7 @@ def compute_energy_features(
             n_times=ctx.n_times,
         )
         records.append(record)
-    df =pd.DataFrame.from_records(records, index=ctx.index)
+    df = pd.DataFrame.from_records(records, index=ctx.index)
     # df = frame_from_records(records, index=ctx.index, columns=columns)
     logger.debug("Energy feature DataFrame shape: %s", df.shape)
     return df

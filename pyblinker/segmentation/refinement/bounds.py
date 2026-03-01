@@ -24,7 +24,9 @@ def _compute_epoch_blink_bounds(
         ann_end = float(onset_sec + max(dur_sec, 0.0))
         if max(ann_start, epoch_start_sec) < min(ann_end, epoch_end_sec):
             start_rel = int(
-                np.clip(round((ann_start - epoch_start_sec) * sfreq), 0, n_samp_epoch - 1)
+                np.clip(
+                    round((ann_start - epoch_start_sec) * sfreq), 0, n_samp_epoch - 1
+                )
             )
             end_rel = int(
                 np.clip(

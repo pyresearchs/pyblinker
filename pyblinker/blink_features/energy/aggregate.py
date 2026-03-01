@@ -1,4 +1,5 @@
 """Aggregate blink energy features across epochs."""
+
 from __future__ import annotations
 from pyblinker.logging import get_logger
 

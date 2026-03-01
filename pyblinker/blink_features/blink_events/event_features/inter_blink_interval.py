@@ -1,4 +1,5 @@
 """Inter-blink interval based features."""
+
 from typing import Dict, List, Sequence, Iterable, Tuple
 from pyblinker.logging import get_logger
 
@@ -14,7 +15,9 @@ from pyblinker.utils.modality import infer_modality
 logger = get_logger(__name__)
 
 
-def _permutation_entropy(series: Sequence[float], *, order: int = 3, delay: int = 1) -> float:
+def _permutation_entropy(
+    series: Sequence[float], *, order: int = 3, delay: int = 1
+) -> float:
     """Calculate permutation entropy of a numeric sequence.
 
     Parameters
@@ -74,7 +77,9 @@ def _hurst_exponent(series: Sequence[float]) -> float:
     return float(np.log(r / s) / np.log(n))
 
 
-def compute_ibi_features(blinks: List[Dict[str, int]], sfreq: float) -> Dict[str, float]:
+def compute_ibi_features(
+    blinks: List[Dict[str, int]], sfreq: float
+) -> Dict[str, float]:
     """Compute inter-blink interval statistics for a given epoch.
 
     Parameters
@@ -246,7 +251,9 @@ def inter_blink_interval_epochs(
                 for epoch_idx, row in enumerate(rows)
             ]
             df[f"ibi_{ch}"] = ibis
-            logger.debug("IBI values for channel '%s' (modality '%s'): %s", ch, modality, ibis)
+            logger.debug(
+                "IBI values for channel '%s' (modality '%s'): %s", ch, modality, ibis
+            )
 
     logger.debug("Computed channel-wise IBI DataFrame shape: %s", df.shape)
     logger.info("Finished computing IBI DataFrame")

@@ -79,9 +79,13 @@ def _resolve_single_channel_pick(
     """Validate and return the index for a single modality channel."""
 
     channel_value = (config or {}).get("channel")
-    if channel_value is None or (isinstance(channel_value, str) and not channel_value.strip()):
+    if channel_value is None or (
+        isinstance(channel_value, str) and not channel_value.strip()
+    ):
         if required:
-            raise ValueError(f"{modality.upper()} refinement requires a single channel set via segmentation config.")
+            raise ValueError(
+                f"{modality.upper()} refinement requires a single channel set via segmentation config."
+            )
         return None
 
     if isinstance(channel_value, Sequence) and not isinstance(channel_value, str):
@@ -95,7 +99,9 @@ def _resolve_single_channel_pick(
 
     picks = [idx for idx, name in enumerate(raw.ch_names) if name == channel_name]
     if not picks:
-        raise ValueError(f"Configured {modality.upper()} channel '{channel_name}' not found in raw data.")
+        raise ValueError(
+            f"Configured {modality.upper()} channel '{channel_name}' not found in raw data."
+        )
     if len(picks) > 1:
         raise ValueError(
             f"{modality.upper()} refinement expects a single channel, but multiple matches were found for "
@@ -130,24 +136,36 @@ def _prepare_epochs_and_modalities(
     have_eog = _modality_enabled(segment_config, "eog")
 
     ear_idx = (
-        _resolve_single_channel_pick(raw, segment_config.get("ear", {}), "ear", required=True)
+        _resolve_single_channel_pick(
+            raw, segment_config.get("ear", {}), "ear", required=True
+        )
         if have_ear
         else None
     )
     eeg_idx = (
-        _resolve_single_channel_pick(raw, segment_config.get("eeg", {}), "eeg", required=False)
+        _resolve_single_channel_pick(
+            raw, segment_config.get("eeg", {}), "eeg", required=False
+        )
         if have_eeg
         else None
     )
     eog_idx = (
-        _resolve_single_channel_pick(raw, segment_config.get("eog", {}), "eog", required=False)
+        _resolve_single_channel_pick(
+            raw, segment_config.get("eog", {}), "eog", required=False
+        )
         if have_eog
         else None
     )
 
-    data_ear = epochs.get_data(picks=[ear_idx]) if have_ear and ear_idx is not None else None
-    data_eeg = epochs.get_data(picks=[eeg_idx]) if have_eeg and eeg_idx is not None else None
-    data_eog = epochs.get_data(picks=[eog_idx]) if have_eog and eog_idx is not None else None
+    data_ear = (
+        epochs.get_data(picks=[ear_idx]) if have_ear and ear_idx is not None else None
+    )
+    data_eeg = (
+        epochs.get_data(picks=[eeg_idx]) if have_eeg and eeg_idx is not None else None
+    )
+    data_eog = (
+        epochs.get_data(picks=[eog_idx]) if have_eog and eog_idx is not None else None
+    )
 
     n_epochs = len(epochs)
     n_samp_epoch = (

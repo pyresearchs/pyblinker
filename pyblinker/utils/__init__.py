@@ -70,7 +70,9 @@ def __getattr__(name: str):
         }
         return lookup[name]
     if name == "slice_raw_into_mne_epochs_refine_annot":
-        from pyblinker.segmentation.refinement import slice_raw_into_mne_epochs_refine_annot
+        from pyblinker.segmentation.refinement import (
+            slice_raw_into_mne_epochs_refine_annot,
+        )
 
         return slice_raw_into_mne_epochs_refine_annot
     if name in {"refine_blinks_from_epochs", "refine_local_maximum_stub"}:

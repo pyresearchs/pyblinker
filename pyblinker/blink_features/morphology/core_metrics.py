@@ -59,11 +59,15 @@ def compute_blink_durations(
                 row["right_x_intercept"] - row["left_x_intercept"]
             ) / srate
             df.at[idx, "duration_half_base"] = (
-                (row["right_base_half_height"] - row["left_base_half_height"]) + constant
+                (row["right_base_half_height"] - row["left_base_half_height"])
+                + constant
             ) / srate
-            if {"right_zero_half_height", "left_zero_half_height"}.issubset(df.columns) and modality_key != "ear":
+            if {"right_zero_half_height", "left_zero_half_height"}.issubset(
+                df.columns
+            ) and modality_key != "ear":
                 df.at[idx, "duration_half_zero"] = (
-                    (row["right_zero_half_height"] - row["left_zero_half_height"]) + constant
+                    (row["right_zero_half_height"] - row["left_zero_half_height"])
+                    + constant
                 ) / srate
             else:
                 df.at[idx, "duration_half_zero"] = np.nan
@@ -115,7 +119,9 @@ def compute_time_zero_shut(
 
     for idx, row in df.iterrows():
         df.at[idx, "closing_time_zero"] = (row["max_blink"] - row["left_zero"]) / srate
-        df.at[idx, "reopening_time_zero"] = (row["right_zero"] - row["max_blink"]) / srate
+        df.at[idx, "reopening_time_zero"] = (
+            row["right_zero"] - row["max_blink"]
+        ) / srate
         df.at[idx, "time_shut_zero"] = _compute_time_shut(
             row,
             candidate_signal,
@@ -307,9 +313,7 @@ def compute_blink_morphology_metrics(
         baseline_level = float(np.max(seg))
         magnitude = np.clip(baseline_level - seg, a_min=0.0, a_max=None)
     else:
-        magnitude = (
-            np.abs(seg) if use_abs_for_thresholds_and_areas else np.asarray(seg)
-        )
+        magnitude = np.abs(seg) if use_abs_for_thresholds_and_areas else np.asarray(seg)
 
     mag_peak_idx = int(np.argmax(magnitude))
     mag_peak_value = float(magnitude[mag_peak_idx])
@@ -355,9 +359,7 @@ def compute_blink_morphology_metrics(
 
     half_level = 0.5 * mag_peak_value
     left_half_idx = _first_index_ge(magnitude[: mag_peak_idx + 1], half_level)
-    right_half_candidates = np.flatnonzero(
-        magnitude[mag_peak_idx + 1 :] <= half_level
-    )
+    right_half_candidates = np.flatnonzero(magnitude[mag_peak_idx + 1 :] <= half_level)
     if left_half_idx is None or right_half_candidates.size == 0:
         half_width = float("nan")
     else:

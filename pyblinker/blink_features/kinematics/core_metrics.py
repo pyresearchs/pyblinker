@@ -163,8 +163,16 @@ def compute_amp_vel_ratio_tent(
 
     for idx, row in df.iterrows():
         max_blink_idx = int(row["max_blink"])
-        neg_ratio = 100 * abs(candidate_signal[max_blink_idx] / row["aver_right_velocity"]) / srate
-        pos_ratio = 100 * abs(candidate_signal[max_blink_idx] / row["aver_left_velocity"]) / srate
+        neg_ratio = (
+            100
+            * abs(candidate_signal[max_blink_idx] / row["aver_right_velocity"])
+            / srate
+        )
+        pos_ratio = (
+            100
+            * abs(candidate_signal[max_blink_idx] / row["aver_left_velocity"])
+            / srate
+        )
         df.at[idx, "neg_amp_vel_ratio_tent"] = neg_ratio
         df.at[idx, "pos_amp_vel_ratio_tent"] = pos_ratio
 
@@ -265,7 +273,9 @@ def compute_blink_kinematic_metrics(
         return core_nan_dict(keys)
 
     velocity = (
-        np.diff(seg) * sfreq if dx1 is None else np.asarray(dx1, dtype=float).reshape(-1)
+        np.diff(seg) * sfreq
+        if dx1 is None
+        else np.asarray(dx1, dtype=float).reshape(-1)
     )
     if velocity.size == 0:
         vel_peak_abs = float("nan")
@@ -290,7 +300,9 @@ def compute_blink_kinematic_metrics(
         vel_end = velocity.size - 1
         blink_velocity = float(np.mean(np.abs(velocity)))
 
-        def ratio_from_velocity(start_idx: int, end_idx: int, *, aggregator: str) -> float:
+        def ratio_from_velocity(
+            start_idx: int, end_idx: int, *, aggregator: str
+        ) -> float:
             start_idx = max(0, start_idx)
             end_idx = min(end_idx, vel_end)
             if end_idx < start_idx:
@@ -298,7 +310,11 @@ def compute_blink_kinematic_metrics(
             velocities = velocity[start_idx : end_idx + 1]
             if velocities.size == 0:
                 return float("nan")
-            local_idx = int(np.argmax(velocities)) if aggregator == "max" else int(np.argmin(velocities))
+            local_idx = (
+                int(np.argmax(velocities))
+                if aggregator == "max"
+                else int(np.argmin(velocities))
+            )
             extreme_vel = velocities[local_idx]
             if extreme_vel == 0:
                 return float("nan")

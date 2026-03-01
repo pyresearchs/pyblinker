@@ -14,7 +14,7 @@ from test.helper import build_expected_metrics
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 OUTPUT_DIR = PROJECT_ROOT / "test" / "major_structure_refactor"
-BASELINE_PATH =  OUTPUT_DIR/ "energy_features_ear_eeg_eog.pkl"
+BASELINE_PATH = OUTPUT_DIR / "energy_features_ear_eeg_eog.pkl"
 UPDATE_ENV_VAR = "UPDATE_ENERGY_BASELINE"
 
 EAR_CHANNEL = "EAR-avg_ear"
@@ -36,26 +36,27 @@ REQUIRED_EAR_COLUMNS = build_expected_metrics(
     stats=stats,
     modality="ear",
     feature="energy",
-    channel="EAR-AVG_EAR")
+    channel="EAR-AVG_EAR",
+)
 
-REQUIRED_EEG_METRICS =  build_expected_metrics(
-            landmark=landmarks,
-            metrics=energy_metrics,
-            stats=stats,
-            modality="eeg",
-            feature="energy",
-            channel=EEG_CHANNEL,
-        )
+REQUIRED_EEG_METRICS = build_expected_metrics(
+    landmark=landmarks,
+    metrics=energy_metrics,
+    stats=stats,
+    modality="eeg",
+    feature="energy",
+    channel=EEG_CHANNEL,
+)
 
 
-REQUIRED_EOG_METRICS =   build_expected_metrics(
-            landmark=landmarks,
-            metrics=energy_metrics,
-            stats=stats,
-            modality="eog",
-            feature="energy",
-            channel=EOG_CHANNEL,
-        )
+REQUIRED_EOG_METRICS = build_expected_metrics(
+    landmark=landmarks,
+    metrics=energy_metrics,
+    stats=stats,
+    modality="eog",
+    feature="energy",
+    channel=EOG_CHANNEL,
+)
 
 SEGMENT_CONFIG = {
     "ear": {
@@ -106,8 +107,6 @@ class TestFullModalityEnergyPipeline(unittest.TestCase):
     #         OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     #         self.df.to_pickle(BASELINE_PATH)
 
-
-
     def test_eeg(self) -> None:
         for style in REQUIRED_EEG_METRICS.values():
             for metric in style.values():
@@ -142,4 +141,3 @@ class TestFullModalityEnergyPipeline(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

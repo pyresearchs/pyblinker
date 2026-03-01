@@ -39,7 +39,9 @@ def metrics_for_style(style: str) -> List[str]:
     ]
 
 
-def make_stat_column(*, modality: str, style: str, metric: str, stat: str, channel: str) -> str:
+def make_stat_column(
+    *, modality: str, style: str, metric: str, stat: str, channel: str
+) -> str:
     """Build a kinematic stat column header."""
 
     return make_common_stat_column(
@@ -83,7 +85,9 @@ def add_legacy_alias_columns(df: pd.DataFrame) -> pd.DataFrame:
     for col in df.columns:
         if "ear__th_interpolation__kinematic__" not in col:
             continue
-        alias_col = col.replace("ear__th_interpolation__", "ear__ interpolated_threshold__")
+        alias_col = col.replace(
+            "ear__th_interpolation__", "ear__ interpolated_threshold__"
+        )
         if "__" in alias_col:
             head, tail = alias_col.rsplit("__", 1)
             alias_col = f"{head}____{tail}"

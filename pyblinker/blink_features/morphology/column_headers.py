@@ -92,7 +92,9 @@ def metrics_for_style(style: str) -> List[str]:
     return metric_names
 
 
-def make_stat_column(*, modality: str, style: str, metric: str, stat: str, channel: str) -> str:
+def make_stat_column(
+    *, modality: str, style: str, metric: str, stat: str, channel: str
+) -> str:
     """Build a morphology stat column header."""
 
     return make_common_stat_column(

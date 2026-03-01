@@ -4,6 +4,7 @@ High PERCLOS values are a well established indicator of
 fatigue, representing the fraction of time the eye is mostly
 closed.
 """
+
 from typing import List, Dict
 import numpy as np
 from pyblinker.logging import get_logger
@@ -11,7 +12,9 @@ from pyblinker.logging import get_logger
 logger = get_logger(__name__)
 
 
-def perclos_epoch(epoch_signal: np.ndarray, blinks: List[Dict[str, int]], threshold_ratio: float = 0.8) -> float:
+def perclos_epoch(
+    epoch_signal: np.ndarray, blinks: List[Dict[str, int]], threshold_ratio: float = 0.8
+) -> float:
     """Compute the PERCLOS metric for one epoch.
 
     Parameters
@@ -31,7 +34,9 @@ def perclos_epoch(epoch_signal: np.ndarray, blinks: List[Dict[str, int]], thresh
     """
     mask = np.ones(len(epoch_signal), dtype=bool)
     for blink in blinks:
-        mask[int(blink["refined_start_frame"]): int(blink["refined_end_frame"])+1] = False
+        mask[
+            int(blink["refined_start_frame"]) : int(blink["refined_end_frame"]) + 1
+        ] = False
     open_signal = epoch_signal[mask]
     if open_signal.size == 0:
         return float("nan")
