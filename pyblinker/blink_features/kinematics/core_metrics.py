@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any, Dict, Sequence
 
 import numpy as np
+import pandas as pd
 
 from pyblinker.blink_features._blink_metrics_shared import (
     ALL_METHODS,
@@ -129,6 +130,10 @@ def compute_amp_vel_ratio_base(
 ) -> None:
     """Compute base-to-maximum amplitude-velocity ratios."""
 
+    # Drop rows with NaN boundary indices before starting to avoid crash in int()
+    required_initial = ["max_blink", "left_base", "right_base"]
+    df.dropna(subset=required_initial, inplace=True)
+
     for idx, row in df.iterrows():
         pos_ratio, pos_idx = _compute_amp_vel_ratio_for_blink(
             candidate_signal,
@@ -142,6 +147,10 @@ def compute_amp_vel_ratio_base(
         df.at[idx, "pos_amp_vel_ratio_base"] = pos_ratio
         df.at[idx, "peaks_pos_vel_base"] = pos_idx
 
+        # Skip negative ratio if positive ratio calculation failed or peak index is NaN
+        if pd.isna(pos_idx):
+            continue
+
         neg_ratio, _ = _compute_amp_vel_ratio_for_blink(
             candidate_signal,
             blink_velocity,
@@ -152,6 +161,10 @@ def compute_amp_vel_ratio_base(
             aggregator="min",
         )
         df.at[idx, "neg_amp_vel_ratio_base"] = neg_ratio
+
+    # Final cleanup: drop rows where any required boundary or index is NaN
+    required_cols = ["max_blink", "left_base", "right_base", "peaks_pos_vel_base"]
+    df.dropna(subset=required_cols, inplace=True)
 
 
 def compute_amp_vel_ratio_tent(
