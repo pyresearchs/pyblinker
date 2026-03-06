@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.3.9] - 2026-03-06
+
 ### Added
 - Add `tutorial/05a_all_channel_feature_aggregation_tutorial.py` documenting combined EAR/EEG/EOG aggregation of blink-count, energy, frequency-domain, morphology, and kinematic features in a single per-epoch DataFrame workflow.
 - Extend epoch-level legacy morphology aggregation to compute `mean`, `std`, and `cv` for each legacy metric via the shared `_safe_stats` convention.
@@ -29,6 +31,7 @@
 - Align morphology epoch feature extraction with shared `_epoch_context` setup utilities and deduplicate energy/frequency-domain window parsing through new `pyblinker/blink_features/_style_windows.py`.
 
 ### Fixed
+- Drop blink rows with NaN boundary indices before amplitude-velocity ratio computation to prevent `ValueError: cannot convert float NaN to integer` and safely skip malformed blink candidates.
 - Restore `blink_count` epoch aggregation implementation for modality-specific metadata columns so blink event feature extraction imports and executes correctly again.
 - Remove unused `frame_from_records` import in kinematics feature extraction to satisfy Ruff F401 lint checks.
 - Restore baseline-compatible EAR style-window precedence for frequency-domain aggregation (`th_interpolation` preferred over `th_point`) and restore morphology style discovery behavior in epoch aggregation after the shared-context refactor.
