@@ -2,35 +2,24 @@
 
 from __future__ import annotations
 
-from typing import Dict, Iterable, Mapping
+from typing import Dict, Mapping
 
 import numpy as np
 
-from .._core_blink import METHODS_BY_MODALITY, compute_blink_core
-
-
-def _normalize_methods(modality: str, methods: Iterable[str] | None) -> tuple[str, ...]:
-    modality_key = modality.lower()
-    allowed = METHODS_BY_MODALITY.get(modality_key, ("base",))
-    if methods is None:
-        return (allowed[0],)
-    ordered = []
-    for method in methods:
-        if method not in ordered:
-            ordered.append(method)
-    return tuple(ordered) if ordered else (allowed[0],)
+from .._core_blink import METHODS_BY_MODALITY
+from .core_metrics import KINEMATIC_METRICS_NO_STYLE, compute_blink_kinematic_metrics
 
 
 def compute_segment_kinematics(
     segment: np.ndarray | Mapping[str, np.ndarray],
     sfreq: float,
     *,
-    methods: Iterable[str] | None = None,
+    method: str | None = None,
     modality: str = "eeg",
     include_second_derivative: bool = True,
     use_abs_for_thresholds_and_areas: bool = True,
 ) -> Dict[str, float]:
-    """Compute blink kinematic metrics for one or more segmentation methods.
+    """Compute blink kinematic metrics for a single segmentation method.
 
     Parameters
     ----------
@@ -42,17 +31,19 @@ def compute_segment_kinematics(
         distinct start/end windows for multiple methods in a single call.
     sfreq
         Sampling frequency of the provided segments.
-    methods
-        Optional iterable of method names to evaluate when ``segment`` is an
-        array. Ignored when ``segment`` is a mapping.
+    method
+        Name of the segmentation style/method associated with the provided
+        segment. Defaults to the first allowed method for the modality when
+        not supplied.
     modality
         Recording modality. ``"eeg"`` (default) enables zero-based metrics
         whereas ``"ear"`` (Eye Aspect Ratio) suppresses them.
     include_second_derivative
-        Forwarded to :func:`pyblinker.blink_features._core_blink.compute_blink_core`.
+        Forwarded to :func:`pyblinker.blink_features.kinematics.core_metrics.
+        compute_blink_kinematic_metrics`.
     use_abs_for_thresholds_and_areas
-        Forwarded to the shared core. Ignored for EAR data where dip magnitude
-        is computed relative to the local baseline.
+        Retained for backward compatibility with prior APIs; ignored by
+        kinematic-only calculations.
 
     Returns
     -------
@@ -60,36 +51,40 @@ def compute_segment_kinematics(
         Mapping of metric names with method suffixes to floating point values.
     """
 
-    if isinstance(segment, Mapping):
-        segments_by_method = {
-            method: np.asarray(data, dtype=float).reshape(-1)
-            for method, data in segment.items()
-        }
-        method_order = tuple(segments_by_method.keys())
-    else:
-        seg_array = np.asarray(segment, dtype=float).reshape(-1)
-        method_order = _normalize_methods(modality, methods)
-        segments_by_method = {method: seg_array for method in method_order}
+    _ = use_abs_for_thresholds_and_areas
 
-    if not segments_by_method:
-        method_order = _normalize_methods(modality, None)
-        if isinstance(segment, Mapping):
-            seg_array = np.asarray([], dtype=float)
-        else:
-            seg_array = np.asarray(segment, dtype=float).reshape(-1)
-        segments_by_method = {method_order[0]: seg_array}
-
-    metrics: Dict[str, float] = {}
-    modality_key = modality.lower()
-    for method in method_order:
-        metrics.update(
-            compute_blink_core(
-                segments_by_method[method],
-                sfreq,
-                start_end_method=method,
-                modality=modality_key,
-                include_second_derivative=include_second_derivative,
-                use_abs_for_thresholds_and_areas=use_abs_for_thresholds_and_areas,
-            )
+    if isinstance(segment, Mapping) and set(segment.keys()) >= {"raw"}:
+        raw_seg = np.asarray(segment["raw"], dtype=float).reshape(-1)
+        dx1 = (
+            np.asarray(segment.get("dx1"), dtype=float).reshape(-1)
+            if "dx1" in segment
+            else None
         )
+        dx2 = (
+            np.asarray(segment.get("dx2"), dtype=float).reshape(-1)
+            if "dx2" in segment
+            else None
+        )
+    else:
+        raw_seg = np.asarray(segment, dtype=float).reshape(-1)
+        dx1 = None
+        dx2 = None
+
+    modality_key = modality.lower()
+    if method is None:
+        method = METHODS_BY_MODALITY.get(modality_key, ("base",))[0]
+
+    metrics = compute_blink_kinematic_metrics(
+        raw_seg,
+        sfreq,
+        start_end_method=method,
+        modality=modality_key,
+        include_second_derivative=include_second_derivative,
+        dx1=dx1,
+        dx2=dx2,
+    )
+    for metric in KINEMATIC_METRICS_NO_STYLE:
+        key_with_suffix = f"{metric}_{method}"
+        if key_with_suffix in metrics and metric not in metrics:
+            metrics[metric] = metrics[key_with_suffix]
     return metrics

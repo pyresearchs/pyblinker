@@ -80,6 +80,7 @@ end
 signalNumbers = cellfun(@double, {blinks.signalData.signalNumber});
 signalIndex = find(signalNumbers == abs(blinks.usedSignal), 1, 'first');
 signalData = blinks.signalData(signalIndex);
+%% 
 
 %% Calculate the blink properties
 if params.verbose

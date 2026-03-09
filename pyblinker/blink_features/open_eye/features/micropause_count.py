@@ -1,4 +1,5 @@
 """Count of brief partial closures between blinks."""
+
 from typing import List, Dict
 import numpy as np
 from pyblinker.logging import get_logger
@@ -38,7 +39,9 @@ def micropause_count_epoch(
     """
     mask = np.ones(len(epoch_signal), dtype=bool)
     for blink in blinks:
-        mask[int(blink["refined_start_frame"]): int(blink["refined_end_frame"])+1] = False
+        mask[
+            int(blink["refined_start_frame"]) : int(blink["refined_end_frame"]) + 1
+        ] = False
     open_signal = epoch_signal[mask]
     if open_signal.size == 0:
         return 0
@@ -50,7 +53,8 @@ def micropause_count_epoch(
     event_len = 0
     for i, val in enumerate(epoch_signal):
         if val <= threshold and not any(
-            blink["refined_start_frame"] <= i <= blink["refined_end_frame"] for blink in blinks
+            blink["refined_start_frame"] <= i <= blink["refined_end_frame"]
+            for blink in blinks
         ):
             if not in_event:
                 in_event = True

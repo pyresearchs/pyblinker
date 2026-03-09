@@ -212,3 +212,17 @@ output.xlsx
 output.xlsx.csv
 /test/migration_files/matlab_code/step0_load_edf.asv
 /test/migration_files/matlab_code/process_eeg_with_pop_blinker.asv
+/tutorial_outputs/eeg_epoch_landmarks.html
+/tutorial/tutorial_outputs/plot_matlab_base.html
+test/test_files/step_a_extract_blinks_ear_eog_raw.mat
+test/params_file.mat
+test/migration_files/matlab_code/step0_data_input_singleChannel_popblinker.mat
+test/migration_files/obs/step1bi_data_output_getBlinkPositions_rpbx.mat
+test/test_files/ear_eog_raw.mat
+test/test_files/ear_eog_resamp-100_raw.fif
+test/test_files/ear_eog_resamp-100_raw.mat
+test/test_files/step_a_extract_blinks_resamp-100.mat
+test/test_files/step_b_fit_blink.mat
+test/test_files/step_c_blink_properties.mat
+tutorial/tutorial_outputs/plot_python_base.html
+/test/test_outputs/full_modality_kinematics_ear_eeg_eog.csv

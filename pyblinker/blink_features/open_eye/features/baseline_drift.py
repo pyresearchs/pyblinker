@@ -4,6 +4,7 @@ A negative slope in the inter-blink baseline indicates a gradual
 drooping of the eyelid across the epoch, often preceding prolonged
 closures observed in drowsiness.
 """
+
 from typing import List, Dict
 import numpy as np
 from pyblinker.logging import get_logger
@@ -11,7 +12,9 @@ from pyblinker.logging import get_logger
 logger = get_logger(__name__)
 
 
-def baseline_drift_epoch(epoch_signal: np.ndarray, blinks: List[Dict[str, int]], sfreq: float) -> float:
+def baseline_drift_epoch(
+    epoch_signal: np.ndarray, blinks: List[Dict[str, int]], sfreq: float
+) -> float:
     """Estimate baseline drift for a single epoch.
 
     Parameters

@@ -63,8 +63,8 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from pyblinker.utils.statistics_utils import get_blink_statistic  # noqa: E402
-from test.blinker_migration.debugging_tools import load_matlab_data  # noqa: E402
-from test.blinker_migration.pyblinker.utils.update_pkl_variables import (  # noqa: E402
+from test.blinker_migration.obs.debugging_tools import load_matlab_data  # noqa: E402
+from test.blinker_migration import (  # noqa: E402
     RENAME_MAP,
     rename_keys,
 )
@@ -125,7 +125,9 @@ def _values_match(matlab_value: Any, python_value: Any) -> bool:
         python_array.dtype, np.number
     ):
         return bool(
-            np.allclose(matlab_array, python_array, atol=COMPARISON_ATOL, equal_nan=True)
+            np.allclose(
+                matlab_array, python_array, atol=COMPARISON_ATOL, equal_nan=True
+            )
         )
 
     return np.array_equal(matlab_array, python_array)
@@ -180,9 +182,11 @@ def _print_report(differences: Dict[str, Dict[str, Any]]) -> None:
         print(f"- {key}:")
         print("    MATLAB:", matlab_value)
         print("    Python:", python_value)
-        if matlab_value.shape == python_value.shape and np.issubdtype(
-            matlab_value.dtype, np.number
-        ) and np.issubdtype(python_value.dtype, np.number):
+        if (
+            matlab_value.shape == python_value.shape
+            and np.issubdtype(matlab_value.dtype, np.number)
+            and np.issubdtype(python_value.dtype, np.number)
+        ):
             delta = python_value - matlab_value
             print("    Python - MATLAB:", delta)
     print(

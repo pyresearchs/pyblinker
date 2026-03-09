@@ -1,4 +1,5 @@
 """Utility functions replicating select MATLAB helpers in Python."""
+
 from __future__ import annotations
 from pyblinker.logging import get_logger
 
@@ -17,7 +18,7 @@ def mad(arr: np.ndarray, axis: int | None = None, keepdims: bool = True) -> np.n
     return mad
 
 
-def corr(x, y=None, type='Pearson', rows='all', tail='both', weights=None):
+def corr(x, y=None, type="Pearson", rows="all", tail="both", weights=None):
     """Compute correlation coefficients mimicking MATLAB's ``corr``.
 
     Parameters:
@@ -49,22 +50,24 @@ def corr(x, y=None, type='Pearson', rows='all', tail='both', weights=None):
     if weights is not None:
         weights = np.asarray(weights)
         if weights.shape[0] != n_samples:
-            raise ValueError("Weights must be of the same length as the number of samples.")
+            raise ValueError(
+                "Weights must be of the same length as the number of samples."
+            )
     else:
         weights = np.ones(n_samples)
 
     # Handle 'rows' parameter
-    if rows == 'all':
+    if rows == "all":
         # Use all candidate_signal (including NaNs)
         pass
-    elif rows == 'complete':
+    elif rows == "complete":
         # Use only rows with no missing values
         valid_mask = ~np.isnan(x).any(axis=1)
         valid_mask = valid_mask & ~np.isnan(y).any(axis=1)
         x = x[valid_mask]
         y = y[valid_mask]
         weights = weights[valid_mask]
-    elif rows == 'pairwise':
+    elif rows == "pairwise":
         # For each pair, use rows with no missing values in either column
         pass  # Not implemented in this version
     else:
@@ -76,7 +79,7 @@ def corr(x, y=None, type='Pearson', rows='all', tail='both', weights=None):
     pval = np.zeros((n_features1, n_features2))
 
     # Handle 'type' parameter
-    if type.lower() == 'pearson':
+    if type.lower() == "pearson":
         # Compute Pearson correlation
         for i in range(n_features1):
             for j in range(n_features2):
@@ -93,21 +96,21 @@ def corr(x, y=None, type='Pearson', rows='all', tail='both', weights=None):
                     p = np.nan  # p-value not computed with weights
                 coef[i, j] = r
                 # Adjust p-value according to 'tail' parameter
-                if tail == 'both':
+                if tail == "both":
                     pval[i, j] = p
-                elif tail == 'right':
+                elif tail == "right":
                     if r >= 0:
                         pval[i, j] = p / 2
                     else:
                         pval[i, j] = 1 - p / 2
-                elif tail == 'left':
+                elif tail == "left":
                     if r <= 0:
                         pval[i, j] = p / 2
                     else:
                         pval[i, j] = 1 - p / 2
                 else:
                     raise ValueError("Unknown 'tail' parameter.")
-    elif type.lower() == 'spearman':
+    elif type.lower() == "spearman":
         # Compute Spearman correlation
         for i in range(n_features1):
             for j in range(n_features2):
@@ -120,21 +123,21 @@ def corr(x, y=None, type='Pearson', rows='all', tail='both', weights=None):
                 r, p = spearmanr(xi, yj)
                 coef[i, j] = r
                 # Adjust p-value according to 'tail' parameter
-                if tail == 'both':
+                if tail == "both":
                     pval[i, j] = p
-                elif tail == 'right':
+                elif tail == "right":
                     if r >= 0:
                         pval[i, j] = p / 2
                     else:
                         pval[i, j] = 1 - p / 2
-                elif tail == 'left':
+                elif tail == "left":
                     if r <= 0:
                         pval[i, j] = p / 2
                     else:
                         pval[i, j] = 1 - p / 2
                 else:
                     raise ValueError("Unknown 'tail' parameter.")
-    elif type.lower() == 'kendall':
+    elif type.lower() == "kendall":
         # Compute Kendall correlation
         for i in range(n_features1):
             for j in range(n_features2):
@@ -147,14 +150,14 @@ def corr(x, y=None, type='Pearson', rows='all', tail='both', weights=None):
                 r, p = kendalltau(xi, yj)
                 coef[i, j] = r
                 # Adjust p-value according to 'tail' parameter
-                if tail == 'both':
+                if tail == "both":
                     pval[i, j] = p
-                elif tail == 'right':
+                elif tail == "right":
                     if r >= 0:
                         pval[i, j] = p / 2
                     else:
                         pval[i, j] = 1 - p / 2
-                elif tail == 'left':
+                elif tail == "left":
                     if r <= 0:
                         pval[i, j] = p / 2
                     else:
@@ -166,6 +169,7 @@ def corr(x, y=None, type='Pearson', rows='all', tail='both', weights=None):
 
     return coef, pval
 
+
 def weighted_corr(x, y, w):
     """Compute weighted Pearson correlation coefficient used by ``corr``."""
     w_sum = np.sum(w)
@@ -175,7 +179,6 @@ def weighted_corr(x, y, w):
     var_x = np.sum(w * (x - w_mean_x) ** 2) / w_sum
     var_y = np.sum(w * (y - w_mean_y) ** 2) / w_sum
     return cov_xy / np.sqrt(var_x * var_y)
-
 
 
 def polyfit(x, y, n):
@@ -204,7 +207,7 @@ def polyfit(x, y, n):
     x = np.asarray(x).flatten()
     y = np.asarray(y).flatten()
     if x.size != y.size:
-        raise ValueError('x and y must have the same length')
+        raise ValueError("x and y must have the same length")
 
     # Center and scale x
     mx = x.mean()
@@ -213,14 +216,14 @@ def polyfit(x, y, n):
     x_scaled = (x - mu[0]) / mu[1]
 
     # Construct the Vandermonde matrix
-    V = np.vander(x_scaled, n+1)
+    V = np.vander(x_scaled, n + 1)
 
     # Solve least squares problem
     p, residuals, rank, s = np.linalg.lstsq(V, y, rcond=None)
     p = p.flatten()  # Coefficients are already in descending order
 
     # Compute the QR decomposition
-    Q, R = qr(V, mode='economic')
+    Q, R = qr(V, mode="economic")
 
     # Degrees of freedom
     df = max(0, len(y) - (n + 1))
@@ -235,12 +238,13 @@ def polyfit(x, y, n):
     # R-squared
     y_mean = y.mean()
     ss_tot = np.sum((y - y_mean) ** 2)
-    ss_res = normr ** 2
+    ss_res = normr**2
     rsquared = 1 - ss_res / ss_tot
 
-    S = {'R': R, 'df': df, 'normr': normr, 'rsquared': rsquared}
+    S = {"R": R, "df": df, "normr": normr, "rsquared": rsquared}
 
     return p, S, mu
+
 
 def polyval(p, x, S=None, mu=None):
     """Evaluate a polynomial using MATLAB's ``polyval`` logic.
@@ -313,7 +317,7 @@ def polyval(p, x, S=None, mu=None):
             logger.debug("Exiting polyval")
             return y, None
 
-        e = np.sqrt(1 + np.sum(E ** 2, axis=1))
+        e = np.sqrt(1 + np.sum(E**2, axis=1))
 
         if df == 0:
             delta = np.full_like(e, np.inf)

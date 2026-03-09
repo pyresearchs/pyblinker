@@ -85,12 +85,8 @@ def report_mismatches(
         logger.error("Unexpected rows in result:\n%s", extra)
 
     both = merged[merged["_merge"] == "both"]
-    ref_vals = both[[f"{c}_ref" for c in compare_cols]].rename(
-        columns=lambda c: c[:-4]
-    )
-    res_vals = both[[f"{c}_res" for c in compare_cols]].rename(
-        columns=lambda c: c[:-4]
-    )
+    ref_vals = both[[f"{c}_ref" for c in compare_cols]].rename(columns=lambda c: c[:-4])
+    res_vals = both[[f"{c}_res" for c in compare_cols]].rename(columns=lambda c: c[:-4])
     diff = res_vals.compare(ref_vals, keep_equal=False)
     if not diff.empty:
         logger.error("Value mismatches:\n%s", diff)
@@ -106,4 +102,3 @@ def scalarize(val: object) -> float:
     if isinstance(val, (list, tuple, np.ndarray, pd.Series)):
         return float(val[0]) if len(val) else float(np.nan)
     return float(val)
-

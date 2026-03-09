@@ -8,7 +8,7 @@ the same parameters as the legacy MATLAB workflow and compare the resulting
 
 Based on
 --------
-test/blinker_migration/test_immitate_full_step.py
+test/blinker_migration/xtest_immitate_full_step.py
 
 Inputs
 ------
@@ -76,8 +76,8 @@ from pyblinker.utils.statistics_utils import (  # noqa: E402
     get_blink_statistic,
     get_good_blink_mask,
 )
-from test.blinker_migration.debugging_tools import load_matlab_data  # noqa: E402
-from test.blinker_migration.pyblinker.utils.update_pkl_variables import (  # noqa: E402
+from test.blinker_migration.obs.debugging_tools import load_matlab_data  # noqa: E402
+from test.blinker_migration import (  # noqa: E402
     RENAME_MAP,
 )
 
@@ -89,7 +89,11 @@ class ComparisonReport:
     differing_cells: pd.DataFrame
 
     def is_match(self) -> bool:
-        return (not self.missing_in_python and not self.missing_in_matlab and self.differing_cells.empty)
+        return (
+            not self.missing_in_python
+            and not self.missing_in_matlab
+            and self.differing_cells.empty
+        )
 
 
 IGNORED_CASES = [
@@ -192,9 +196,11 @@ def _round_numeric(df: pd.DataFrame, decimals: int) -> pd.DataFrame:
             rounded[column] = rounded[column].round(decimals)
         else:
             rounded[column] = rounded[column].apply(
-                lambda value: [np.round(v, decimals) for v in value]
-                if isinstance(value, (list, tuple, np.ndarray))
-                else value
+                lambda value: (
+                    [np.round(v, decimals) for v in value]
+                    if isinstance(value, (list, tuple, np.ndarray))
+                    else value
+                )
             )
     return rounded
 
@@ -208,10 +214,10 @@ def _filter_known_offsets(differences: pd.DataFrame) -> pd.DataFrame:
     mask = pd.Series([True] * len(differences))
     for case in IGNORED_CASES:
         mask &= ~(
-            (differences["row"] == case["row"]) &
-            (differences["column"] == case["column"]) &
-            (differences["matlab"] == case["matlab"]) &
-            (differences["python"] == case["python"])
+            (differences["row"] == case["row"])
+            & (differences["column"] == case["column"])
+            & (differences["matlab"] == case["matlab"])
+            & (differences["python"] == case["python"])
         )
     return differences[mask]
 
@@ -226,11 +232,15 @@ def _build_pipeline_output(params, blink_component) -> pd.DataFrame:
         progress_bar=False,
     )
 
-    fit_blinks = FitBlinks(candidate_signal=blink_component, df=blink_positions, params=params)
+    fit_blinks = FitBlinks(
+        candidate_signal=blink_component, df=blink_positions, params=params
+    )
     fit_blinks.dprocess()
     blink_frame = fit_blinks.frame_blinks
 
-    blink_stats = get_blink_statistic(blink_frame, params["z_thresholds"], signal=blink_component)
+    blink_stats = get_blink_statistic(
+        blink_frame, params["z_thresholds"], signal=blink_component
+    )
 
     _, filtered_frame = get_good_blink_mask(
         blink_frame,
@@ -239,7 +249,9 @@ def _build_pipeline_output(params, blink_component) -> pd.DataFrame:
         params["z_thresholds"],
     )
 
-    properties_df = BlinkProperties(blink_component, filtered_frame, params["sfreq"], params).df
+    properties_df = BlinkProperties(
+        blink_component, filtered_frame, params["sfreq"], params
+    ).df
 
     condition_1 = properties_df["pos_amp_vel_ratio_zero"] < params["p_avr_threshold"]
     condition_2 = properties_df["max_value"] < (
@@ -248,7 +260,9 @@ def _build_pipeline_output(params, blink_component) -> pd.DataFrame:
     return properties_df[~(condition_1 & condition_2)]
 
 
-def _compare_tables(matlab_df: pd.DataFrame, python_df: pd.DataFrame) -> ComparisonReport:
+def _compare_tables(
+    matlab_df: pd.DataFrame, python_df: pd.DataFrame
+) -> ComparisonReport:
     """Align tables, round values, and capture mismatches."""
 
     matlab_df = matlab_df.copy()
@@ -257,18 +271,28 @@ def _compare_tables(matlab_df: pd.DataFrame, python_df: pd.DataFrame) -> Compari
     missing_in_python = [col for col in COLUMN_ORDER if col not in python_df.columns]
     missing_in_matlab = [col for col in COLUMN_ORDER if col not in matlab_df.columns]
 
-    common_columns = [col for col in COLUMN_ORDER if col in python_df.columns and col in matlab_df.columns]
+    common_columns = [
+        col
+        for col in COLUMN_ORDER
+        if col in python_df.columns and col in matlab_df.columns
+    ]
 
     if "max_blink" not in common_columns:
-        raise ValueError("The comparison requires 'max_blink' to be present in both tables.")
+        raise ValueError(
+            "The comparison requires 'max_blink' to be present in both tables."
+        )
 
     python_indexed = python_df[common_columns].set_index("max_blink").sort_index()
     matlab_indexed = matlab_df[common_columns].set_index("max_blink").sort_index()
 
     shared_keys = python_indexed.index.intersection(matlab_indexed.index)
 
-    python_aligned = _round_numeric(python_indexed.loc[shared_keys].reset_index(), ROUND_DECIMALS)
-    matlab_aligned = _round_numeric(matlab_indexed.loc[shared_keys].reset_index(), ROUND_DECIMALS)
+    python_aligned = _round_numeric(
+        python_indexed.loc[shared_keys].reset_index(), ROUND_DECIMALS
+    )
+    matlab_aligned = _round_numeric(
+        matlab_indexed.loc[shared_keys].reset_index(), ROUND_DECIMALS
+    )
 
     differing_rows = []
     for idx in range(len(matlab_aligned)):
@@ -280,7 +304,9 @@ def _compare_tables(matlab_df: pd.DataFrame, python_df: pd.DataFrame) -> Compari
             ):
                 matlab_arr = np.asarray(matlab_value)
                 python_arr = np.asarray(python_value)
-                if matlab_arr.shape != python_arr.shape or not np.allclose(matlab_arr, python_arr, atol=1e-6):
+                if matlab_arr.shape != python_arr.shape or not np.allclose(
+                    matlab_arr, python_arr, atol=1e-6
+                ):
                     differing_rows.append(
                         {
                             "row": idx,
@@ -302,7 +328,9 @@ def _compare_tables(matlab_df: pd.DataFrame, python_df: pd.DataFrame) -> Compari
                         }
                     )
 
-    differences = pd.DataFrame(differing_rows, columns=["row", "column", "matlab", "python"])
+    differences = pd.DataFrame(
+        differing_rows, columns=["row", "column", "matlab", "python"]
+    )
     differences = _filter_known_offsets(differences)
 
     return ComparisonReport(
@@ -322,7 +350,9 @@ def _print_report(report: ComparisonReport) -> None:
     if report.differing_cells.empty:
         print("No differing cells after rounding and ignoring documented offsets.")
     else:
-        print(f"Differences detected (MATLAB vs Python) — {len(report.differing_cells)} mismatching cells:")
+        print(
+            f"Differences detected (MATLAB vs Python) — {len(report.differing_cells)} mismatching cells:"
+        )
         print(report.differing_cells)
 
 
@@ -336,11 +366,12 @@ def main() -> None:
     _print_report(report)
 
     if report.is_match():
-        print("\nResult: ✅ The Python pipeline matches the MATLAB combinedStruct export.")
+        print(
+            "\nResult: ✅ The Python pipeline matches the MATLAB combinedStruct export."
+        )
     else:
         print("\nResult: ⚠️ Differences remain. Inspect the table above for details.")
 
 
 if __name__ == "__main__":
     main()
-

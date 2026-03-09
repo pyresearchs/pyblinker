@@ -1,4 +1,5 @@
 """Utilities for downloading test datasets."""
+
 from __future__ import annotations
 
 import logging
@@ -23,8 +24,10 @@ TEST_REQUIRED_FILES = [
     TEST_FILES_DIR / "blink_properties_fits.pkl",
     TEST_FILES_DIR / "data_for_selecting_best_channels.pkl",
     TEST_FILES_DIR / "ear_eog_blink_count_epoch.csv",
+    TEST_FILES_DIR / "ear_eog.csv",
+    TEST_FILES_DIR / "ear_metadata_threshold_interpolation.fif",
+    TEST_FILES_DIR / "ear_multi_threshold_refined_blinks.csv",
     TEST_FILES_DIR / "ear_eog_raw.fif",
-    TEST_FILES_DIR / "ear_eog_without_annotation_raw.fif",
     TEST_FILES_DIR / "file_test_blink_position.pkl",
     TEST_FILES_DIR / "file_test_epoch_full_pipeline.pkl",
     TEST_FILES_DIR / "S1_candidate_signal.npy",
@@ -56,7 +59,7 @@ def _download_and_extract(url: str, target_dir: Path, tmp_name: str) -> None:
     with zipfile.ZipFile(tmp_zip, "r") as zf:
         for member in zf.infolist():
             # Some zips don't store directory entries; guard via filename suffix
-            if member.filename.endswith('/'):
+            if member.filename.endswith("/"):
                 continue
             destination = target_dir / Path(member.filename).name
             with zf.open(member) as src:
@@ -84,7 +87,10 @@ def download_test_files() -> None:
 
 # --- New helper: create an EDF from MNE sample data for MATLAB comparison ---
 
-def ensure_mne_sample_edf(target_dir: Path | None = None, overwrite: bool = False) -> Path:
+
+def ensure_mne_sample_edf(
+    target_dir: Path | None = None, overwrite: bool = False
+) -> Path:
     """Ensure an EDF made from the MNE sample dataset exists in test files.
 
     This downloads (via MNE) the public "sample" dataset if needed, reads the
@@ -120,7 +126,9 @@ def ensure_mne_sample_edf(target_dir: Path | None = None, overwrite: bool = Fals
     # Fetch the sample dataset and take a commonly used raw file
     logger.info("Fetching MNE sample dataset (this may take a moment on first run)…")
     sample_data_folder = mne.datasets.sample.data_path(verbose=True)
-    fif_path = Path(sample_data_folder) / "MEG" / "sample" / "sample_audvis_filt-0-40_raw.fif"
+    fif_path = (
+        Path(sample_data_folder) / "MEG" / "sample" / "sample_audvis_filt-0-40_raw.fif"
+    )
 
     logger.info("Reading raw FIF: %s", fif_path)
     raw = mne.io.read_raw_fif(str(fif_path), preload=True, verbose=False)
@@ -135,10 +143,10 @@ def ensure_mne_sample_edf(target_dir: Path | None = None, overwrite: bool = Fals
 
     # Export to EDF; prefer Raw.export when available, fall back to mne.export
     raw.pick_types(eeg=True)
-    raw.filter(0.5, 20.5, fir_design='firwin')
+    raw.filter(0.5, 20.5, fir_design="firwin")
     raw.resample(100)
 
-    drange=[f'EEG 00{X}' for X in [1,2,3,5,8]]
+    drange = [f"EEG 00{X}" for X in [1, 2, 3, 5, 8]]
     # drange=[f'EEG 00{X}' for X in range(10)]
     to_drop_ch = list(set(raw.ch_names) - set(drange))
     if to_drop_ch:

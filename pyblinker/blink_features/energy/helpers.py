@@ -4,6 +4,7 @@ The functions in this module are shared across energy feature
 calculations. They operate on :class:`pandas.Series` metadata rows and
 NumPy arrays representing eyelid aperture signals.
 """
+
 from __future__ import annotations
 
 from typing import Dict, Sequence
@@ -11,43 +12,13 @@ from typing import Dict, Sequence
 import numpy as np
 
 from pyblinker.logging import get_logger
-from pyblinker.utils.metadata_utils import extract_blink_windows
+from pyblinker.utils.metadata_utils import extract_blink_windows, segment_to_samples
 
 
 logger = get_logger(__name__)
 
 
-def segment_to_samples(onset_s: float, duration_s: float, sfreq: float, n_times: int) -> slice:
-    """Convert blink onset and duration in seconds to a sample slice.
-
-    Parameters
-    ----------
-    onset_s : float
-        Blink onset relative to the start of the epoch in seconds.
-    duration_s : float
-        Blink duration in seconds.
-    sfreq : float
-        Sampling frequency of the epochs in Hertz.
-    n_times : int
-        Number of time points in the epoch.
-
-    Returns
-    -------
-    slice
-        Slice object representing the samples belonging to the blink. The
-        slice is clamped to the valid range ``[0, n_times)``.
-    """
-    logger.debug("Entering segment_to_samples")
-    start = int(round(onset_s * sfreq))
-    stop = start + int(round(duration_s * sfreq))
-    start = max(start, 0)
-    stop = min(stop, n_times)
-    logger.debug("Blink window samples: start=%d stop=%d", start, stop)
-    logger.debug("Exiting segment_to_samples")
-    return slice(start, stop)
-
-
-def _safe_stats(values: Sequence[float]) -> Dict[str, float]:
+def compute_basic_statistics(values: Sequence[float]) -> Dict[str, float]:
     """Compute basic statistics while handling empty input safely.
 
     Parameters
@@ -81,4 +52,10 @@ def _tkeo(x: np.ndarray) -> np.ndarray:
         psi[1:-1] = x[1:-1] ** 2 - x[:-2] * x[2:]
     return psi
 
-__all__ = ["extract_blink_windows", "segment_to_samples", "_safe_stats", "_tkeo"]
+
+__all__ = [
+    "extract_blink_windows",
+    "segment_to_samples",
+    "compute_basic_statistics",
+    "_tkeo",
+]

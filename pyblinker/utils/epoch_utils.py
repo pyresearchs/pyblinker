@@ -29,9 +29,7 @@ def resolve_channels(
 
     logger.debug("Resolving channel picks: %s", picks)
     if picks is None:
-        ch_names = (
-            list(epochs.ch_names) if default is None else list(default(epochs))
-        )
+        ch_names = list(epochs.ch_names) if default is None else list(default(epochs))
     else:
         ch_names = normalize_picks(picks)
     require_channels(epochs, ch_names)
@@ -132,7 +130,9 @@ def slice_raw_into_epochs(
     epoch_len: float = 30.0,
     blink_label: Optional[str] = "blink",
     progress_bar: bool = True,
-) -> Tuple[List[mne.io.BaseRaw], pd.DataFrame, List[Tuple[int, int]], List[Tuple[float, float]]]:
+) -> Tuple[
+    List[mne.io.BaseRaw], pd.DataFrame, List[Tuple[int, int]], List[Tuple[float, float]]
+]:
     """Slice a raw recording into epochs and count blink annotations."""
 
     logger.info("Slicing raw into epochs (%.1fs)", epoch_len)
@@ -191,7 +191,9 @@ def slice_into_mini_raws(
     overwrite: bool = False,
     report: bool = False,
     progress_bar: bool = True,
-) -> Tuple[List[mne.io.BaseRaw], pd.DataFrame, List[Tuple[int, int]], Optional["mne.Report"]]:
+) -> Tuple[
+    List[mne.io.BaseRaw], pd.DataFrame, List[Tuple[int, int]], Optional["mne.Report"]
+]:
     """Slice a raw recording into epochs with optional saving and reporting."""
 
     logger.debug("Entering slice_into_mini_raws")
@@ -207,7 +209,9 @@ def slice_into_mini_raws(
             from .report_utils import generate_epoch_report
 
             rep = generate_epoch_report(segments, times, verbose=False)
-            rep.save(out_dir / "epoch_report.html", overwrite=overwrite, open_browser=False)
+            rep.save(
+                out_dir / "epoch_report.html", overwrite=overwrite, open_browser=False
+            )
     logger.debug("Exiting slice_into_mini_raws")
     return segments, df, boundary_pairs, rep
 

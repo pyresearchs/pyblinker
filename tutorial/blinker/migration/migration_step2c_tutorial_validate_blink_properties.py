@@ -8,7 +8,7 @@ MATLAB reference export that ships with the test suite.
 
 Based on
 --------
-test/blinker_migration/test_step2_computeBlinkProperties.py
+test/blinker_migration/test_c_BlinkProperties.py
 
 Inputs
 ------
@@ -88,8 +88,8 @@ from pyblinker.blink_features.waveform_features.extract_blink_properties import 
     BlinkProperties,
 )
 from pyblinker.blinker import default_setting  # noqa: E402
-from test.blinker_migration.debugging_tools import load_matlab_data  # noqa: E402
-from test.blinker_migration.pyblinker.utils.update_pkl_variables import (  # noqa: E402
+from test.blinker_migration.obs.debugging_tools import load_matlab_data  # noqa: E402
+from test.blinker_migration import (  # noqa: E402
     RENAME_MAP,
 )
 
@@ -161,13 +161,17 @@ def _values_match(matlab_value: object, python_value: object) -> bool:
         if np.issubdtype(matlab_array.dtype, np.number) and np.issubdtype(
             python_array.dtype, np.number
         ):
-            return np.allclose(matlab_array, python_array, atol=1e-8, rtol=0.0, equal_nan=True)
+            return np.allclose(
+                matlab_array, python_array, atol=1e-8, rtol=0.0, equal_nan=True
+            )
         return np.array_equal(matlab_array, python_array)
 
     if isinstance(matlab_value, (float, int, np.number)) and isinstance(
         python_value, (float, int, np.number)
     ):
-        return bool(np.isclose(matlab_value, python_value, atol=1e-8, rtol=0.0, equal_nan=True))
+        return bool(
+            np.isclose(matlab_value, python_value, atol=1e-8, rtol=0.0, equal_nan=True)
+        )
 
     return matlab_value == python_value
 
@@ -180,9 +184,11 @@ def _numeric_difference(matlab_value: object, python_value: object) -> object | 
     ):
         matlab_array = np.asarray(matlab_value)
         python_array = np.asarray(python_value)
-        if matlab_array.shape == python_array.shape and np.issubdtype(
-            matlab_array.dtype, np.number
-        ) and np.issubdtype(python_array.dtype, np.number):
+        if (
+            matlab_array.shape == python_array.shape
+            and np.issubdtype(matlab_array.dtype, np.number)
+            and np.issubdtype(python_array.dtype, np.number)
+        ):
             return python_array - matlab_array
         return None
 
@@ -194,12 +200,16 @@ def _numeric_difference(matlab_value: object, python_value: object) -> object | 
     return None
 
 
-def _round_dataframe(df: pd.DataFrame, columns: Iterable[str], decimals: int) -> pd.DataFrame:
+def _round_dataframe(
+    df: pd.DataFrame, columns: Iterable[str], decimals: int
+) -> pd.DataFrame:
     """Return a copy with selected columns rounded element-wise."""
 
     rounded = df.copy()
     for column in columns:
-        rounded[column] = rounded[column].apply(lambda value: _round_value(value, decimals))
+        rounded[column] = rounded[column].apply(
+            lambda value: _round_value(value, decimals)
+        )
     return rounded
 
 
@@ -248,10 +258,14 @@ def _load_dataframes() -> tuple[pd.DataFrame, pd.DataFrame]:
     return matlab_reference, python_df
 
 
-def _compare_dataframes(matlab_df: pd.DataFrame, python_df: pd.DataFrame) -> List[Difference]:
+def _compare_dataframes(
+    matlab_df: pd.DataFrame, python_df: pd.DataFrame
+) -> List[Difference]:
     """Return a list of differences after rounding and ignoring known cases."""
 
-    common_columns = sorted(set(matlab_df.columns).intersection(python_df.columns) - {"max_blink"})
+    common_columns = sorted(
+        set(matlab_df.columns).intersection(python_df.columns) - {"max_blink"}
+    )
 
     rounded_matlab = _round_dataframe(matlab_df, common_columns, ROUND_DECIMALS)
     rounded_python = _round_dataframe(python_df, common_columns, ROUND_DECIMALS)
@@ -297,14 +311,20 @@ def main() -> None:
     print("Data overview:")
     print(f"  MATLAB rows : {len(matlab_df)}")
     print(f"  Python rows : {len(python_df)}")
-    print(f"  Columns compared : {len(set(matlab_df.columns).intersection(python_df.columns)) - 1} (excluding 'max_blink')")
+    print(
+        f"  Columns compared : {len(set(matlab_df.columns).intersection(python_df.columns)) - 1} (excluding 'max_blink')"
+    )
 
     differences = _compare_dataframes(matlab_df, python_df)
 
     if not differences:
-        print("\n✅ Validation PASSED: Python blink properties match the MATLAB reference after rounding.")
+        print(
+            "\n✅ Validation PASSED: Python blink properties match the MATLAB reference after rounding."
+        )
     else:
-        print("\n⚠️ Validation produced differences after rounding. Inspect the details below.")
+        print(
+            "\n⚠️ Validation produced differences after rounding. Inspect the details below."
+        )
         max_preview = 10
         for diff in differences[:max_preview]:
             diff_dict = diff.to_dict()
@@ -316,8 +336,12 @@ def main() -> None:
         if len(differences) > max_preview:
             print(f"  ... and {len(differences) - max_preview} more differences.")
 
-    print("\nNote: The known peak timing offsets from the unit test are ignored in this report.")
-    print("If the difference list above is empty, the migration faithfully reproduces MATLAB.")
+    print(
+        "\nNote: The known peak timing offsets from the unit test are ignored in this report."
+    )
+    print(
+        "If the difference list above is empty, the migration faithfully reproduces MATLAB."
+    )
 
 
 if __name__ == "__main__":

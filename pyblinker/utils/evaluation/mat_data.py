@@ -122,8 +122,12 @@ def annotations_to_event_table(
     if sampling_rate_hz <= 0:
         raise ValueError("Sampling rate must be positive to build event table")
 
-    onset_samples = np.rint(annotations["onset_sec"].to_numpy(dtype=float) * sampling_rate_hz).astype(int)
-    duration_samples = np.rint(annotations["duration_sec"].to_numpy(dtype=float) * sampling_rate_hz).astype(int)
+    onset_samples = np.rint(
+        annotations["onset_sec"].to_numpy(dtype=float) * sampling_rate_hz
+    ).astype(int)
+    duration_samples = np.rint(
+        annotations["duration_sec"].to_numpy(dtype=float) * sampling_rate_hz
+    ).astype(int)
     duration_samples = np.maximum(duration_samples, 1)
 
     start_zero_based = np.maximum(onset_samples, 0)
@@ -164,6 +168,9 @@ def save_annotations_csv(annotations: mne.Annotations, out_csv: Path) -> None:
         writer = csv.writer(handle)
         writer.writerow(["onset_sec", "duration_sec", "description"])
         for onset, duration, desc in zip(
-            annotations.onset, annotations.duration, annotations.description, strict=False
+            annotations.onset,
+            annotations.duration,
+            annotations.description,
+            strict=False,
         ):
             writer.writerow([onset, duration, desc])

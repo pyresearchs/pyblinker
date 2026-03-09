@@ -1,7 +1,7 @@
 # pyblinker
 `pyblinker` is a Python package primarily intended for automated detection of eye-blink artifacts in diverse biosignals, 
 including electroencephalography (EEG), electrooculography (EOG), and Eye Aspect Ratio (EAR). It addresses the limitations of 
-existing MATLAB-based tools like [BLINKER](https://github.com/VisLab/EEG-Blinks), 
+existing MATLAB-based tools like [BLINKER]( https://github.com/VisLab/EEG-Blinks), 
 offering a Python-based, open-source solution for researchers analyzing various types of physiological data.
 
 A key benefit of `pyblinker` is its enhanced functionality and broader applicability compared to `BLINKER`.  
@@ -61,19 +61,19 @@ Run the flow on the included sample data:
 
 ```bash
 python -m pyblinker.outside_annotation.cli \
-    --annotations manual_annotation_feature_calculation_data/ear_eog.csv \
-    --fif manual_annotation_feature_calculation_data/ear_eog.fif \
+    --annotations test/test_files/ear_eog.csv \
+    --fif test/test_files/ear_eog_raw.fif \
     --channel EEG-E8 \
-    --output manual_annotation_feature_calculation_data/refined_blink_metrics.csv
+    --output test/test_files/refined_blink_metrics.csv
 ```
 
 For a guided example that also generates `refined_blink_report.html`, run:
 
 ```bash
-python tutorial/refined_blink_report_tutorial.py
+python tutorial/06_refined_blink_report_tutorial.py
 ```
 
-Both commands rely on the bundled `manual_annotation_feature_calculation_data/ear_eog.*` files. They produce:
+Both commands rely on the bundled `test/test_files/ear_eog.*` files. They produce:
 
-* A refined metrics CSV (default: `manual_annotation_feature_calculation_data/refined_blink_metrics.csv`).
+* A refined metrics CSV (default: `test/test_files/refined_blink_metrics.csv`).
 * An MNE HTML report (`tutorial_outputs/refined_blink_report.html` via the tutorial) with per-blink plots marking zero crossings and metrics.

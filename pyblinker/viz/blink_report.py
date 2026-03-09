@@ -57,16 +57,27 @@ def generate_blink_report(
             times = np.arange(start, end) / sfreq
             fig, ax = plt.subplots(figsize=(6, 3))
             ax.plot(times, segment)
-            ax.axvline(int(onset * sfreq) / sfreq, color="r", linestyle="--",
-                       label="blink start")
-            ax.axvline(int((onset + dur) * sfreq) / sfreq, color="r", linestyle="--",
-                       label="blink end")
+            ax.axvline(
+                int(onset * sfreq) / sfreq,
+                color="r",
+                linestyle="--",
+                label="blink start",
+            )
+            ax.axvline(
+                int((onset + dur) * sfreq) / sfreq,
+                color="r",
+                linestyle="--",
+                label="blink end",
+            )
             ax.set_xlabel("Time (s)")
             ax.set_ylabel(ch_name)
             ax.set_title(f"Epoch {ep_idx} Blink {blink_idx}")
             ax.legend()
-            report.add_figure(fig, title=f"Epoch {ep_idx} Blink {blink_idx}",
-                              section=f"Epoch {ep_idx}")
+            report.add_figure(
+                fig,
+                title=f"Epoch {ep_idx} Blink {blink_idx}",
+                section=f"Epoch {ep_idx}",
+            )
             plt.close(fig)
     logger.info("Blink report created")
     return report

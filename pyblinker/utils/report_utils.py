@@ -80,9 +80,7 @@ def add_blink_plots_to_report(
         else []
     )
     picks_ear = (
-        pick_ear_channels_from_info(epochs.info)
-        if "ear" in include_modalities
-        else []
+        pick_ear_channels_from_info(epochs.info) if "ear" in include_modalities else []
     )
 
     have_eeg = len(picks_eeg) > 0
@@ -178,9 +176,7 @@ def add_blink_plots_to_report(
                         color=line.get_color(),
                         zorder=3,
                     )
-                    ax.set_title(
-                        f"Epoch {ei} • Blink {bi} • {mod.upper()} • {ch_name}"
-                    )
+                    ax.set_title(f"Epoch {ei} • Blink {bi} • {mod.upper()} • {ch_name}")
                     ax.set_xlabel("Time from epoch start (s)")
                     ax.set_ylabel("Amplitude")
 

@@ -45,7 +45,9 @@ def run_pyblinker_detection(
         use_multiprocessing=False,
     )
 
-    annot, channel, n_good, blink_details, _fig_data, _ch_selected = detector.get_blink()
+    annot, channel, n_good, blink_details, _fig_data, _ch_selected = (
+        detector.get_blink()
+    )
 
     print(f"[detector] Representative channel: {channel}")
     print(f"[detector] Total good blinks: {n_good}")
@@ -53,7 +55,9 @@ def run_pyblinker_detection(
     detected_df = blink_details.loc[:, ["start_blink", "end_blink"]].copy()
     detected_df["start_blink"] = detected_df["start_blink"].astype(int) + 1
     detected_df["end_blink"] = detected_df["end_blink"].astype(int)
-    detected_df = detected_df.sort_values("start_blink", kind="mergesort", ignore_index=True)
+    detected_df = detected_df.sort_values(
+        "start_blink", kind="mergesort", ignore_index=True
+    )
     similarity.validate_event_table(detected_df)
 
     processed_raw = detector.raw_data

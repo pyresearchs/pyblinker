@@ -1,6 +1,5 @@
 """Blink kinematic feature package."""
 
-from .kinematic_features import compute_kinematic_features
+from .core_metrics import compute_blink_kinematic_metrics
 
-__all__ = ["compute_kinematic_features"]
-
+__all__ = ["compute_blink_kinematic_metrics"]

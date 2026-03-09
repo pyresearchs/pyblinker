@@ -1,4 +1,5 @@
 """Test configuration to ensure package import path."""
+
 import sys
 from pathlib import Path
 

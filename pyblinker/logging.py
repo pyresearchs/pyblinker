@@ -12,7 +12,7 @@ import os
 import sys
 from typing import Callable, Optional
 
-_PACKAGE_NAME = __name__.split('.')[0]
+_PACKAGE_NAME = __name__.split(".")[0]
 _ROOT_LOGGER: logging.Logger | None = None
 
 
@@ -49,9 +49,7 @@ def _ensure_root() -> logging.Logger:
         logger.propagate = False
         logger.setLevel(_coerce_level(None))
         handler = logging.StreamHandler(sys.stdout)
-        handler.setFormatter(
-            logging.Formatter("%(levelname)s: %(name)s: %(message)s")
-        )
+        handler.setFormatter(logging.Formatter("%(levelname)s: %(name)s: %(message)s"))
         logger.addHandler(handler)
         _ROOT_LOGGER = logger
     return _ROOT_LOGGER
@@ -78,7 +76,9 @@ def get_logger(name: str | None = None) -> logging.Logger:
     return logging.getLogger(name)
 
 
-def set_log_level(verbose: str | int | bool | None, *, return_old_level: bool = False) -> Optional[int]:
+def set_log_level(
+    verbose: str | int | bool | None, *, return_old_level: bool = False
+) -> Optional[int]:
     """Globally adjust the log level.
 
     Parameters

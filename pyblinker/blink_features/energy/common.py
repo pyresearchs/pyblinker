@@ -1,4 +1,5 @@
 """Shared helpers for computing blink energy metrics."""
+
 from __future__ import annotations
 
 from typing import Iterable, Mapping
@@ -10,7 +11,9 @@ from pyblinker.logging import get_logger
 logger = get_logger(__name__)
 
 
-def compute_energy_metrics(segment: Iterable[float], sfreq: float) -> Mapping[str, float]:
+def compute_energy_metrics(
+    segment: Iterable[float], sfreq: float
+) -> Mapping[str, float]:
     """Return energy-related metrics for a one-dimensional signal segment.
 
     Parameters

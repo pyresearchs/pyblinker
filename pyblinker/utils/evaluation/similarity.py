@@ -119,7 +119,9 @@ def validate_event_table(df: pd.DataFrame) -> None:
         raise ValueError("Each blink event must satisfy start_blink <= end_blink.")
 
     if not df["start_blink"].is_monotonic_increasing:
-        raise ValueError("Blink events must be sorted by start_blink in ascending order.")
+        raise ValueError(
+            "Blink events must be sorted by start_blink in ascending order."
+        )
 
 
 @dataclass(slots=True)
@@ -199,12 +201,18 @@ def _build_candidate_matches(
 
     candidates: list[_CandidateMatch] = []
 
-    amplitude_available = detected_amplitude is not None and ground_truth_amplitude is not None
+    amplitude_available = (
+        detected_amplitude is not None and ground_truth_amplitude is not None
+    )
 
     for det_idx in range(detected_start.size):
         det_s = int(detected_start[det_idx])
         det_e = int(detected_end[det_idx])
-        det_amp = float(detected_amplitude[det_idx]) if detected_amplitude is not None else None
+        det_amp = (
+            float(detected_amplitude[det_idx])
+            if detected_amplitude is not None
+            else None
+        )
 
         for gt_idx in range(ground_truth_start.size):
             gt_s = int(ground_truth_start[gt_idx])
@@ -469,7 +477,9 @@ def compute_alignment_metrics(diff_table: pd.DataFrame) -> dict[str, float]:
     if "within_tolerance" not in diff_table.columns:
         raise KeyError("diff_table must include a 'within_tolerance' column.")
 
-    paired_mask = diff_table["ground_truth_idx"].notna() & diff_table["detected_idx"].notna()
+    paired_mask = (
+        diff_table["ground_truth_idx"].notna() & diff_table["detected_idx"].notna()
+    )
     share_pairs_mask = match_category == "share_within_tolerance"
     matches_pairs_mask = match_category == "matches_within_tolerance"
     outside_pairs_mask = match_category == "pairs_outside_tolerance"
@@ -482,10 +492,14 @@ def compute_alignment_metrics(diff_table: pd.DataFrame) -> dict[str, float]:
     matches_count = 2 * matches_pairs
     outside_count = 2 * outside_pairs
     ground_truth_only = int(
-        (diff_table["ground_truth_idx"].notna() & diff_table["detected_idx"].isna()).sum()
+        (
+            diff_table["ground_truth_idx"].notna() & diff_table["detected_idx"].isna()
+        ).sum()
     )
     detected_only = int(
-        (diff_table["detected_idx"].notna() & diff_table["ground_truth_idx"].isna()).sum()
+        (
+            diff_table["detected_idx"].notna() & diff_table["ground_truth_idx"].isna()
+        ).sum()
     )
     unique_total = int(total_ground_truth + total_detected)
 
@@ -502,7 +516,6 @@ def compute_alignment_metrics(diff_table: pd.DataFrame) -> dict[str, float]:
         "matches_within_tolerance": float(matches_count),
         "pairs_outside_tolerance": float(outside_count),
         "share_within_tolerance_percent": _pct(share_count, unique_total),
-
     }
 
 

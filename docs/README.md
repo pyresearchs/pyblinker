@@ -1,37 +1,48 @@
-# Test EDF provenance and rationale
+# pyblinker Documentation
 
-This repository includes a small EDF file under `test/test_files/` that is generated from the public MNE-Python "sample" dataset. We save it in EDF format to enable 1:1 comparisons with the MATLAB version of the BLINKER package, which commonly uses EDF inputs.
+This directory contains detailed documentation for the `pyblinker` package. The files are ordered sequentially to guide you through the pipeline.
 
-- Source: MNE "sample" dataset (public, bundled via `mne.datasets.sample.data_path()`).
-- Conversion: We read `sample_audvis_filt-0-40_raw.fif` and export to EDF using MNE's export utilities.
-- Location: `test/test_files/mne_sample_audvis_raw.edf` (created on-demand).
+## Main Documentation
 
-Recreate locally:
+1.  [**Overview**](00_overview.md)
+    *   High-level purpose, pipeline steps, and design goals.
+2.  [**Blink Region and Candidates**](01_blink_region_and_candidates.md)
+    *   How to detect candidate blink regions from EEG, EOG, or EAR.
+3.  [**Blink Segmentation and Refinement**](02_blink_segmentation_refinement.md)
+    *   Refining start/end points using zero-crossing, thresholding, etc.
+4.  [**Epoch-Based Pipeline**](03_epoch_based_pipeline.md)
+    *   Why and how to process data in epochs.
+5.  [**Blink Metrics and Features**](04_blink_metrics_and_features.md)
+    *   Comprehensive list of computed features (Kinematics, Energy, EAR).
+6.  [**Reporting and QC**](05_reporting_and_qc.md)
+    *   Generating HTML reports for quality control.
+7.  [**MATLAB Migration**](06_matlab_migration_and_replication.md)
+    *   Details on the 1:1 port of the legacy BLINKER toolbox and validation tests.
 
-1. Ensure dependencies are installed (see `requirements.txt`): `mne` is required.
-2. Run the helper to fetch the dataset and create the EDF:
+## Appendices
 
-```bat
-python -m test.data_setup --make-edf
-```
+*   [**Utils Inventory**](90_utils_inventory.md)
+    *   List of utility functions and their signatures.
+*   [**Migration Mapping**](91_utils_migration_mapping.md)
+    *   Mapping of legacy modules to the new structure.
+*   **[Test Data Provenance](92_test_data_provenance.md)**
+    *   Origin of the test files included in the repository.
+*   **[Test Data Usage](93_test_data_usage.md)**
+    *   Map of test files to the scripts and tests that use them.
 
-The first run will download the MNE sample dataset to your MNE data directory, then export the EDF into `test/test_files`. Subsequent runs will reuse the generated EDF unless `--overwrite` is passed.
+## Recent change: Test runner workflow clarity
 
-Why EDF?
+### The Feature/Change
+- Added a deterministic, discovery-based batch runner output flow so `python test/run_all_tests.py` now prints a clear per-module banner and per-test identifier while executing tests.
+- Standardized and documented the supported single-module commands, with `python -m unittest <dotted.module>` as the recommended approach.
 
-- EDF is widely supported by MATLAB toolboxes and the legacy BLINKER workflow.
-- Using EDF avoids format-specific differences when comparing against MATLAB.
+### Related Code
+- `test/run_all_tests.py`
+- `test/README.md`
 
-If you need to trace the exact code path, see `test/data_setup.py` and the `ensure_mne_sample_edf` function.
-note also, the file is big and some data is not related, therefore, we do the selection as follows:
-
-raw.pick_types(eeg=True)
-raw.filter(0.5, 20.5, fir_design='firwin')
-raw.resample(100)
-
-    drange=[f'EEG 00{X}' for X in [1,2,3,5,8]]
-    # drange=[f'EEG 00{X}' for X in range(10)]
-    to_drop_ch = list(set(raw.ch_names) - set(drange))
-    if to_drop_ch:
-        raw = raw.drop_channels(to_drop_ch)
-
+### Verification (Tutorials & Tests)
+- Tutorials: Not applicable (test-infrastructure-only change).
+- Unit tests exercised for this workflow:
+  - `test/blink_features/kinematics/test_kinematics_ear_only_config.py`
+  - `test/blink_features/kinematics/test_kinematics_eeg_only_config.py`
+  - `test/blink_features/morphology/test_epoch_morphology_features_aggregation.py`

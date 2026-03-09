@@ -49,7 +49,7 @@ _METHOD_METRIC_KEYS = {
 
 logger = get_logger(__name__)
 
- # ------------------------------ Public API ------------------------------------
+# ------------------------------ Public API ------------------------------------
 
 
 def compute_segment_blink_properties(
@@ -239,7 +239,10 @@ def compute_from_raw_segments(
     records: List[pd.DataFrame] = []
 
     iterator = tqdm(
-        enumerate(segments), desc="Segments", total=len(segments), disable=not progress_bar
+        enumerate(segments),
+        desc="Segments",
+        total=len(segments),
+        disable=not progress_bar,
     )
     for seg_id, raw in iterator:
         seg_rows = blink_df[blink_df["seg_id"] == seg_id]
@@ -260,6 +263,8 @@ def compute_from_raw_segments(
             records.append(props)
 
     return pd.concat(records, ignore_index=True) if records else pd.DataFrame()
+
+
 def build_epoch_channel_tasks(
     n_epochs: int, ch_names: Sequence[str]
 ) -> List[Tuple[int, int, str]]:
@@ -272,7 +277,11 @@ def build_epoch_channel_tasks(
 
 def safe_metadata_row(metadata: pd.DataFrame | None, ei: int) -> pd.Series:
     """Safely access a metadata row; return empty Series if metadata is ``None``."""
-    return metadata.iloc[ei] if isinstance(metadata, pd.DataFrame) else pd.Series(dtype=float)
+    return (
+        metadata.iloc[ei]
+        if isinstance(metadata, pd.DataFrame)
+        else pd.Series(dtype=float)
+    )
 
 
 def build_candidate_rows_for_epoch_channel(
@@ -304,10 +313,16 @@ def build_candidate_rows_for_epoch_channel(
     )
 
 
-def window_starts_ends(sample_windows: Sequence[slice]) -> Tuple[np.ndarray, np.ndarray]:
+def window_starts_ends(
+    sample_windows: Sequence[slice],
+) -> Tuple[np.ndarray, np.ndarray]:
     """Return arrays of window start and end (inclusive) indices."""
-    starts = np.fromiter((sl.start for sl in sample_windows), dtype=int, count=len(sample_windows))
-    ends = np.fromiter((sl.stop - 1 for sl in sample_windows), dtype=int, count=len(sample_windows))
+    starts = np.fromiter(
+        (sl.start for sl in sample_windows), dtype=int, count=len(sample_windows)
+    )
+    ends = np.fromiter(
+        (sl.stop - 1 for sl in sample_windows), dtype=int, count=len(sample_windows)
+    )
     return starts, ends
 
 
@@ -351,7 +366,9 @@ def normalize_seq(val: Any, n: int, default_value: Any) -> np.ndarray:
 def isnan_or_none(arr: np.ndarray) -> np.ndarray:
     """Return boolean mask of elements that are ``None`` or ``NaN``."""
     if arr.dtype == object:
-        return np.vectorize(lambda x: x is None or (isinstance(x, float) and np.isnan(x)))(arr)
+        return np.vectorize(
+            lambda x: x is None or (isinstance(x, float) and np.isnan(x))
+        )(arr)
     return np.isnan(arr)
 
 
@@ -460,15 +477,23 @@ def fit_and_extract_properties(
             metrics = compute_segment_kinematics(
                 segment,
                 sfreq,
-                methods=(method,),
+                method=method,
                 modality=modality,
             )
+            metrics = {
+                key: val for key, val in metrics.items() if key not in props_df.columns
+            }
             waveform_metrics = compute_blink_waveform_metrics(
                 segment,
                 sfreq,
-                methods=(method,),
+                method=method,
                 modality=modality,
             )
+            waveform_metrics = {
+                key: val
+                for key, val in waveform_metrics.items()
+                if key not in props_df.columns
+            }
             metrics.update(waveform_metrics)
             row_metrics.update(metrics)
 
@@ -476,4 +501,3 @@ def fit_and_extract_properties(
 
     metrics_df = pd.DataFrame(metric_records, index=props_df.index)
     return pd.concat([props_df, metrics_df], axis=1)
-

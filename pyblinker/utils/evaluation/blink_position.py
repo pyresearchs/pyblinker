@@ -40,10 +40,14 @@ def detect_blinks_from_edf(
             f"Expected {sampling_rate_hz} Hz after resample, got {srate}"
         )
 
-    picks = next(([name] for name in preferred_channel_names if name in raw.ch_names), None)
+    picks = next(
+        ([name] for name in preferred_channel_names if name in raw.ch_names), None
+    )
     if picks is None:
         if len(raw.ch_names) < 3:
-            raise RuntimeError("Need ≥3 channels to pick the representative EEG channel")
+            raise RuntimeError(
+                "Need ≥3 channels to pick the representative EEG channel"
+            )
         picks = [raw.ch_names[2]]
 
     data, _ = raw.get_data(picks=picks, return_times=True)
@@ -53,7 +57,11 @@ def detect_blinks_from_edf(
 
     print(f"[info] python_blink_signal samples: {python_blink_signal.shape[0]}")
 
-    params = detector_params or {"sfreq": srate, "std_threshold": 1.5, "min_event_len": 0.05}
+    params = detector_params or {
+        "sfreq": srate,
+        "std_threshold": 1.5,
+        "min_event_len": 0.05,
+    }
 
     result = get_blink_position(
         params=params,
@@ -62,12 +70,17 @@ def detect_blinks_from_edf(
         progress_bar=False,
     )
 
-    if not isinstance(result, pd.DataFrame) or list(result.columns) != ["start_blink", "end_blink"]:
+    if not isinstance(result, pd.DataFrame) or list(result.columns) != [
+        "start_blink",
+        "end_blink",
+    ]:
         raise RuntimeError("Unexpected result structure from get_blink_position")
 
     py_df_1based = result.copy()
     py_df_1based[["start_blink", "end_blink"]] += 1
-    py_df_1based = py_df_1based.sort_values("start_blink", kind="mergesort", ignore_index=True)
+    py_df_1based = py_df_1based.sort_values(
+        "start_blink", kind="mergesort", ignore_index=True
+    )
 
     print("\n[detected] first 5 rows:")
     print(py_df_1based.head())
@@ -93,9 +106,11 @@ def load_ground_truth_from_matlab(
     if not mat_output_path.exists():
         raise FileNotFoundError(f"MAT output file not found: {mat_output_path}")
 
-    from test.blinker_migration.debugging_tools import load_matlab_data
+    from test.blinker_migration.obs.debugging_tools import load_matlab_data
 
-    input_data, output_data = load_matlab_data(str(mat_input_path), str(mat_output_path))
+    input_data, output_data = load_matlab_data(
+        str(mat_input_path), str(mat_output_path)
+    )
     blink_positions_mat = output_data["blinkPositions"]
     matlab_blink_signal = input_data["blinkComp"]
 
@@ -108,6 +123,8 @@ def load_ground_truth_from_matlab(
             "end_blink": blink_positions_mat[1, :],
         }
     )
-    ground_truth_df = ground_truth_df.sort_values("start_blink", kind="mergesort", ignore_index=True)
+    ground_truth_df = ground_truth_df.sort_values(
+        "start_blink", kind="mergesort", ignore_index=True
+    )
 
     return ground_truth_df, matlab_blink_signal

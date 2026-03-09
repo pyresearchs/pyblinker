@@ -112,7 +112,9 @@ def _prepare_for_pickle(frame: pd.DataFrame) -> pd.DataFrame:
     return frame.applymap(_serialise_value)
 
 
-def save_outputs(edf_path: Path, frames: Dict[str, pd.DataFrame], overwrite: bool) -> None:
+def save_outputs(
+    edf_path: Path, frames: Dict[str, pd.DataFrame], overwrite: bool
+) -> None:
     out_dir = edf_path.parent / "blinker"
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -158,9 +160,7 @@ def run_blinker_batch(
         Number of EDF files successfully passed through Blinker.
     """
 
-
     eng = start_matlab(eeglab_root, project_root, blinker_plugin)
-
 
     try:
         frames = run_blinker(eng, edf_path)

@@ -93,7 +93,7 @@ def prepare_refined_segments(
         raise ValueError("Raw recording has no annotations to refine")
 
     from .epoch_utils import slice_raw_into_epochs
-    from .refinement_utils import refine_blinks_from_epochs
+    from pyblinker.segmentation.refinement.eeg import refine_blinks_from_epochs
 
     segments, _, _, _ = slice_raw_into_epochs(
         raw, epoch_len=epoch_len, progress_bar=progress_bar

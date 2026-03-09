@@ -1,4 +1,5 @@
 """Refine blink events for EOG signal using prepared EEG/EOG segments."""
+
 import logging
 from pathlib import Path
 
@@ -15,17 +16,15 @@ CHANNEL = "EOG-EEG-eog_vert_left"
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 RAW_PATH = PROJECT_ROOT / "test" / "test_files" / "ear_eog_raw.fif"
 
+
 def main() -> None:
     logger.info("Preparing segments from: %s", RAW_PATH)
-
-
 
     raw = mne.io.read_raw_fif(RAW_PATH, preload=False, verbose=False)
     if len(raw.annotations) == 0:
         raise ValueError("Raw recording has no annotations to refine")
 
     segments, _, _, _ = slice_raw_into_epochs(raw)
-
 
 
 if __name__ == "__main__":

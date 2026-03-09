@@ -12,7 +12,9 @@ from tqdm import tqdm
 from pyblinker.logging import get_logger
 from pyblinker.utils.statistics_utils import get_good_blink_mask, get_blink_statistic
 from pyblinker.blinker.fit_blink import FitBlinks
-from pyblinker.blink_features.waveform_features.extract_blink_properties import BlinkProperties
+from pyblinker.blink_features.waveform_features.extract_blink_properties import (
+    BlinkProperties,
+)
 from pyblinker.blinker.get_blink_positions import get_blink_position
 from pyblinker.blinker.get_representative_channel import channel_selection
 
@@ -43,15 +45,17 @@ def process_channel_data(detector, channel: str, verbose: bool = True) -> None:
     fitblinks.dprocess()
     df = fitblinks.frame_blinks
 
-    # STEP 3: Extract blink statistics
+    # STEP 3: Extract blink statistics extractBlinkProperties.m
+    # Calculate an amplitude criterion (frames in blink to those out) and Now calculate the cutoff ratios -- use default for the values
     blink_stats = get_blink_statistic(
         df,
         detector.params["z_thresholds"],
         signal=detector.raw_data.get_data(picks=channel)[0],
     )
     blink_stats["ch"] = channel
+    # There is a step for << Reduce the number of candidate signals based on the blink amp ratios >>, but we move it to channel selection step.
 
-    # STEP 4: Get good blink mask
+    # STEP 4: Get good blink mask extractBlinkProperties.m
     _, df = get_good_blink_mask(
         df,
         blink_stats["best_median"],
@@ -63,21 +67,22 @@ def process_channel_data(detector, channel: str, verbose: bool = True) -> None:
         logger.warning("No good blinks found in channel: %s", channel)
         return
     # STEP 5: Compute blink properties
-    df = BlinkProperties(
+    df_in = df.copy()
+    df_out = BlinkProperties(
         detector.raw_data.get_data(picks=channel)[0],
-        df,
+        df_in,
         detector.params["sfreq"],
         detector.params,
     ).df
 
-    # STEP 6: Apply pAVR restriction
-    condition_1 = df["pos_amp_vel_ratio_zero"] < detector.params["p_avr_threshold"]
-    condition_2 = df["max_value"] < (
+    # STEP 6: Apply pAVR restriction # Suggest to move up to df_out = df_out[~(condition_1 & condition_2)] into a specific function.
+    condition_1 = df_out["pos_amp_vel_ratio_zero"] < detector.params["p_avr_threshold"]
+    condition_2 = df_out["max_value"] < (
         blink_stats["best_median"] - blink_stats["best_robust_std"]
     )
-    df = df[~(condition_1 & condition_2)]
+    df_out = df_out[~(condition_1 & condition_2)]
 
-    detector.all_data_info.append({"df": df, "ch": channel})
+    detector.all_data_info.append({"df": df_out, "ch": channel})
     detector.all_data.append(blink_stats)
 
 
@@ -85,7 +90,10 @@ def process_all_channels(detector) -> None:
     """Process all channels available in the raw data."""
     logger.info("Processing %d channels.", len(detector.channel_list))
     for channel in tqdm(
-        detector.channel_list, desc="Processing Channels", unit="channel", colour="BLACK"
+        detector.channel_list,
+        desc="Processing Channels",
+        unit="channel",
+        colour="BLACK",
     ):
         process_channel_data(detector, channel)
     logger.info("Finished processing all channels.")
@@ -117,9 +125,7 @@ def get_blink(detector):
     process_all_channels(detector)
 
     ch_selected = select_representative_channel(detector)
-    logger.info(
-        "Selected representative channel: %s", ch_selected.loc[0, "ch"]
-    )
+    logger.info("Selected representative channel: %s", ch_selected.loc[0, "ch"])
 
     ch, data, df = get_representative_blink_data(detector, ch_selected)
     annot = detector.create_annotations(df)
@@ -133,4 +139,3 @@ def get_blink(detector):
     )
 
     return annot, ch, n_good_blinks, df, fig_data, ch_selected
-
