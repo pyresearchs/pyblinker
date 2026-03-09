@@ -200,8 +200,6 @@ def _progressive_threshold_search(
     return {
         "start__th_point__ear": int(refined_start),
         "end__th_point__ear": int(refined_end),
-        # "refined_left_threshold": int(refined_start),
-        # "refined_right_threshold": int(refined_end),
         "search_window_start_sample": int(window_start),
         "search_window_end_sample": int(window_end),
         "search_window_start_time": float(window_start / sfreq),
@@ -210,8 +208,6 @@ def _progressive_threshold_search(
         "search_exhausted": bool(search_exhausted),
         "extension_seconds_used": float(extension_seconds),
         "extension_attempts": int(attempts),
-        # "onset__th_point__ear": float(refined_start / sfreq),
-        # "duration__th_point__ear": float((refined_end - refined_start) / sfreq),
     }
 
 
