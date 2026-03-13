@@ -25,8 +25,8 @@ def run_pyblinker_detection(
     *,
     sampling_rate_hz: float,
     annot_label: str = "eye_blink",
-    filter_low: float = 0.5,
-    filter_high: float = 30.0,
+    filter_low: float = 1.0,
+    filter_high: float = 20.0,
 ) -> DetectionResult:
     """Run :class:`BlinkDetector` on ``raw`` and return a structured result."""
 
