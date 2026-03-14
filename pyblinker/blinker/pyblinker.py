@@ -29,6 +29,7 @@ class BlinkDetector:
         n_jobs=1,
         use_multiprocessing=False,
         pick_types_options=None,
+        pipeline="legacy",
     ):
         """
         Initialize the BlinkDetector.
@@ -60,6 +61,7 @@ class BlinkDetector:
         self.n_jobs = n_jobs
         self.use_multiprocessing = use_multiprocessing
         self.all_data = []
+        self.pipeline = pipeline
         # Default to picking only EEG if none is provided
         self.pick_types_options = (
             pick_types_options if pick_types_options is not None else {"eeg": True}
@@ -146,6 +148,12 @@ class BlinkDetector:
             - Create annotations
             - Generate visualizations (optional)
         """
-        logger.info("Starting blink detection pipeline.")
+        logger.info(f"Starting blink detection pipeline (strategy: {self.pipeline}).")
+
+        if self.pipeline == "mne":
+            from .mne_pipeline import get_mne_blink
+            # For MNE pipeline, we can pass None to let it auto-detect EOG, or default to the first picked channel
+            channel = self.channel_list[0] if self.channel_list else None
+            return get_mne_blink(self, channel=channel)
 
         return core_get_blink(self)
