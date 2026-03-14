@@ -72,7 +72,7 @@ def compare_first_rows(
 
 
 def main() -> int:
-    N_ROWS = 2
+    N_ROWS = 9
     res=compare_first_rows(N_ROWS)
     print(res)
 

@@ -58,6 +58,30 @@ class FitBlinks:
             "right_x_intercept",
         ]
 
+    def _empty_frame_blinks(self) -> pd.DataFrame:
+        """Return an empty blink-fit frame with the downstream-required schema."""
+
+        base_cols = list(self.df.columns) if self.df is not None else []
+        derived_cols = [
+            "max_value",
+            "max_blink",
+            "outer_start",
+            "outer_end",
+            "left_zero",
+            "right_zero",
+            "max_pos_vel_frame",
+            "max_neg_vel_frame",
+            "left_base",
+            "right_base",
+            *self.cols_half_height,
+            *self.cols_fit_range,
+            "nsize_x_left",
+            "nsize_x_right",
+            *self.cols_lines_intesection,
+        ]
+        all_cols = list(dict.fromkeys(base_cols + derived_cols))
+        return pd.DataFrame(columns=all_cols)
+
     def dprocess_segment_raw(self, *, run_fit: bool = False) -> None:
         """Process blink metadata for a raw segment.
 
@@ -76,6 +100,9 @@ class FitBlinks:
             range estimation. The default is ``False`` which skips the fitting
             stage.
         """
+        if self.df is None or self.df.empty:
+            self.frame_blinks = self._empty_frame_blinks()
+            return
 
         required_cols = {"outer_start", "outer_end", "left_zero", "right_zero"}
         if not required_cols.issubset(self.df.columns):
@@ -121,6 +148,9 @@ class FitBlinks:
         run_fit : bool, optional
             If ``True`` also execute :meth:`fit`. Defaults to ``True``.
         """
+        if self.df is None or self.df.empty:
+            self.frame_blinks = self._empty_frame_blinks()
+            return
 
         data_size = (
             self.candidate_signal.size

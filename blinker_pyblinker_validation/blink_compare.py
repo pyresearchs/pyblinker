@@ -160,7 +160,14 @@ def prepare_event_tables(
                 "max_value": "maxValue",
                 }
         )
-    py_events=py_events_raw.sort_values(by="start_blink").reset_index(drop=True)
+    py_events = py_events_raw.copy()
+    # PyBlinker stores blink boundary columns in zero-based sample indices. MATLAB
+    # blinkFits uses one-based indices, so we correct both boundaries here before
+    # comparison.
+    py_events[["start_blink", "end_blink"]] = (
+        py_events[["start_blink", "end_blink"]].astype(int) + 1
+    )
+    py_events = py_events.sort_values(by="start_blink").reset_index(drop=True)
 
     blinker_event=blinker_payload["frames"]["blinkFits"]
     blinker_events = blinker_event[["leftZero", "rightZero", "maxValue"]].rename(
