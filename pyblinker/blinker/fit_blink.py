@@ -187,6 +187,14 @@ class FitBlinks:
             self.frame_blinks = pd.DataFrame(columns=all_cols)
             return
 
+        # MATLAB leaves the downstream fit fields unset when a blink cannot
+        # produce both velocity extrema and base landmarks (for example when
+        # the trailing zero-crossing lands on the final sample). Mirror that
+        # behavior by skipping the remaining fit stages for those rows.
+        fit_ready_mask = self.frame_blinks[
+            ["max_pos_vel_frame", "max_neg_vel_frame"]
+        ].notna().all(axis=1)
+
         def _safe_half_height(row):
             required = [
                 row.get("max_blink"),
@@ -229,19 +237,43 @@ class FitBlinks:
             except (ValueError, IndexError, TypeError):
                 return tuple(np.nan for _ in self.cols_fit_range)
 
-        # Get half height
-        self.frame_blinks[self.cols_half_height] = self.frame_blinks.apply(
-            _safe_half_height,
-            axis=1,
-            result_type="expand",
+        # Get half height only for rows that remain valid after baseline setup.
+        half_height_values = pd.DataFrame(
+            np.nan,
+            index=self.frame_blinks.index,
+            columns=self.cols_half_height,
         )
+        if fit_ready_mask.any():
+            computed_half_height = self.frame_blinks.loc[
+                fit_ready_mask
+            ].apply(
+                _safe_half_height,
+                axis=1,
+                result_type="expand",
+            )
+            computed_half_height.columns = self.cols_half_height
+            half_height_values.update(computed_half_height)
+        self.frame_blinks[self.cols_half_height] = half_height_values
 
-        # Compute fit ranges
-        self.frame_blinks[self.cols_fit_range] = self.frame_blinks.apply(
-            _safe_fit_range,
-            axis=1,
-            result_type="expand",
+        # Compute fit ranges only for rows that remain valid after baseline setup.
+        fit_range_values = pd.DataFrame(
+            index=self.frame_blinks.index,
+            columns=self.cols_fit_range,
+            dtype=object,
         )
+        fit_range_values.loc[:, :] = np.nan
+        if fit_ready_mask.any():
+            computed_fit_ranges = self.frame_blinks.loc[
+                fit_ready_mask
+            ].apply(
+                _safe_fit_range,
+                axis=1,
+                result_type="expand",
+            )
+            computed_fit_ranges.columns = self.cols_fit_range
+            for col in self.cols_fit_range:
+                fit_range_values.loc[fit_ready_mask, col] = computed_fit_ranges[col]
+        self.frame_blinks[self.cols_fit_range] = fit_range_values
 
         def _range_size(value):
             if isinstance(value, (list, np.ndarray)):
