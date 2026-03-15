@@ -13,8 +13,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from blinker_pyblinker_validation.blink_compare import prepare_event_tables
-from blinker_pyblinker_validation.stat import RecordingComparison, build_summary_frame
+from o.blink_compare import prepare_event_tables
+from o.stat import RecordingComparison, build_summary_frame
 from pyblinker.blinker.pyblinker import BlinkDetector
 from pyblinker.utils.evaluation import blink_comparison
 

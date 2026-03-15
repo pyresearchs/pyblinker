@@ -71,18 +71,21 @@ def main() -> int:
         print("biosig_exists", eng.eval("exist('pop_biosig','file')", nargout=1))
 
         if int(eng.eval("exist('pop_biosig','file')", nargout=1)) == 2:
-            script = f"""
-            EEG = pop_biosig('{_matlab_path(edf_path)}');
-            labels = string({{EEG.chanlocs.labels}});
-            disp(labels');
-            chIdx = find(strcmpi(labels, "eog_vert_right"), 1);
-            signal = double(EEG.data(chIdx, :));
-            """
-            eng.eval(script, nargout=0)
-            matlab_raw = np.asarray(eng.workspace["signal"], dtype=float).reshape(-1)
-            raw_diff = py_raw * 1e6 - matlab_raw
-            print("raw_max_abs_microvolt", float(np.max(np.abs(raw_diff))))
-            print("raw_mean_abs_microvolt", float(np.mean(np.abs(raw_diff))))
+            try:
+                script = f"""
+                EEG = pop_biosig('{_matlab_path(edf_path)}');
+                labels = string({{EEG.chanlocs.labels}});
+                disp(labels');
+                chIdx = find(strcmpi(labels, "eog_vert_right"), 1);
+                signal = double(EEG.data(chIdx, :));
+                """
+                eng.eval(script, nargout=0)
+                matlab_raw = np.asarray(eng.workspace["signal"], dtype=float).reshape(-1)
+                raw_diff = py_raw * 1e6 - matlab_raw
+                print("raw_max_abs_microvolt", float(np.max(np.abs(raw_diff))))
+                print("raw_mean_abs_microvolt", float(np.mean(np.abs(raw_diff))))
+            except Exception as exc:  # pragma: no cover - probe-only fallback
+                print("matlab_raw_probe_failed", type(exc).__name__, str(exc))
     finally:
         eng.quit()
 

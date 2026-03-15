@@ -13,6 +13,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 import mne
+import numpy as np
 import pandas as pd
 
 from blinker_pyblinker_validation.blink_compare import (
@@ -196,6 +197,16 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Continue past the first non-100 subject instead of stopping.",
     )
+    parser.add_argument(
+        "--restrict-py-to-comparison-channels",
+        action="store_true",
+        help=(
+            "Restrict the PyBlinker raw to only channels that also exist in the "
+            "comparison raw, preserving the comparison raw channel order. FIF-vs-"
+            "EDF runs also align the FIF samples to the EDF quantization grid and "
+            "tail length for parity."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -326,12 +337,75 @@ def _fresh_py_path(output_dir: Path, prefix: str) -> Path:
     return output_dir / f"{prefix}_pyblinker_results.pkl"
 
 
+def _shared_channels_in_comparison_order(
+    py_raw: mne.io.BaseRaw,
+    comparison_raw_path: Path,
+) -> list[str]:
+    comparison_raw = _load_raw(comparison_raw_path)
+    py_lookup = {name.casefold(): name for name in py_raw.ch_names}
+    shared_channels = [
+        py_lookup[name.casefold()]
+        for name in comparison_raw.ch_names
+        if name.casefold() in py_lookup
+    ]
+    if not shared_channels:
+        raise ValueError(
+            "No shared channels were found between "
+            f"{comparison_raw_path.name} and the PyBlinker raw."
+        )
+    return shared_channels
+
+
+def _align_fif_to_edf_parity(
+    py_raw: mne.io.BaseRaw,
+    comparison_raw_path: Path,
+) -> None:
+    comparison_raw = mne.io.read_raw_edf(
+        comparison_raw_path,
+        preload=False,
+        verbose="ERROR",
+    )
+    edf_extra = comparison_raw._raw_extras[0]
+    comparison_idx = {
+        name.casefold(): idx for idx, name in enumerate(comparison_raw.ch_names)
+    }
+
+    for py_idx, py_name in enumerate(py_raw.ch_names):
+        edf_idx = comparison_idx[py_name.casefold()]
+        cal = float(edf_extra["cal"][edf_idx])
+        offset = float(edf_extra["offsets"][edf_idx])
+        unit_scale = float(edf_extra["units"][edf_idx])
+        signal_phys = py_raw._data[py_idx] / unit_scale
+        digital = np.round((signal_phys - offset) / cal)
+        py_raw._data[py_idx] = (digital * cal + offset) * unit_scale
+
+    target_n_times = int(comparison_raw.n_times)
+    current_n_times = int(py_raw.n_times)
+    if target_n_times > current_n_times:
+        pad_width = target_n_times - current_n_times
+        tail = np.repeat(py_raw._data[:, -1:], pad_width, axis=1)
+        py_raw._data = np.concatenate([py_raw._data, tail], axis=1)
+        py_raw._last_samps[0] = py_raw._first_samps[0] + py_raw._data.shape[1] - 1
+    elif target_n_times < current_n_times:
+        py_raw.crop(tmax=(target_n_times - 1) / float(py_raw.info["sfreq"]))
+
+
 def _run_detector(
     py_raw_path: Path,
     *,
+    comparison_raw_path: Path,
     pick_types_options: dict[str, bool],
+    restrict_py_to_comparison_channels: bool,
 ) -> tuple[dict, mne.Annotations, str]:
     raw = _load_raw(py_raw_path)
+    if restrict_py_to_comparison_channels:
+        shared_channels = _shared_channels_in_comparison_order(raw, comparison_raw_path)
+        raw.pick(shared_channels)
+        if (
+            py_raw_path.suffix.lower() == ".fif"
+            and comparison_raw_path.suffix.lower() == ".edf"
+        ):
+            _align_fif_to_edf_parity(raw, comparison_raw_path)
     sampling_rate = float(raw.info["sfreq"])
 
     detector = BlinkDetector(
@@ -363,14 +437,18 @@ def run_fresh_detection(
     subject_id: str,
     *,
     py_raw_path: Path,
+    comparison_raw_path: Path,
     output_dir: Path,
     prefix: str,
     plot: bool,
     pick_types_options: dict[str, bool],
+    restrict_py_to_comparison_channels: bool,
 ) -> Path:
     payload, annotations, channel = _run_detector(
         py_raw_path,
+        comparison_raw_path=comparison_raw_path,
         pick_types_options=pick_types_options,
+        restrict_py_to_comparison_channels=restrict_py_to_comparison_channels,
     )
 
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -439,6 +517,7 @@ def process_subject(
     plot: bool,
     target_share_percent: float,
     force_rerun: bool,
+    restrict_py_to_comparison_channels: bool,
 ) -> SubjectRunResult:
     py_raw_path = _render_subject_path(
         config.dataset_root,
@@ -497,10 +576,12 @@ def process_subject(
     py_path = run_fresh_detection(
         subject_id,
         py_raw_path=py_raw_path,
+        comparison_raw_path=comparison_raw_path,
         output_dir=output_dir,
         prefix=prefix,
         plot=plot,
         pick_types_options=config.pick_types_options,
+        restrict_py_to_comparison_channels=restrict_py_to_comparison_channels,
     )
     comparison = _compare_subject(
         subject_id,
@@ -581,6 +662,7 @@ def _run_subjects(
     target_share_percent: float,
     force_rerun: bool,
     continue_on_failure: bool,
+    restrict_py_to_comparison_channels: bool,
 ) -> list[SubjectRunResult]:
     results: list[SubjectRunResult] = []
 
@@ -593,6 +675,7 @@ def _run_subjects(
             plot=plot,
             target_share_percent=target_share_percent,
             force_rerun=force_rerun,
+            restrict_py_to_comparison_channels=restrict_py_to_comparison_channels,
         )
         results.append(result)
         _print_subject_result(result)
@@ -616,7 +699,8 @@ def main() -> int:
     print(
         f"[config] dataset={config.name}, subjects={len(subject_ids)}, "
         f"prefix={args.prefix}, plot={args.plot}, force_rerun={args.force_rerun}, "
-        f"continue_on_failure={args.continue_on_failure}"
+        f"continue_on_failure={args.continue_on_failure}, "
+        f"restrict_py_to_comparison_channels={args.restrict_py_to_comparison_channels}"
     )
     print(
         f"[config] py_raw_template={config.py_raw_template}, "
@@ -633,6 +717,7 @@ def main() -> int:
         target_share_percent=args.target_share_percent,
         force_rerun=args.force_rerun,
         continue_on_failure=args.continue_on_failure,
+        restrict_py_to_comparison_channels=args.restrict_py_to_comparison_channels,
     )
 
     processed_ids = [result.subject_id for result in results]
