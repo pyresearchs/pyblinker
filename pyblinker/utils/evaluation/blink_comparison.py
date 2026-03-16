@@ -315,29 +315,6 @@ def compare_detected_vs_ground_truth(
         match_category.isin(["pairs_outside_tolerance", "share_within_tolerance"])
         & ~within_tolerance_mask
     )
-    mismatches = diff_table.loc[mismatch_mask]
-
-    if all_ok and mismatches.empty:
-        logger.info(
-            "✅ PASSED: all blink intervals match within ±%d samples.",
-            tolerance_samples,
-        )
-    else:
-        preview_attr = mismatches.attrs.get("preview")
-        preview = (
-            pd.DataFrame(preview_attr)
-            if isinstance(preview_attr, dict)
-            else mismatches.head(n_diff_rows)
-        )
-        logger.info(
-            "[diff] mismatches beyond ±%d samples (showing %d):",
-            tolerance_samples,
-            len(preview),
-        )
-        if mismatches.empty:
-            logger.info("No mismatches found despite metric discrepancies.")
-        else:
-            logger.info("%s", preview)
 
     metrics = similarity.compute_alignment_metrics(diff_table)
     reporting.print_comparison_summary(metrics, tolerance_samples)

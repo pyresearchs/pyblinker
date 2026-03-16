@@ -58,6 +58,30 @@ class FitBlinks:
             "right_x_intercept",
         ]
 
+    def _empty_frame_blinks(self) -> pd.DataFrame:
+        """Return an empty blink-fit frame with the downstream-required schema."""
+
+        base_cols = list(self.df.columns) if self.df is not None else []
+        derived_cols = [
+            "max_value",
+            "max_blink",
+            "outer_start",
+            "outer_end",
+            "left_zero",
+            "right_zero",
+            "max_pos_vel_frame",
+            "max_neg_vel_frame",
+            "left_base",
+            "right_base",
+            *self.cols_half_height,
+            *self.cols_fit_range,
+            "nsize_x_left",
+            "nsize_x_right",
+            *self.cols_lines_intesection,
+        ]
+        all_cols = list(dict.fromkeys(base_cols + derived_cols))
+        return pd.DataFrame(columns=all_cols)
+
     def dprocess_segment_raw(self, *, run_fit: bool = False) -> None:
         """Process blink metadata for a raw segment.
 
@@ -76,6 +100,9 @@ class FitBlinks:
             range estimation. The default is ``False`` which skips the fitting
             stage.
         """
+        if self.df is None or self.df.empty:
+            self.frame_blinks = self._empty_frame_blinks()
+            return
 
         required_cols = {"outer_start", "outer_end", "left_zero", "right_zero"}
         if not required_cols.issubset(self.df.columns):
@@ -121,6 +148,9 @@ class FitBlinks:
         run_fit : bool, optional
             If ``True`` also execute :meth:`fit`. Defaults to ``True``.
         """
+        if self.df is None or self.df.empty:
+            self.frame_blinks = self._empty_frame_blinks()
+            return
 
         data_size = (
             self.candidate_signal.size
@@ -187,6 +217,14 @@ class FitBlinks:
             self.frame_blinks = pd.DataFrame(columns=all_cols)
             return
 
+        # MATLAB leaves the downstream fit fields unset when a blink cannot
+        # produce both velocity extrema and base landmarks (for example when
+        # the trailing zero-crossing lands on the final sample). Mirror that
+        # behavior by skipping the remaining fit stages for those rows.
+        fit_ready_mask = self.frame_blinks[
+            ["max_pos_vel_frame", "max_neg_vel_frame"]
+        ].notna().all(axis=1)
+
         def _safe_half_height(row):
             required = [
                 row.get("max_blink"),
@@ -229,19 +267,43 @@ class FitBlinks:
             except (ValueError, IndexError, TypeError):
                 return tuple(np.nan for _ in self.cols_fit_range)
 
-        # Get half height
-        self.frame_blinks[self.cols_half_height] = self.frame_blinks.apply(
-            _safe_half_height,
-            axis=1,
-            result_type="expand",
+        # Get half height only for rows that remain valid after baseline setup.
+        half_height_values = pd.DataFrame(
+            np.nan,
+            index=self.frame_blinks.index,
+            columns=self.cols_half_height,
         )
+        if fit_ready_mask.any():
+            computed_half_height = self.frame_blinks.loc[
+                fit_ready_mask
+            ].apply(
+                _safe_half_height,
+                axis=1,
+                result_type="expand",
+            )
+            computed_half_height.columns = self.cols_half_height
+            half_height_values.update(computed_half_height)
+        self.frame_blinks[self.cols_half_height] = half_height_values
 
-        # Compute fit ranges
-        self.frame_blinks[self.cols_fit_range] = self.frame_blinks.apply(
-            _safe_fit_range,
-            axis=1,
-            result_type="expand",
+        # Compute fit ranges only for rows that remain valid after baseline setup.
+        fit_range_values = pd.DataFrame(
+            index=self.frame_blinks.index,
+            columns=self.cols_fit_range,
+            dtype=object,
         )
+        fit_range_values.loc[:, :] = np.nan
+        if fit_ready_mask.any():
+            computed_fit_ranges = self.frame_blinks.loc[
+                fit_ready_mask
+            ].apply(
+                _safe_fit_range,
+                axis=1,
+                result_type="expand",
+            )
+            computed_fit_ranges.columns = self.cols_fit_range
+            for col in self.cols_fit_range:
+                fit_range_values.loc[fit_ready_mask, col] = computed_fit_ranges[col]
+        self.frame_blinks[self.cols_fit_range] = fit_range_values
 
         def _range_size(value):
             if isinstance(value, (list, np.ndarray)):

@@ -1,6 +1,7 @@
 from pyblinker.logging import get_logger
 
 from . import default_setting
+from .legacy_eeglab_filter import legacy_blinker_bandpass
 from ..utils.annotation_utils import create_annotation
 from ..viz.viz_pd import viz_complete_blink_prop
 from ..pipeline_steps import (
@@ -22,12 +23,13 @@ class BlinkDetector:
         visualize=False,
         annot_label=None,
         filter_bad=False,
-        filter_low=0.5,
-        filter_high=20.5,
+        filter_low=1.0,
+        filter_high=20.0,
         resample_rate=30,
         n_jobs=1,
         use_multiprocessing=False,
         pick_types_options=None,
+        pipeline="legacy",
     ):
         """
         Initialize the BlinkDetector.
@@ -59,6 +61,7 @@ class BlinkDetector:
         self.n_jobs = n_jobs
         self.use_multiprocessing = use_multiprocessing
         self.all_data = []
+        self.pipeline = pipeline
         # Default to picking only EEG if none is provided
         self.pick_types_options = (
             pick_types_options if pick_types_options is not None else {"eeg": True}
@@ -74,12 +77,27 @@ class BlinkDetector:
         logger.info(
             "Preparing raw signal: picking channels, filtering, and resampling."
         )
+        self.raw_data.load_data()
         self.raw_data.pick_types(**self.pick_types_options)
-        self.raw_data.filter(
-            self.filter_low, self.filter_high, fir_design="firwin", n_jobs=self.n_jobs
+        self.channel_list = list(self.raw_data.ch_names)
+
+        filtered = legacy_blinker_bandpass(
+            self.raw_data.get_data(),
+            sfreq=float(self.raw_data.info["sfreq"]),
+            low_cutoff_hz=float(self.filter_low),
+            high_cutoff_hz=float(self.filter_high),
         )
-        self.raw_data.resample(self.resample_rate, n_jobs=self.n_jobs)
-        logger.info(f"Signal prepared with resample rate: {self.resample_rate} Hz")
+        self.raw_data._data = filtered
+
+        if float(self.raw_data.info["sfreq"]) != float(self.resample_rate):
+            self.raw_data.resample(self.resample_rate, n_jobs=self.n_jobs)
+
+        self.sfreq = float(self.raw_data.info["sfreq"])
+        self.params["sfreq"] = self.sfreq
+        logger.info(
+            "Signal prepared with legacy Blinker bandpass and resample rate: %s Hz",
+            self.sfreq,
+        )
         return self.raw_data
 
     def process_channel_data(self, channel, verbose=True):
@@ -130,6 +148,12 @@ class BlinkDetector:
             - Create annotations
             - Generate visualizations (optional)
         """
-        logger.info("Starting blink detection pipeline.")
+        logger.info(f"Starting blink detection pipeline (strategy: {self.pipeline}).")
+
+        if self.pipeline == "mne":
+            from .mne_pipeline import get_mne_blink
+            # For MNE pipeline, we can pass None to let it auto-detect EOG, or default to the first picked channel
+            channel = self.channel_list[0] if self.channel_list else None
+            return get_mne_blink(self, channel=channel)
 
         return core_get_blink(self)
