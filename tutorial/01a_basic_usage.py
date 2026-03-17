@@ -50,7 +50,7 @@ blinker_params = {
     "blink_amp_range_1": 3,
     "blink_amp_range_2": 50,
     "good_ratio_threshold": 0.7,
-    "min_good_blinks": 70,
+    "min_good_blinks": 10,
     "keep_signals": 0,
     "correlation_threshold": 0.98,
     "p_avr_threshold": 3,
