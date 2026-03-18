@@ -173,6 +173,9 @@ def channel_selection(channel_blink_stats, params):
     # Now pick the one with the maximum number of good blinks
     signal_data_output = select_max_good_blinks(channel_blink_stats)
 
+    if "select" in signal_data_output.columns and signal_data_output["select"].any():
+        signal_data_output = signal_data_output[signal_data_output["select"]].copy()
+
     # Columns to ignore
     columns_to_ignore = ["status", "select"]
 

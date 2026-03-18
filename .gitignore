@@ -226,3 +226,4 @@ test/test_files/step_b_fit_blink.mat
 test/test_files/step_c_blink_properties.mat
 tutorial/tutorial_outputs/plot_python_base.html
 /test/test_outputs/full_modality_kinematics_ear_eeg_eog.csv
+blinker_pyblinker_validation/experiment_results/

@@ -241,13 +241,18 @@ def _build_candidate_matches(
                     if amplitude_similar:
                         amplitude_diff = abs(det_amp - gt_amp)
 
+            # Candidate admissibility is driven by tolerance-expanded overlap so we can
+            # still pair near-matching events even when amplitude similarity fails. The
+            # stricter `require_both_conditions` flag is preserved in
+            # `conditions_satisfied`, which reporting later turns into either
+            # `share_within_tolerance` or `matches_within_tolerance`.
+            if not has_overlap:
+                continue
+
             if require_both_conditions:
                 meets_criteria = amplitude_similar and has_overlap
             else:
                 meets_criteria = amplitude_similar or has_overlap
-
-            if not meets_criteria:
-                continue
 
             boundary_diff = abs(det_s - gt_s) + abs(det_e - gt_e)
             amplitude_diff_value = float(amplitude_diff)
